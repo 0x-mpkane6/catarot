@@ -1,0 +1,40 @@
+# Python bytecode/cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment config (local secrets)
+.env
+.env.*
+!.env.example
+
+# Test/tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Editor/OS junk
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local model/index artifacts
+models/
+*.faiss
+*.index
+*.pkl
+
+# Local/raw data (can be large, avoid accidental push)
+data/raw/
+data/processed/
