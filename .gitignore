@@ -36,13 +36,7 @@ Thumbs.db
 *.log
 
 # Generated artifacts
-data/raw/
-data/processed/
-data/rag_corpus/corpus.jsonl
-data/rag_corpus/card_data.json
-data/**/*.wav
-data/**/*.mp3
-data/**/*.m4a
+
 
 # Local model/index artifacts
 models/**/*.index
