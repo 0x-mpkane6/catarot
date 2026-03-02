@@ -119,6 +119,18 @@ class CardPredictor:
             "_warning": "Vision index unavailable, using fallback card candidates.",
         }
 
+    def list_candidate_cards(self, limit: int = 78) -> list[str]:
+        output: list[str] = []
+        seen = set()
+        for name in self._candidate_pool:
+            if not name or name in seen:
+                continue
+            seen.add(name)
+            output.append(name)
+            if len(output) >= limit:
+                break
+        return output
+
     def predict(self, image_path: str) -> dict:
         if not self.available or self.index is None:
             return self._fallback_result()

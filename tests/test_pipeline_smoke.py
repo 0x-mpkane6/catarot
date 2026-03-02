@@ -6,15 +6,18 @@ from src.pipeline.tarot_pipeline import TarotPipeline
 
 
 def test_pipeline_smoke(tmp_path) -> None:
-    image_path = tmp_path / "sample.png"
-    Image.new("RGB", (256, 256), color=(180, 140, 100)).save(image_path)
+    image_paths: list[str] = []
+    for idx in range(3):
+        image_path = tmp_path / f"sample_{idx}.png"
+        Image.new("RGB", (256, 256), color=(180 + idx, 140, 100)).save(image_path)
+        image_paths.append(str(image_path))
 
     pipeline = TarotPipeline(force_demo_embedder=True)
     result = pipeline.run_pipeline(
         question="What should I focus on this week?",
         audio_path=None,
-        image_paths=[str(image_path)],
-        spread_type="single",
+        image_paths=image_paths,
+        spread_type="three",
     )
 
     required_keys = {

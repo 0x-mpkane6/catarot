@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from typing import Any
 
 import requests
@@ -9,6 +10,7 @@ from src.utils.config import resolve_path
 from src.utils.logging import get_logger
 
 LOGGER = get_logger(__name__)
+TOKEN_RE = re.compile(r"[a-z0-9_]+", re.IGNORECASE)
 
 
 def _normalize_text(text: str) -> str:
@@ -17,6 +19,7 @@ def _normalize_text(text: str) -> str:
 
 def _detect_theme(question: str, transcript: str | None) -> str:
     text = _normalize_text(" ".join([question or "", transcript or ""]))
+    tokens = set(TOKEN_RE.findall(text))
 
     love_keywords = {
         "love",
@@ -52,7 +55,6 @@ def _detect_theme(question: str, transcript: str | None) -> str:
         "tien",
         "thu nhap",
         "dau tu",
-        "no",
     }
     health_keywords = {
         "health",
@@ -74,7 +76,14 @@ def _detect_theme(question: str, transcript: str | None) -> str:
     }
 
     def has_any(keywords: set[str]) -> bool:
-        return any(keyword in text for keyword in keywords)
+        for keyword in keywords:
+            normalized_keyword = _normalize_text(keyword)
+            if " " in normalized_keyword:
+                if normalized_keyword in text:
+                    return True
+            elif normalized_keyword in tokens:
+                return True
+        return False
 
     if has_any(love_keywords):
         return "love"

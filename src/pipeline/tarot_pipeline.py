@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,31 @@ from src.vision.embedder import VisionEmbedder
 from src.vision.predict_card import CardPredictor
 
 LOGGER = get_logger(__name__)
+
+DEFAULT_MAJOR_ARCANA = [
+    "The Fool",
+    "The Magician",
+    "The High Priestess",
+    "The Empress",
+    "The Emperor",
+    "The Hierophant",
+    "The Lovers",
+    "The Chariot",
+    "Strength",
+    "The Hermit",
+    "Wheel of Fortune",
+    "Justice",
+    "The Hanged Man",
+    "Death",
+    "Temperance",
+    "The Devil",
+    "The Tower",
+    "The Star",
+    "The Moon",
+    "The Sun",
+    "Judgement",
+    "The World",
+]
 
 
 def _coerce_image_paths(image_paths: Any) -> list[str]:
@@ -87,24 +113,20 @@ class TarotPipeline:
         self.reader = ReadingGenerator()
 
     def _spread_positions(self, spread_type: str) -> list[str]:
-        positions = get_config_value(self.config, "app", "spread_positions", spread_type, default=None)
+        _ = spread_type
+        positions = get_config_value(self.config, "app", "spread_positions", "three", default=None)
         if positions:
             return positions
-        if spread_type == "three":
-            return ["past", "present", "future"]
-        return ["single"]
+        return ["past", "present", "future"]
 
     def _build_card_outputs(self, image_paths: list[str], spread_type: str, warnings: list[str]) -> list[dict]:
         cards = []
         positions = self._spread_positions(spread_type)
 
-        if spread_type == "single" and len(image_paths) > 1:
-            warnings.append("Spread single but multiple images provided; only first image is used.")
-            image_paths = image_paths[:1]
-        if spread_type == "three" and len(image_paths) > 3:
+        if len(image_paths) > 3:
             warnings.append("Spread three expects up to 3 images; extra images were ignored.")
             image_paths = image_paths[:3]
-        if spread_type == "three" and 0 < len(image_paths) < 3:
+        if 0 < len(image_paths) < 3:
             warnings.append("Spread three ideally uses 3 images (past/present/future).")
 
         for idx, image_path in enumerate(image_paths):
@@ -132,6 +154,48 @@ class TarotPipeline:
                 }
             )
 
+        return cards
+
+    def _draw_random_cards(self, spread_type: str, warnings: list[str]) -> list[dict]:
+        positions = self._spread_positions(spread_type)
+        target_count = 3
+
+        pool: list[str] = []
+        seen = set()
+
+        for name in self.rag_retriever.list_known_cards(limit=120):
+            if name and name not in seen:
+                seen.add(name)
+                pool.append(name)
+
+        if len(pool) < target_count:
+            for name in self.card_predictor.list_candidate_cards(limit=120):
+                if name and name not in seen:
+                    seen.add(name)
+                    pool.append(name)
+
+        if not pool:
+            pool = list(DEFAULT_MAJOR_ARCANA)
+
+        if len(pool) >= target_count:
+            selected_names = random.sample(pool, target_count)
+        else:
+            selected_names = [random.choice(pool) for _ in range(target_count)]
+
+        cards: list[dict] = []
+        for idx, name in enumerate(selected_names):
+            orientation = random.choice(["upright", "reversed"])
+            cards.append(
+                {
+                    "name": name,
+                    "orientation": orientation,
+                    "position": positions[idx] if idx < len(positions) else f"slot_{idx+1}",
+                    "confidence": 0.55,
+                    "topk_candidates": [],
+                }
+            )
+
+        warnings.append(f"Random draw enabled: generated {len(cards)} card(s) without image prediction.")
         return cards
 
     def _apply_overrides(self, cards: list[dict], card_overrides: dict[int, dict] | None) -> None:
@@ -230,22 +294,28 @@ class TarotPipeline:
         image_paths: Any,
         spread_type: str,
         card_overrides: dict[int, dict] | None = None,
+        random_draw: bool = False,
     ) -> dict:
         warnings: list[str] = []
 
         clean_question = (question or "").strip()
-        clean_spread = spread_type if spread_type in {"single", "three"} else "single"
+        clean_spread = "three"
         if clean_spread != spread_type:
-            warnings.append(f"Invalid spread_type '{spread_type}', defaulted to 'single'.")
+            warnings.append(f"Only spread_type 'three' is supported; received '{spread_type}', defaulted to 'three'.")
 
         transcript, asr_warnings = transcribe_audio(audio_path)
         warnings.extend(asr_warnings)
 
         normalized_images = _coerce_image_paths(image_paths)
-        if not normalized_images:
-            warnings.append("No image provided. Upload at least one tarot card image for prediction.")
+        if random_draw:
+            if normalized_images:
+                warnings.append("Random draw enabled; uploaded images ignored.")
+            cards = self._draw_random_cards(clean_spread, warnings)
+        else:
+            if not normalized_images:
+                warnings.append("No image provided. Upload at least one tarot card image for prediction.")
+            cards = self._build_card_outputs(normalized_images, clean_spread, warnings)
 
-        cards = self._build_card_outputs(normalized_images, clean_spread, warnings)
         self._apply_overrides(cards, card_overrides)
 
         query = clean_question

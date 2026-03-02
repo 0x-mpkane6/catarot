@@ -1,24 +1,55 @@
-from fastapi import FastAPI, UploadFile, File, Form
+import os
+import shutil
+import uuid
+from pathlib import Path
+from typing import Any, List
+
+from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
-import shutil
-import os
-import uuid
 
 from src.pipeline.tarot_pipeline import TarotPipeline
+
+
+def _allowed_origins_from_env() -> list[str]:
+    raw = os.getenv(
+        "API_ALLOWED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    )
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
+def _as_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _normalize_spread_type(spread_type: str | None) -> str:
+    if str(spread_type or "").strip().lower() == "three":
+        return "three"
+    return "three"
 
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=_allowed_origins_from_env(),
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-pipeline = TarotPipeline()
+_pipeline: TarotPipeline | None = None
+
+
+def _get_pipeline() -> TarotPipeline:
+    global _pipeline
+    if _pipeline is None:
+        _pipeline = TarotPipeline()
+    return _pipeline
 
 
 # =============================
@@ -29,7 +60,8 @@ class QuestionRequest(BaseModel):
     question: str
     audio_path: str | None = None
     image_paths: list[str] | None = None
-    spread_type: str = "single"
+    spread_type: str = "three"
+    random_draw: bool = False
 
 
 @app.get("/")
@@ -39,11 +71,13 @@ def root():
 
 @app.post("/api/ask")
 async def ask(req: QuestionRequest):
-    result = pipeline.run_pipeline(
+    clean_spread = _normalize_spread_type(req.spread_type)
+    result = _get_pipeline().run_pipeline(
         question=req.question,
         audio_path=req.audio_path,
         image_paths=req.image_paths,
-        spread_type=req.spread_type,
+        spread_type=clean_spread,
+        random_draw=req.random_draw,
     )
     return result
 
@@ -52,45 +86,93 @@ async def ask(req: QuestionRequest):
 # Upload file endpoint
 # =============================
 
-@app.post("/api/ask_with_image")
-async def ask_with_image(
-    question: str = Form(...),
-    spread_type: str = Form("single"),
-    image: List[UploadFile] = File(...)
-):
-    os.makedirs("tmp_uploads", exist_ok=True)
+def _save_upload(upload_dir: Path, file: UploadFile) -> str:
+    original_name = file.filename or ""
+    ext = Path(original_name).suffix
+    unique_name = f"{uuid.uuid4().hex}{ext}"
+    save_path = upload_dir / unique_name
+    with save_path.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return str(save_path)
 
-    saved_paths = []
+
+def _cap_images_by_spread(image_paths: list[str], spread_type: str) -> list[str]:
+    _ = spread_type
+    return list(image_paths)[:3]
+
+
+def _run_pipeline_from_uploads(
+    *,
+    question: str,
+    spread_type: str,
+    random_draw: bool,
+    image_files: list[UploadFile] | None,
+    audio_file: UploadFile | None,
+) -> dict:
+    upload_dir = Path(os.getenv("API_UPLOAD_DIR", "tmp_uploads"))
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    clean_spread = _normalize_spread_type(spread_type)
+
+    all_saved_paths: list[str] = []
+    image_paths: list[str] = []
+    audio_path: str | None = None
 
     try:
-        for file in image:
-            # random filename để tránh trùng
-            ext = file.filename.split(".")[-1]
-            unique_name = f"{uuid.uuid4().hex}.{ext}"
-            save_path = os.path.join("tmp_uploads", unique_name)
+        if image_files:
+            for file in image_files:
+                save_path = _save_upload(upload_dir, file)
+                all_saved_paths.append(save_path)
+                image_paths.append(save_path)
 
-            with open(save_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
+        if audio_file is not None:
+            audio_path = _save_upload(upload_dir, audio_file)
+            all_saved_paths.append(audio_path)
 
-            saved_paths.append(save_path)
-
-        # Giới hạn theo spread
-        if spread_type == "single":
-            saved_paths = saved_paths[:1]
-        elif spread_type == "three":
-            saved_paths = saved_paths[:3]
-
-        result = pipeline.run_pipeline(
+        selected_paths = _cap_images_by_spread(image_paths, clean_spread)
+        result = _get_pipeline().run_pipeline(
             question=question,
-            audio_path=None,
-            image_paths=saved_paths,
-            spread_type=spread_type,
+            audio_path=audio_path,
+            image_paths=selected_paths,
+            spread_type=clean_spread,
+            random_draw=random_draw,
         )
 
         return result
 
     finally:
         # Cleanup file sau khi xử lý
-        for path in saved_paths:
+        for path in all_saved_paths:
             if os.path.exists(path):
                 os.remove(path)
+
+
+@app.post("/api/ask_with_media")
+async def ask_with_media(
+    question: str = Form(...),
+    spread_type: str = Form("three"),
+    random_draw: str | bool = Form(False),
+    image: List[UploadFile] | None = File(default=None),
+    audio: UploadFile | None = File(default=None),
+):
+    return _run_pipeline_from_uploads(
+        question=question,
+        spread_type=spread_type,
+        random_draw=_as_bool(random_draw),
+        image_files=image or [],
+        audio_file=audio,
+    )
+
+
+@app.post("/api/ask_with_image")
+async def ask_with_image(
+    question: str = Form(...),
+    spread_type: str = Form("three"),
+    image: List[UploadFile] = File(...),
+):
+    return _run_pipeline_from_uploads(
+        question=question,
+        spread_type=spread_type,
+        random_draw=False,
+        image_files=image,
+        audio_file=None,
+    )

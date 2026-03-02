@@ -62,13 +62,13 @@ def _warnings_text(warnings: list[str]) -> str:
 def build_app() -> gr.Blocks:
     pipeline = TarotPipeline()
 
-    def _run(question: str, audio_file: str | None, image_files: Any, spread_type: str):
+    def _run(question: str, audio_file: str | None, image_files: Any):
         image_paths = _extract_paths(image_files)
         result = pipeline.run_pipeline(
             question=question,
             audio_path=audio_file,
             image_paths=image_paths,
-            spread_type=spread_type,
+            spread_type="three",
         )
 
         dropdown_updates = []
@@ -104,7 +104,6 @@ def build_app() -> gr.Blocks:
         question: str,
         audio_file: str | None,
         image_files: Any,
-        spread_type: str,
         choice_1: str | None,
         choice_2: str | None,
         choice_3: str | None,
@@ -121,7 +120,7 @@ def build_app() -> gr.Blocks:
             question=question,
             audio_path=audio_file,
             image_paths=image_paths,
-            spread_type=spread_type,
+            spread_type="three",
             card_overrides=overrides or None,
         )
 
@@ -165,15 +164,11 @@ def build_app() -> gr.Blocks:
 
         with gr.Row():
             question = gr.Textbox(label="Question", lines=2, placeholder="Ask your tarot question...")
-            spread_type = gr.Dropdown(
-                label="Spread Type",
-                choices=["single", "three"],
-                value="single",
-            )
+            gr.Markdown("**Spread Type:** three (past / present / future)")
 
         with gr.Row():
             audio_file = gr.Audio(label="Optional Audio", type="filepath")
-            image_files = gr.Files(label="Upload 1 image (single) or up to 3 images (three)", file_types=["image"])
+            image_files = gr.Files(label="Upload up to 3 images for three-card spread", file_types=["image"])
 
         with gr.Row():
             run_btn = gr.Button("Run Demo", variant="primary")
@@ -192,13 +187,13 @@ def build_app() -> gr.Blocks:
 
         run_btn.click(
             fn=_run,
-            inputs=[question, audio_file, image_files, spread_type],
+            inputs=[question, audio_file, image_files],
             outputs=[json_output, final_answer, warnings_box, state, choice_1, choice_2, choice_3],
         )
 
         apply_btn.click(
             fn=_apply_selection,
-            inputs=[question, audio_file, image_files, spread_type, choice_1, choice_2, choice_3],
+            inputs=[question, audio_file, image_files, choice_1, choice_2, choice_3],
             outputs=[json_output, final_answer, warnings_box, state, choice_1, choice_2, choice_3],
         )
 

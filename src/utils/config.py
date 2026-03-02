@@ -70,6 +70,7 @@ def _load_yaml(path: Path) -> dict[str, Any]:
 
 
 def load_config(config_paths: list[str | Path] | None = None) -> dict[str, Any]:
+    explicit_env_overrides = {env_name: os.getenv(env_name) for env_name in _ENV_OVERRIDES}
     load_dotenv()
     for env_name, fallback in _ENV_DEFAULTS.items():
         os.environ.setdefault(env_name, fallback)
@@ -90,9 +91,9 @@ def load_config(config_paths: list[str | Path] | None = None) -> dict[str, Any]:
     merged = _expand_env(merged)
 
     for env_name, key_path in _ENV_OVERRIDES.items():
-        value = os.getenv(env_name) or _ENV_DEFAULTS.get(env_name)
-        if value:
-            _set_nested(merged, key_path, value)
+        explicit_value = explicit_env_overrides.get(env_name)
+        if explicit_value:
+            _set_nested(merged, key_path, explicit_value)
 
     merged.setdefault("paths", {})
     merged["paths"].setdefault("data_dir", "./data")
