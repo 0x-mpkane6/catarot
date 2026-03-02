@@ -1,40 +1,59 @@
-# Python bytecode/cache
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
+*.pyd
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+dist/
+build/
+*.egg-info/
+.eggs/
 
-# Virtual environments
+# Environments
 .venv/
 venv/
-env/
-
-# Environment config (local secrets)
+ENV/
 .env
 .env.*
 !.env.example
 
-# Test/tool caches
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-
-# Editor/OS junk
+# IDE / Editor
 .vscode/
 .idea/
+*.code-workspace
+
+# OS files
 .DS_Store
 Thumbs.db
 
 # Logs
 *.log
 
-# Local model/index artifacts
-models/
-*.faiss
-*.index
-*.pkl
-
-# Local/raw data (can be large, avoid accidental push)
+# Generated artifacts
 data/raw/
 data/processed/
+data/rag_corpus/corpus.jsonl
+data/rag_corpus/card_data.json
+data/**/*.wav
+data/**/*.mp3
+data/**/*.m4a
+
+# Local model/index artifacts
+models/**/*.index
+models/**/*.faiss
+models/**/*.json
+models/**/*.pkl
+models/**/*.bin
+models/**/*.onnx
+models/**/*.safetensors
+
+# App runtime artifacts
+.gradio/
+gradio_cached_examples/
+flagged/
