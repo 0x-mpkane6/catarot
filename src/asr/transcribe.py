@@ -16,6 +16,44 @@ from src.utils.logging import get_logger
 LOGGER = get_logger(__name__)
 
 
+def _as_bool(value: str | None, default: bool = False) -> bool:
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _parse_candidate_languages(raw: str | None) -> list[str]:
+    default = ["vi", "en"]
+    if not raw:
+        return default
+
+    langs: list[str] = []
+    for token in raw.split(","):
+        lang = token.strip().lower()
+        if lang in {"vi", "en"} and lang not in langs:
+            langs.append(lang)
+    return langs or default
+
+
+def _extract_text_and_score_from_segments(segments) -> tuple[str, float]:
+    chunks: list[str] = []
+    scores: list[float] = []
+    for segment in segments:
+        text = str(getattr(segment, "text", "")).strip()
+        if text:
+            chunks.append(text)
+        avg_logprob = getattr(segment, "avg_logprob", None)
+        if isinstance(avg_logprob, (float, int)):
+            scores.append(float(avg_logprob))
+
+    merged_text = " ".join(chunks).strip()
+    if not merged_text:
+        return "", float("-inf")
+    if not scores:
+        return merged_text, -10.0
+    return merged_text, sum(scores) / len(scores)
+
+
 def _module_available(module_name: str) -> bool:
     return importlib.util.find_spec(module_name) is not None
 
@@ -88,21 +126,71 @@ def _resample_linear(audio: np.ndarray, source_sr: int, target_sr: int = 16000) 
 def _get_faster_whisper_model():
     from faster_whisper import WhisperModel  # type: ignore
 
-    model_name = os.getenv("ASR_MODEL_FASTER", "small")
+    model_name = os.getenv("ASR_MODEL_FASTER", "large-v3")
     return WhisperModel(model_name, device="cpu", compute_type="int8")
 
 
 def _transcribe_with_faster_whisper(audio_path: Path) -> str:
     model = _get_faster_whisper_model()
-    segments, _ = model.transcribe(str(audio_path))
-    return " ".join(segment.text.strip() for segment in segments).strip()
+    language_mode = os.getenv("ASR_LANGUAGE_MODE", "auto_vi_en").strip().lower()
+    candidate_languages = _parse_candidate_languages(os.getenv("ASR_CANDIDATE_LANGS", "vi,en"))
+
+    beam_size = int(os.getenv("ASR_BEAM_SIZE", "5"))
+    best_of = int(os.getenv("ASR_BEST_OF", str(max(beam_size, 5))))
+    temperature = float(os.getenv("ASR_TEMPERATURE", "0.0"))
+    vad_filter = _as_bool(os.getenv("ASR_VAD_FILTER", "true"), default=True)
+    initial_prompt = os.getenv("ASR_INITIAL_PROMPT", "").strip()
+
+    common_kwargs = {
+        "beam_size": beam_size,
+        "best_of": best_of,
+        "temperature": temperature,
+        "vad_filter": vad_filter,
+    }
+    if initial_prompt:
+        common_kwargs["initial_prompt"] = initial_prompt
+
+    def run_once(language: str | None) -> tuple[str, float]:
+        kwargs = dict(common_kwargs)
+        if language:
+            kwargs["language"] = language
+        segments, _ = model.transcribe(str(audio_path), **kwargs)
+        return _extract_text_and_score_from_segments(segments)
+
+    if language_mode in {"vi", "en"}:
+        text, _ = run_once(language_mode)
+        return text
+
+    if language_mode == "auto":
+        text, _ = run_once(None)
+        return text
+
+    best_text = ""
+    best_score = float("-inf")
+    for language in candidate_languages:
+        try:
+            text, score = run_once(language)
+        except Exception as exc:
+            LOGGER.warning("faster_whisper failed for language=%s: %s", language, exc)
+            continue
+        if not text:
+            continue
+        if score > best_score or (score == best_score and len(text) > len(best_text)):
+            best_text = text
+            best_score = score
+
+    if best_text:
+        return best_text
+
+    text, _ = run_once(None)
+    return text
 
 
 @lru_cache(maxsize=1)
 def _get_transformers_asr_pipeline():
     from transformers import pipeline  # type: ignore
 
-    model_name = os.getenv("ASR_MODEL_TRANSFORMERS", "openai/whisper-tiny")
+    model_name = os.getenv("ASR_MODEL_TRANSFORMERS", "openai/whisper-small")
     return pipeline(
         task="automatic-speech-recognition",
         model=model_name,
@@ -110,15 +198,48 @@ def _get_transformers_asr_pipeline():
     )
 
 
+def _extract_transformers_text(result) -> str:
+    if isinstance(result, dict):
+        return str(result.get("text", "")).strip()
+    return str(result).strip()
+
+
 def _transcribe_with_transformers(audio_path: Path) -> str:
     audio, sample_rate = _load_wav_mono(audio_path)
     audio = _resample_linear(audio, sample_rate, 16000)
 
     asr_pipeline = _get_transformers_asr_pipeline()
-    result = asr_pipeline({"array": audio, "sampling_rate": 16000})
-    if isinstance(result, dict):
-        return str(result.get("text", "")).strip()
-    return str(result).strip()
+    language_mode = os.getenv("ASR_LANGUAGE_MODE", "auto_vi_en").strip().lower()
+    candidate_languages = _parse_candidate_languages(os.getenv("ASR_CANDIDATE_LANGS", "vi,en"))
+
+    def run_once(language: str | None) -> str:
+        payload = {"array": audio, "sampling_rate": 16000}
+        if language:
+            try:
+                result = asr_pipeline(
+                    payload,
+                    generate_kwargs={"language": language, "task": "transcribe"},
+                )
+            except TypeError:
+                result = asr_pipeline(payload)
+        else:
+            result = asr_pipeline(payload)
+        return _extract_transformers_text(result)
+
+    if language_mode in {"vi", "en"}:
+        return run_once(language_mode)
+
+    if language_mode == "auto":
+        return run_once(None)
+
+    candidates = []
+    for language in candidate_languages:
+        text = run_once(language)
+        if text:
+            candidates.append(text)
+    if candidates:
+        return max(candidates, key=len)
+    return run_once(None)
 
 
 def transcribe_audio(audio_path: str | None) -> tuple[str | None, list[str]]:

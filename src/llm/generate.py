@@ -319,6 +319,15 @@ class ReadingGenerator:
             warnings=warnings,
         )
 
+        if not self.api_key and not self.ollama_enabled:
+            extra_warnings.append(
+                "No LLM backend configured; using deterministic fallback response."
+            )
+            return (
+                self._generate_fallback(question, transcript, cards, rag_snippets, warnings),
+                extra_warnings,
+            )
+
         if self.api_key:
             try:
                 answer = self._generate_openai(self.system_prompt, user_prompt)

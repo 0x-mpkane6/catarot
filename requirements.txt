@@ -12,7 +12,7 @@ requests>=2.31
 # Vision retrieval (card recognition)
 torch>=2.2
 torchvision>=0.17
-open-clip-torch>=2.24
+open-clip-torch>=2.24  # provides `import open_clip`
 faiss-cpu>=1.7.4
 opencv-python>=4.8
 
@@ -30,9 +30,8 @@ gradio>=4.44
 # Optional: LLM API (only if you will call OpenAI)
 openai>=1.30
 
-# Optional: ASR (only if you support audio input)
-# faster-whisper>=1.0.0
-# soundfile>=0.12
+# ASR defaults (higher accuracy for vi/en)
+faster-whisper>=1.1.0
 
 # Tests
 pytest>=8.0

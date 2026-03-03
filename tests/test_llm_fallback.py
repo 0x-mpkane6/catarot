@@ -28,7 +28,7 @@ def test_love_theme_advice_not_forced_to_career(monkeypatch) -> None:
         warnings=[],
     )
 
-    assert not warnings
+    assert any("No LLM backend configured" in warning for warning in warnings)
     assert "Chu de chinh: love" in answer
     assert "nghe nghiep" not in answer.lower()
     assert "[past]" in answer and "[present]" in answer and "[future]" in answer

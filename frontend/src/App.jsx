@@ -377,6 +377,11 @@ function App() {
           <div className="card-panel card-box">
             <h2>DETECTED CARD</h2>
 
+            <h4>TRANSCRIPT</h4>
+            <p className="transcript-line">
+              {result.transcript ? result.transcript : "No transcript detected."}
+            </p>
+
             {result.cards?.map((card, idx) => (
               <div key={idx} style={{ marginBottom: "20px" }}>
                 <h3>{card.name}</h3>

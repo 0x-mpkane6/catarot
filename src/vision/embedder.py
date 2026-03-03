@@ -11,6 +11,10 @@ from src.utils.logging import get_logger
 LOGGER = get_logger(__name__)
 
 
+def _as_bool(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
 def _l2_normalize(vector: np.ndarray) -> np.ndarray:
     norm = np.linalg.norm(vector)
     if norm == 0:
@@ -30,6 +34,7 @@ class VisionEmbedder:
         self.pretrained = pretrained
         self.device = device
         self.demo_mode = force_demo or os.getenv("VISION_DEMO_MODE", "0") == "1"
+        self.strict_open_clip = _as_bool(os.getenv("VISION_STRICT_OPENCLIP", "1"))
 
         self._model = None
         self._preprocess = None
@@ -61,6 +66,12 @@ class VisionEmbedder:
                 self.pretrained,
             )
         except Exception as exc:
+            if self.strict_open_clip:
+                raise RuntimeError(
+                    "OpenCLIP is required by default but unavailable. "
+                    "Install dependency 'open-clip-torch' or set "
+                    "VISION_STRICT_OPENCLIP=0 to allow demo fallback."
+                ) from exc
             LOGGER.warning("OpenCLIP unavailable (%s). Falling back to demo embedding.", exc)
             self.demo_mode = True
 

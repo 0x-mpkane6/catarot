@@ -217,6 +217,17 @@ button:disabled {
   margin-top: 0;
 }
 
+.transcript-line {
+  margin: 6px 0 14px;
+  border: 1px solid #d7deeb;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 12px;
+  color: #0f172a;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .answer-panel {
   line-height: 1.55;
 }
