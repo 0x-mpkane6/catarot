@@ -3,6 +3,7 @@
 Ung dung doc bai Tarot 3 la (past/present/future) voi text + voice + image.
 
 ## TL;DR 60s
+
 ```bash
 # Terminal 1 (backend, khuyen nghi cho nguoi moi)
 cd /mnt/d/LTWeb/github
@@ -17,12 +18,20 @@ npm install
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
+## Du lieu (bat buoc)
+
+- Data da duoc dua len Google Drive: <https://drive.google.com/drive/folders/1o5j_VyxJSikVsPM0w2PQfMgT5_Ljml7d?usp=sharing>
+- Sau khi tai ve, giai nen folder data vao thu muc root cua source (cung cap voi `README.md`, `requirements.txt`) de co duong dan `./data/...`.
+- Neu dat sai vi tri, cac buoc build index/vision co the bi loi.
+
 ## Ban se thay gi
+
 - Frontend: `http://127.0.0.1:5173`
 - Backend API docs: `http://127.0.0.1:8000/docs`
 - Health check: `http://127.0.0.1:8000/` tra ve `{"status":"api running"}`
 
 ## Fresh Machine Flow
+
 1. Clone repo vao may moi.
 2. Chay backend quickstart.
 3. Chay frontend quickstart.
@@ -31,6 +40,7 @@ npm run dev -- --host 127.0.0.1 --port 5173
 ## Chon moi truong
 
 ### WSL/Linux
+
 ```bash
 # Backend quickstart
 cd /mnt/d/LTWeb/github
@@ -44,6 +54,7 @@ npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
 ### Windows native (PowerShell)
+
 ```powershell
 # Backend
 cd D:\LTWeb\github
@@ -69,17 +80,20 @@ npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
 ## Known Constraints
+
 - `spread_type` hien tai duoc normalize ve `three` o backend.
 - Vision retrieval mac dinh yeu cau OpenCLIP (`VISION_STRICT_OPENCLIP=true`).
 - Endpoint chinh cho frontend: `POST /api/ask_with_media`.
 - JSON output gom: `transcript`, `cards[].topk_candidates`, `warnings`, `final_answer`.
 
 ## Smoke Test Nhanh
+
 1. Vision flow: upload 3 anh tarot, bam `Reading`.
 2. Random flow: bam `Random Draw` khong can anh.
 3. Voice flow: record hoac upload audio, xac nhan UI hien `TRANSCRIPT`.
 4. Kiem tra `warnings` neu transcript rong hoac confidence thap.
 
 ## Link Tai Lieu Chi Tiet
+
 - Backend runbook: [README.backend.md](./README.backend.md)
 - Frontend runbook: [frontend/README.md](./frontend/README.md)
