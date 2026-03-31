@@ -38,6 +38,7 @@ Neu thieu:
   - ffmpeg
   - Ollama
   - OpenCLIP (`open-clip-torch`)
+  - SQLAlchemy (`sqlalchemy`)
 - Tuy chon:
   - `OPENAI_API_KEY` (neu muon uu tien OpenAI thay vi Ollama)
 
@@ -72,6 +73,7 @@ bash scripts/10_download_data.sh
 python scripts/20_build_gallery.py
 python scripts/30_build_vision_index.py
 python scripts/40_build_rag_index.py
+python scripts/50_init_db.py
 
 # ollama
 ollama serve
@@ -97,6 +99,7 @@ bash scripts/10_download_data.sh
 python scripts/20_build_gallery.py
 python scripts/30_build_vision_index.py
 python scripts/40_build_rag_index.py
+python scripts/50_init_db.py
 
 # mo terminal khac
 ollama serve
@@ -144,6 +147,17 @@ Output JSON quan trong:
 - `question`, `transcript`, `spread_type`
 - `cards[]` (co `topk_candidates`)
 - `rag_snippets`, `warnings`, `final_answer`
+- `session_id` (neu DB persistence thanh cong)
+
+## SQL DB persistence
+
+Mac dinh backend tu dong tao SQLite DB tai `./data/app.db` va seed `tarot_cards` luc startup.
+
+Bien moi truong lien quan:
+
+- `DB_ENABLED=true|false`: bat/tat luu DB
+- `DATABASE_URL`: ket noi SQLAlchemy (mac dinh `sqlite:///./data/app.db`)
+- `DB_ECHO=true|false`: in SQL de debug
 
 ## 8) Health Checks
 

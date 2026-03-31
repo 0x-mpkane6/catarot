@@ -1,6 +1,7 @@
 import os
 import shutil
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, List
 
@@ -8,6 +9,7 @@ from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from src.db import initialize_database_if_needed, persist_reading_result
 from src.pipeline.tarot_pipeline import TarotPipeline
 
 
@@ -33,7 +35,13 @@ def _normalize_spread_type(spread_type: str | None) -> str:
     return "three"
 
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    initialize_database_if_needed(seed_reference_data=True)
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -58,6 +66,7 @@ def _get_pipeline() -> TarotPipeline:
 
 class QuestionRequest(BaseModel):
     question: str
+    user_id: int | None = None
     audio_path: str | None = None
     image_paths: list[str] | None = None
     spread_type: str = "three"
@@ -79,6 +88,13 @@ async def ask(req: QuestionRequest):
         spread_type=clean_spread,
         random_draw=req.random_draw,
     )
+    session_id = persist_reading_result(
+        question=req.question,
+        result=result,
+        user_id=req.user_id,
+    )
+    if session_id is not None:
+        result["session_id"] = session_id
     return result
 
 
@@ -104,6 +120,7 @@ def _cap_images_by_spread(image_paths: list[str], spread_type: str) -> list[str]
 def _run_pipeline_from_uploads(
     *,
     question: str,
+    user_id: int | None,
     spread_type: str,
     random_draw: bool,
     image_files: list[UploadFile] | None,
@@ -136,6 +153,13 @@ def _run_pipeline_from_uploads(
             spread_type=clean_spread,
             random_draw=random_draw,
         )
+        session_id = persist_reading_result(
+            question=question,
+            result=result,
+            user_id=user_id,
+        )
+        if session_id is not None:
+            result["session_id"] = session_id
 
         return result
 
@@ -149,6 +173,7 @@ def _run_pipeline_from_uploads(
 @app.post("/api/ask_with_media")
 async def ask_with_media(
     question: str = Form(...),
+    user_id: int | None = Form(None),
     spread_type: str = Form("three"),
     random_draw: str | bool = Form(False),
     image: List[UploadFile] | None = File(default=None),
@@ -156,6 +181,7 @@ async def ask_with_media(
 ):
     return _run_pipeline_from_uploads(
         question=question,
+        user_id=user_id,
         spread_type=spread_type,
         random_draw=_as_bool(random_draw),
         image_files=image or [],
@@ -166,11 +192,13 @@ async def ask_with_media(
 @app.post("/api/ask_with_image")
 async def ask_with_image(
     question: str = Form(...),
+    user_id: int | None = Form(None),
     spread_type: str = Form("three"),
     image: List[UploadFile] = File(...),
 ):
     return _run_pipeline_from_uploads(
         question=question,
+        user_id=user_id,
         spread_type=spread_type,
         random_draw=False,
         image_files=image,

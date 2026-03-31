@@ -84,7 +84,8 @@ npm run dev -- --host 127.0.0.1 --port 5173
 - `spread_type` hien tai duoc normalize ve `three` o backend.
 - Vision retrieval mac dinh yeu cau OpenCLIP (`VISION_STRICT_OPENCLIP=true`).
 - Endpoint chinh cho frontend: `POST /api/ask_with_media`.
-- JSON output gom: `transcript`, `cards[].topk_candidates`, `warnings`, `final_answer`.
+- JSON output gom: `transcript`, `cards[].topk_candidates`, `warnings`, `final_answer`, `session_id` (neu DB persistence bat).
+- SQL DB mac dinh: `sqlite:///./data/app.db` (auto create + seed bang `tarot_cards` khi startup).
 
 ## Smoke Test Nhanh
 

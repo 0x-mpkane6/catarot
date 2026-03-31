@@ -153,6 +153,7 @@ class ReadingGenerator:
     def __init__(self, prompts_dir: str = "./src/llm/prompts", model: str = "gpt-4o-mini") -> None:
         self.prompts_dir = resolve_path(prompts_dir)
         self.model = model
+        self.last_used_model: str | None = None
         self.api_key = os.getenv("OPENAI_API_KEY", "").strip()
         self.ollama_enabled = os.getenv("OLLAMA_ENABLED", "true").strip().lower() in {
             "1",
@@ -309,6 +310,7 @@ class ReadingGenerator:
         rag_snippets: list[dict],
         warnings: list[str],
     ) -> tuple[str, list[str]]:
+        self.last_used_model = None
         extra_warnings: list[str] = []
         user_prompt = self._build_user_prompt(
             question=question,
@@ -323,6 +325,7 @@ class ReadingGenerator:
             extra_warnings.append(
                 "No LLM backend configured; using deterministic fallback response."
             )
+            self.last_used_model = "deterministic-fallback"
             return (
                 self._generate_fallback(question, transcript, cards, rag_snippets, warnings),
                 extra_warnings,
@@ -332,6 +335,7 @@ class ReadingGenerator:
             try:
                 answer = self._generate_openai(self.system_prompt, user_prompt)
                 if answer.strip():
+                    self.last_used_model = f"openai:{self.model}"
                     return answer.strip(), extra_warnings
             except Exception as exc:
                 LOGGER.warning("OpenAI generation failed: %s", exc)
@@ -341,12 +345,14 @@ class ReadingGenerator:
             try:
                 answer = self._generate_ollama(self.system_prompt, user_prompt)
                 if answer.strip():
+                    self.last_used_model = f"ollama:{self.ollama_model}"
                     return answer.strip(), extra_warnings
                 extra_warnings.append("Ollama returned empty content; using template fallback.")
             except Exception as exc:
                 LOGGER.warning("Ollama generation failed: %s", exc)
                 extra_warnings.append("Ollama unavailable; switched to deterministic fallback response.")
 
+        self.last_used_model = "deterministic-fallback"
         return (
             self._generate_fallback(question, transcript, cards, rag_snippets, warnings),
             extra_warnings,

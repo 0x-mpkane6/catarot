@@ -343,5 +343,6 @@ class TarotPipeline:
             "cards": cards,
             "rag_snippets": rag_snippets,
             "final_answer": final_answer,
+            "llm_model": self.reader.last_used_model,
             "warnings": warnings,
         }
