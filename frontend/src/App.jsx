@@ -15,6 +15,8 @@ function App() {
   const [recording, setRecording] = useState(false);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingStartedAt, setLoadingStartedAt] = useState(null);
+  const [loadingElapsedSeconds, setLoadingElapsedSeconds] = useState(0);
 
   const mediaRecorderRef = useRef(null);
   const mediaStreamRef = useRef(null);
@@ -36,6 +38,23 @@ function App() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!loading || !loadingStartedAt) {
+      setLoadingElapsedSeconds(0);
+      return;
+    }
+
+    const updateElapsed = () => {
+      setLoadingElapsedSeconds(Math.max(0, Math.floor((Date.now() - loadingStartedAt) / 1000)));
+    };
+
+    updateElapsed();
+    const intervalId = window.setInterval(updateElapsed, 1000);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [loading, loadingStartedAt]);
 
   const spreadType = "three";
   const requiredImageCount = 3;
@@ -189,6 +208,8 @@ function App() {
       return;
     }
 
+    setLoadingStartedAt(Date.now());
+    setLoadingElapsedSeconds(0);
     setLoading(true);
 
     const formData = new FormData();
@@ -235,6 +256,7 @@ function App() {
       alert(`Backend error: ${message}`);
     } finally {
       setLoading(false);
+      setLoadingStartedAt(null);
     }
   };
 
@@ -367,6 +389,14 @@ function App() {
             {loading ? "Reading..." : "Random Draw"}
           </button>
         </div>
+
+        {loading && (
+          <div className="loading-status" role="status" aria-live="polite">
+            <strong>Reading in progress...</strong>
+            <span>{`Elapsed: ${loadingElapsedSeconds}s`}</span>
+            <span>This can take up to ~120s when local LLM is busy.</span>
+          </div>
+        )}
 
       </div>
 

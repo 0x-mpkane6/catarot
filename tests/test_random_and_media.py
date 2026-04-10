@@ -60,6 +60,23 @@ def test_pipeline_random_ignores_uploaded_images(tmp_path) -> None:
     assert any("uploaded images ignored" in warning for warning in result["warnings"])
 
 
+def test_pipeline_adds_slow_generation_warning(monkeypatch) -> None:
+    monkeypatch.setenv("OLLAMA_ENABLED", "false")
+    monkeypatch.setenv("OPENAI_API_KEY", "")
+    monkeypatch.setenv("SLOW_GENERATION_WARNING_SECONDS", "0")
+
+    pipeline = TarotPipeline(force_demo_embedder=True)
+    result = pipeline.run_pipeline(
+        question="Question",
+        audio_path=None,
+        image_paths=[],
+        spread_type="three",
+        random_draw=True,
+    )
+
+    assert any("Slow generation:" in warning for warning in result["warnings"])
+
+
 def test_ask_with_media_upload_audio_cleanup(monkeypatch, tmp_path) -> None:
     pytest.importorskip("fastapi")
     from fastapi import UploadFile

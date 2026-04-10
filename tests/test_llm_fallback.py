@@ -25,6 +25,7 @@ def test_love_theme_advice_not_forced_to_career(monkeypatch) -> None:
         spread_type="three",
         cards=cards,
         rag_snippets=snippets,
+        emotion_state=None,
         warnings=[],
     )
 

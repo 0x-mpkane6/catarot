@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import os
 import random
+import time
 from pathlib import Path
 from typing import Any
 
+from src.advanced.emotion_analysis import analyze_voice_emotion
 from src.asr.transcribe import transcribe_audio
 from src.llm.generate import ReadingGenerator
 from src.rag.retrieve import RagRetriever
@@ -38,6 +41,15 @@ DEFAULT_MAJOR_ARCANA = [
     "Judgement",
     "The World",
 ]
+
+
+def _slow_generation_threshold_seconds() -> float:
+    raw_value = os.getenv("SLOW_GENERATION_WARNING_SECONDS", "45")
+    try:
+        threshold = float(raw_value)
+    except (TypeError, ValueError):
+        return 45.0
+    return max(0.0, threshold)
 
 
 def _coerce_image_paths(image_paths: Any) -> list[str]:
@@ -305,6 +317,8 @@ class TarotPipeline:
 
         transcript, asr_warnings = transcribe_audio(audio_path)
         warnings.extend(asr_warnings)
+        emotion_state, emotion_signal, emotion_warnings = analyze_voice_emotion(audio_path)
+        warnings.extend(emotion_warnings)
 
         normalized_images = _coerce_image_paths(image_paths)
         if random_draw:
@@ -326,14 +340,22 @@ class TarotPipeline:
 
         rag_snippets = self._collect_snippets(query, cards)
 
+        generation_started = time.monotonic()
         final_answer, generation_warnings = self.reader.generate(
             question=clean_question or "(No question provided)",
             transcript=transcript,
             spread_type=clean_spread,
             cards=cards,
             rag_snippets=rag_snippets,
+            emotion_state=emotion_state,
             warnings=warnings,
         )
+        generation_duration = time.monotonic() - generation_started
+        slow_threshold = _slow_generation_threshold_seconds()
+        if generation_duration >= slow_threshold:
+            warnings.append(
+                f"Slow generation: interpretation took {generation_duration:.1f}s (threshold {slow_threshold:.1f}s)."
+            )
         warnings.extend(generation_warnings)
 
         return {
@@ -342,6 +364,8 @@ class TarotPipeline:
             "spread_type": clean_spread,
             "cards": cards,
             "rag_snippets": rag_snippets,
+            "emotion_state": emotion_state,
+            "emotion_signal": emotion_signal,
             "final_answer": final_answer,
             "llm_model": self.reader.last_used_model,
             "warnings": warnings,

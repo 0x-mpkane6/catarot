@@ -1,19 +1,22 @@
 from __future__ import annotations
 
 import os
+import json
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from src.db.init_db import initialize_database_if_needed
-from src.db.models import Reading, ReadingSession, RecognizedCard, TarotCard
+from src.db.models import RatingReminder, Reading, ReadingSession, RecognizedCard, TarotCard
 from src.db.session import session_scope
 from src.utils.logging import get_logger
 
 LOGGER = get_logger(__name__)
 _BOOL_TRUE = {"1", "true", "yes", "y", "on"}
 _VALID_ORIENTATIONS = {"upright", "reversed"}
+_VALID_REMINDER_DAYS = {7, 14, 30}
 
 
 def _db_enabled() -> bool:
@@ -65,11 +68,22 @@ def _llm_model_from_result(result: dict[str, Any]) -> str | None:
     return None
 
 
+def _normalize_rating_reminder_days(value: Any) -> int:
+    try:
+        days = int(value)
+    except (TypeError, ValueError):
+        return 7
+    if days not in _VALID_REMINDER_DAYS:
+        return 7
+    return days
+
+
 def persist_reading_result(
     *,
     question: str,
     result: dict[str, Any],
     user_id: int | None = None,
+    rating_reminder_days: int = 7,
 ) -> int | None:
     if not _db_enabled():
         return None
@@ -81,6 +95,12 @@ def persist_reading_result(
                 user_id=user_id,
                 question_text=_normalize_text(question),
                 audio_transcript=_normalize_text(result.get("transcript")) or None,
+                emotion_state=_normalize_text(result.get("emotion_state")) or None,
+                emotion_signal_json=(
+                    json.dumps(result.get("emotion_signal"), ensure_ascii=False)
+                    if isinstance(result.get("emotion_signal"), dict)
+                    else None
+                ),
                 status="completed",
             )
             session.add(reading_session)
@@ -112,6 +132,18 @@ def persist_reading_result(
                     llm_model=_llm_model_from_result(result),
                 )
             )
+
+            if user_id is not None:
+                reminder_days = _normalize_rating_reminder_days(rating_reminder_days)
+                session.add(
+                    RatingReminder(
+                        session_id=reading_session.id,
+                        user_id=user_id,
+                        remind_at=datetime.now(timezone.utc) + timedelta(days=reminder_days),
+                        status="pending",
+                        attempts=0,
+                    )
+                )
 
             session.flush()
             return reading_session.id

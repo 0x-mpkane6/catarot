@@ -2,13 +2,46 @@ import os
 import shutil
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Any, List
 
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from src.advanced.analytics_scheduler import start_analytics_scheduler, stop_analytics_scheduler
+from src.advanced.archetype_profiler import get_user_archetype_profile
+from src.advanced.community_room import (
+    add_interpretation,
+    create_community_post,
+    list_community_feed,
+    moderate_post,
+    moderation_queue,
+    resonate_interpretation,
+    vote_interpretation,
+)
+from src.advanced.conversation import add_followup_turn, get_conversation_turns
+from src.advanced.dream_journal import create_dream_entry, get_dream_entry, list_dream_entries
+from src.advanced.duo_reading import (
+    DUO_WS_MANAGER,
+    create_duo_session,
+    get_duo_session,
+    join_duo_by_invite,
+    join_duo_session,
+    submit_duo_card,
+)
+from src.advanced.oracle_reports import latest_oracle_report, list_oracle_reports
+from src.advanced.question_suggestions import generate_question_suggestions
+from src.advanced.rating_reminders import (
+    list_pending_ratings,
+    save_rating,
+    start_rating_scheduler,
+    stop_rating_scheduler,
+)
+from src.advanced.spread_recommender import recommend_spread
+from src.auth.deps import CurrentUser, get_current_admin, get_current_user, get_websocket_user
+from src.auth.service import authenticate_user, register_user
 from src.db import initialize_database_if_needed, persist_reading_result
 from src.pipeline.tarot_pipeline import TarotPipeline
 
@@ -35,10 +68,26 @@ def _normalize_spread_type(spread_type: str | None) -> str:
     return "three"
 
 
+def _normalize_rating_reminder_days(value: Any) -> int:
+    try:
+        days = int(value)
+    except (TypeError, ValueError):
+        return 7
+    if days not in {7, 14, 30}:
+        return 7
+    return days
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     initialize_database_if_needed(seed_reference_data=True)
-    yield
+    start_rating_scheduler()
+    start_analytics_scheduler()
+    try:
+        yield
+    finally:
+        stop_analytics_scheduler()
+        stop_rating_scheduler()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -60,6 +109,13 @@ def _get_pipeline() -> TarotPipeline:
     return _pipeline
 
 
+def _ensure_self_or_admin(current_user: CurrentUser, target_user_id: int) -> None:
+    if current_user.role == "admin":
+        return
+    if current_user.id != target_user_id:
+        raise HTTPException(status_code=403, detail="access denied")
+
+
 # =============================
 # JSON endpoint (giữ lại)
 # =============================
@@ -71,6 +127,46 @@ class QuestionRequest(BaseModel):
     image_paths: list[str] | None = None
     spread_type: str = "three"
     random_draw: bool = False
+    rating_reminder_days: int = 7
+
+
+class FollowupRequest(BaseModel):
+    user_id: int | None = None
+    message: str = Field(min_length=1)
+
+
+class SpreadRecommendationRequest(BaseModel):
+    question: str
+    user_id: int | None = None
+
+
+class RatingRequest(BaseModel):
+    score: int = Field(ge=1, le=5)
+    note: str | None = None
+
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str = Field(min_length=6)
+    role: str = "member"
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str = Field(min_length=1)
+
+
+class CommunityPostRequest(BaseModel):
+    question_text: str = Field(min_length=1)
+    card_summary: list[dict] = Field(default_factory=list)
+
+
+class InterpretationRequest(BaseModel):
+    content: str = Field(min_length=1)
+
+
+class ModerationRequest(BaseModel):
+    reason: str | None = None
 
 
 @app.get("/")
@@ -78,9 +174,44 @@ def root():
     return {"status": "api running"}
 
 
+@app.post("/api/auth/register")
+async def auth_register(req: RegisterRequest):
+    role = req.role.strip().lower() if req.role else "member"
+    if role not in {"member", "admin"}:
+        role = "member"
+    try:
+        user = register_user(email=req.email, password=req.password, role=role)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        "id": user.id,
+        "email": user.email,
+        "role": user.role,
+    }
+
+
+@app.post("/api/auth/login")
+async def auth_login(req: LoginRequest):
+    try:
+        user, token = authenticate_user(email=req.email, password=req.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {"id": user.id, "email": user.email, "role": user.role},
+    }
+
+
+@app.get("/api/auth/me")
+async def auth_me(current_user: CurrentUser = Depends(get_current_user)):
+    return {"id": current_user.id, "email": current_user.email, "role": current_user.role}
+
+
 @app.post("/api/ask")
 async def ask(req: QuestionRequest):
     clean_spread = _normalize_spread_type(req.spread_type)
+    reminder_days = _normalize_rating_reminder_days(req.rating_reminder_days)
     result = _get_pipeline().run_pipeline(
         question=req.question,
         audio_path=req.audio_path,
@@ -92,6 +223,7 @@ async def ask(req: QuestionRequest):
         question=req.question,
         result=result,
         user_id=req.user_id,
+        rating_reminder_days=reminder_days,
     )
     if session_id is not None:
         result["session_id"] = session_id
@@ -123,6 +255,7 @@ def _run_pipeline_from_uploads(
     user_id: int | None,
     spread_type: str,
     random_draw: bool,
+    rating_reminder_days: int,
     image_files: list[UploadFile] | None,
     audio_file: UploadFile | None,
 ) -> dict:
@@ -157,6 +290,7 @@ def _run_pipeline_from_uploads(
             question=question,
             result=result,
             user_id=user_id,
+            rating_reminder_days=_normalize_rating_reminder_days(rating_reminder_days),
         )
         if session_id is not None:
             result["session_id"] = session_id
@@ -176,6 +310,7 @@ async def ask_with_media(
     user_id: int | None = Form(None),
     spread_type: str = Form("three"),
     random_draw: str | bool = Form(False),
+    rating_reminder_days: int = Form(7),
     image: List[UploadFile] | None = File(default=None),
     audio: UploadFile | None = File(default=None),
 ):
@@ -184,6 +319,7 @@ async def ask_with_media(
         user_id=user_id,
         spread_type=spread_type,
         random_draw=_as_bool(random_draw),
+        rating_reminder_days=rating_reminder_days,
         image_files=image or [],
         audio_file=audio,
     )
@@ -194,6 +330,7 @@ async def ask_with_image(
     question: str = Form(...),
     user_id: int | None = Form(None),
     spread_type: str = Form("three"),
+    rating_reminder_days: int = Form(7),
     image: List[UploadFile] = File(...),
 ):
     return _run_pipeline_from_uploads(
@@ -201,6 +338,298 @@ async def ask_with_image(
         user_id=user_id,
         spread_type=spread_type,
         random_draw=False,
+        rating_reminder_days=rating_reminder_days,
         image_files=image,
         audio_file=None,
     )
+
+
+@app.post("/api/sessions/{session_id}/followup")
+async def followup(session_id: int, req: FollowupRequest):
+    try:
+        return add_followup_turn(
+            session_id=session_id,
+            user_id=req.user_id,
+            message=req.message,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        if "empty" in message:
+            raise HTTPException(status_code=400, detail=message) from exc
+        raise HTTPException(status_code=404, detail=message) from exc
+
+
+@app.get("/api/sessions/{session_id}/conversation")
+async def conversation(session_id: int, limit: int = Query(default=20, ge=1, le=200)):
+    return {
+        "session_id": session_id,
+        "turns": get_conversation_turns(session_id=session_id, limit=limit),
+    }
+
+
+@app.get("/api/question_suggestions")
+async def question_suggestions(user_id: int | None = Query(default=None), limit: int = Query(default=3, ge=1, le=10)):
+    suggestions = generate_question_suggestions(user_id=user_id, limit=limit)
+    return {"suggestions": suggestions}
+
+
+@app.post("/api/spread/recommend")
+async def spread_recommend(req: SpreadRecommendationRequest):
+    return recommend_spread(req.question)
+
+
+@app.post("/api/readings/{session_id}/rating")
+async def submit_rating(session_id: int, req: RatingRequest):
+    try:
+        return save_rating(session_id=session_id, score=req.score, note=req.note)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/api/users/{user_id}/pending_ratings")
+async def pending_ratings(user_id: int, limit: int = Query(default=20, ge=1, le=100)):
+    rows = list_pending_ratings(user_id=user_id, limit=limit)
+    return {"user_id": user_id, "items": rows}
+
+
+@app.get("/api/users/{user_id}/archetype_profile")
+async def archetype_profile(user_id: int, current_user: CurrentUser = Depends(get_current_user)):
+    _ensure_self_or_admin(current_user, user_id)
+    profile = get_user_archetype_profile(user_id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="archetype profile not found")
+    return profile
+
+
+@app.get("/api/users/{user_id}/oracle_reports")
+async def oracle_reports(
+    user_id: int,
+    limit: int = Query(default=12, ge=1, le=50),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    _ensure_self_or_admin(current_user, user_id)
+    return {"items": list_oracle_reports(user_id=user_id, limit=limit)}
+
+
+@app.get("/api/users/{user_id}/oracle_reports/latest")
+async def oracle_report_latest(user_id: int, current_user: CurrentUser = Depends(get_current_user)):
+    _ensure_self_or_admin(current_user, user_id)
+    row = latest_oracle_report(user_id=user_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="oracle report not found")
+    return row
+
+
+@app.post("/api/duo/sessions")
+async def duo_create(current_user: CurrentUser = Depends(get_current_user)):
+    payload = create_duo_session(current_user.id)
+    await DUO_WS_MANAGER.broadcast(payload["id"], {"type": "duo_created", "data": payload})
+    return payload
+
+
+@app.post("/api/duo/sessions/{duo_session_id}/join")
+async def duo_join(duo_session_id: int, current_user: CurrentUser = Depends(get_current_user)):
+    try:
+        payload = join_duo_session(duo_session_id=duo_session_id, user_id=current_user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    await DUO_WS_MANAGER.broadcast(duo_session_id, {"type": "duo_joined", "data": payload})
+    return payload
+
+
+@app.post("/api/duo/sessions/join_by_invite")
+async def duo_join_by_invite(invite_code: str = Form(...), current_user: CurrentUser = Depends(get_current_user)):
+    try:
+        payload = join_duo_by_invite(invite_code=invite_code, user_id=current_user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    await DUO_WS_MANAGER.broadcast(payload["id"], {"type": "duo_joined", "data": payload})
+    return payload
+
+
+@app.post("/api/duo/sessions/{duo_session_id}/card")
+async def duo_submit_card(
+    duo_session_id: int,
+    image: UploadFile = File(...),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    upload_dir = Path(os.getenv("API_UPLOAD_DIR", "tmp_uploads"))
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    save_path = _save_upload(upload_dir, image)
+    try:
+        payload = submit_duo_card(
+            duo_session_id=duo_session_id,
+            user_id=current_user.id,
+            image_path=save_path,
+            predictor=_get_pipeline().card_predictor,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        if os.path.exists(save_path):
+            os.remove(save_path)
+    await DUO_WS_MANAGER.broadcast(duo_session_id, {"type": "duo_updated", "data": payload})
+    return payload
+
+
+@app.get("/api/duo/sessions/{duo_session_id}")
+async def duo_get(duo_session_id: int, current_user: CurrentUser = Depends(get_current_user)):
+    try:
+        return get_duo_session(duo_session_id=duo_session_id, user_id=current_user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.websocket("/ws/duo/{duo_session_id}")
+async def duo_ws(duo_session_id: int, websocket: WebSocket):
+    try:
+        current_user = get_websocket_user(websocket)
+        snapshot = get_duo_session(duo_session_id=duo_session_id, user_id=current_user.id)
+    except HTTPException:
+        await websocket.close(code=4401)
+        return
+    except ValueError:
+        await websocket.close(code=4403)
+        return
+
+    await DUO_WS_MANAGER.connect(duo_session_id, websocket)
+    try:
+        await websocket.send_json({"type": "snapshot", "data": snapshot, "server_time": datetime.now().isoformat()})
+        while True:
+            message = await websocket.receive_text()
+            if message.strip().lower() == "ping":
+                await websocket.send_json({"type": "pong"})
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await DUO_WS_MANAGER.disconnect(duo_session_id, websocket)
+
+
+@app.post("/api/community/posts")
+async def community_create(req: CommunityPostRequest, current_user: CurrentUser = Depends(get_current_user)):
+    try:
+        return create_community_post(
+            user_id=current_user.id,
+            question_text=req.question_text,
+            card_summary=req.card_summary,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/community/feed")
+async def community_feed(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=50),
+):
+    return list_community_feed(page=page, page_size=page_size)
+
+
+@app.post("/api/community/posts/{post_id}/interpretations")
+async def community_add_interpretation(
+    post_id: int,
+    req: InterpretationRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    try:
+        return add_interpretation(user_id=current_user.id, post_id=post_id, content=req.content)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/community/interpretations/{interpretation_id}/vote")
+async def community_vote(interpretation_id: int, current_user: CurrentUser = Depends(get_current_user)):
+    try:
+        return vote_interpretation(user_id=current_user.id, interpretation_id=interpretation_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/api/community/interpretations/{interpretation_id}/resonate")
+async def community_resonate(interpretation_id: int, current_user: CurrentUser = Depends(get_current_user)):
+    try:
+        return resonate_interpretation(user_id=current_user.id, interpretation_id=interpretation_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/admin/community/moderation_queue")
+async def admin_moderation_queue(
+    limit: int = Query(default=50, ge=1, le=200),
+    _admin: CurrentUser = Depends(get_current_admin),
+):
+    return {"items": moderation_queue(limit=limit)}
+
+
+@app.post("/api/admin/community/posts/{post_id}/approve")
+async def admin_approve_post(
+    post_id: int,
+    req: ModerationRequest,
+    admin: CurrentUser = Depends(get_current_admin),
+):
+    try:
+        return moderate_post(
+            admin_user_id=admin.id,
+            post_id=post_id,
+            action="approve",
+            reason=req.reason,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/admin/community/posts/{post_id}/reject")
+async def admin_reject_post(
+    post_id: int,
+    req: ModerationRequest,
+    admin: CurrentUser = Depends(get_current_admin),
+):
+    try:
+        return moderate_post(
+            admin_user_id=admin.id,
+            post_id=post_id,
+            action="reject",
+            reason=req.reason,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/dreams")
+async def dreams_create(
+    raw_text: str | None = Form(default=None),
+    audio: UploadFile | None = File(default=None),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    if not (raw_text and raw_text.strip()) and audio is None:
+        raise HTTPException(status_code=400, detail="raw_text or audio is required")
+    upload_dir = Path(os.getenv("API_UPLOAD_DIR", "tmp_uploads"))
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    audio_path: str | None = None
+    try:
+        if audio is not None:
+            audio_path = _save_upload(upload_dir, audio)
+        return create_dream_entry(
+            user_id=current_user.id,
+            raw_text=raw_text,
+            audio_path=audio_path,
+        )
+    finally:
+        if audio_path and os.path.exists(audio_path):
+            os.remove(audio_path)
+
+
+@app.get("/api/dreams")
+async def dreams_list(
+    limit: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    return {"items": list_dream_entries(user_id=current_user.id, limit=limit)}
+
+
+@app.get("/api/dreams/{dream_id}")
+async def dreams_detail(dream_id: int, current_user: CurrentUser = Depends(get_current_user)):
+    row = get_dream_entry(user_id=current_user.id, dream_id=dream_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="dream entry not found")
+    return row

@@ -154,6 +154,19 @@ button:disabled {
   margin-top: 0;
 }
 
+.loading-status {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #c9d2e3;
+  background: #f8fafc;
+  color: #1e293b;
+  font-size: 0.9rem;
+}
+
 .random-btn {
   background: linear-gradient(135deg, #0b6f7a, #1d8f8b);
 }

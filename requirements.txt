@@ -27,9 +27,12 @@ uvicorn>=0.30
 python-multipart>=0.0.9
 gradio>=4.44
 sqlalchemy>=2.0
+APScheduler>=3.10
+alembic>=1.13
 
 # Optional: LLM API (only if you will call OpenAI)
 openai>=1.30
+PyJWT>=2.8
 
 # ASR defaults (higher accuracy for vi/en)
 faster-whisper>=1.1.0

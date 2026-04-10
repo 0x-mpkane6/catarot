@@ -1,8 +1,8 @@
-# Backend Runbook
+# Hướng dẫn Backend (Runbook)
 
-Tai lieu nay danh cho backend API (`FastAPI`) tai repo root.
+Tài liệu này dành cho backend API (`FastAPI`) ở thư mục gốc của repo.
 
-## 1) Preflight Checklist
+## 1) Kiểm tra nhanh trước khi chạy
 
 ### WSL/Linux
 
@@ -20,45 +20,45 @@ ffmpeg -version
 ollama --version
 ```
 
-Neu thieu:
+Nếu thiếu:
 
-- `ffmpeg`: can de xu ly audio khong phai wav.
-- `ollama`: can de sinh answer LLM local.
-- `open-clip-torch`: can cho vision retrieval mac dinh.
+- `ffmpeg`: cần để xử lý audio không phải wav.
+- `ollama`: cần để sinh câu trả lời LLM local.
+- `open-clip-torch`: cần cho vision retrieval mặc định.
 
-## Data package (bat buoc)
+## Dữ liệu (bắt buộc)
 
-- Data da duoc tach rieng khoi source va luu tai: <https://drive.google.com/drive/folders/1o5j_VyxJSikVsPM0w2PQfMgT5_Ljml7d?usp=sharing>
-- Giai nen folder data vao root source de dam bao duong dan `data/...` dung truoc khi chay cac script build index.
+- Dữ liệu đã tách khỏi source và lưu tại: <https://drive.google.com/drive/folders/1o5j_VyxJSikVsPM0w2PQfMgT5_Ljml7d?usp=sharing>
+- Giải nén thư mục `data` vào root source để đảm bảo đường dẫn `data/...` đúng trước khi chạy các script build index.
 
-## 2) Dependency Bat Buoc vs Tuy Chon
+## 2) Dependency bắt buộc và tùy chọn
 
-- Bat buoc:
+- Bắt buộc:
   - Python 3.10+
   - ffmpeg
   - Ollama
   - OpenCLIP (`open-clip-torch`)
   - SQLAlchemy (`sqlalchemy`)
-- Tuy chon:
-  - `OPENAI_API_KEY` (neu muon uu tien OpenAI thay vi Ollama)
+- Tùy chọn:
+  - `OPENAI_API_KEY` (nếu muốn ưu tiên OpenAI thay vì Ollama)
 
-## 3) Quickstart 1 Lenh (Khuyen nghi)
+## 3) Quickstart 1 lệnh (khuyến nghị)
 
 ```bash
 cd /mnt/d/LTWeb/github
 bash scripts/61_run_api_with_ollama.sh
 ```
 
-Script se:
+Script sẽ:
 
-1. Tao `.env` tu `.env.example` neu chua co.
-2. Dat `OLLAMA_ENABLED=true`.
-3. Start `ollama serve` neu chua chay.
-4. Pull model trong `OLLAMA_MODEL` neu chua co.
-5. Tao/kich hoat `.venv`, cai deps can thiet.
-6. Chay API `uvicorn` tai `127.0.0.1:8000`.
+1. Tạo `.env` từ `.env.example` nếu chưa có.
+2. Đặt `OLLAMA_ENABLED=true`.
+3. Start `ollama serve` nếu chưa chạy.
+4. Pull model trong `OLLAMA_MODEL` nếu chưa có.
+5. Tạo/kích hoạt `.venv`, cài dependency cần thiết.
+6. Chạy API `uvicorn` tại `127.0.0.1:8000`.
 
-## 4) Manual Setup (WSL/Linux)
+## 4) Cài thủ công (WSL/Linux)
 
 ```bash
 cd /mnt/d/LTWeb/github
@@ -68,7 +68,7 @@ pip install --upgrade pip
 pip install -r requirements.txt
 cp .env.example .env
 
-# data/index (chay 1 lan)
+# data/index (chạy 1 lần)
 bash scripts/10_download_data.sh
 python scripts/20_build_gallery.py
 python scripts/30_build_vision_index.py
@@ -77,14 +77,14 @@ python scripts/50_init_db.py
 
 # ollama
 ollama serve
-# terminal khac
+# terminal khác
 ollama pull qwen2.5:3b-instruct
 
 # run API
 python -m uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-## 5) Manual Setup (Windows native PowerShell)
+## 5) Cài thủ công (Windows native PowerShell)
 
 ```powershell
 cd D:\LTWeb\github
@@ -94,72 +94,74 @@ pip install --upgrade pip
 pip install -r requirements.txt
 if (!(Test-Path .env)) { Copy-Item .env.example .env }
 
-# data/index (chay 1 lan)
+# data/index (chạy 1 lần)
 bash scripts/10_download_data.sh
 python scripts/20_build_gallery.py
 python scripts/30_build_vision_index.py
 python scripts/40_build_rag_index.py
 python scripts/50_init_db.py
 
-# mo terminal khac
+# mở terminal khác
 ollama serve
-# terminal hien tai
+# terminal hiện tại
 ollama pull qwen2.5:3b-instruct
 
 python -m uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Goi y cai tool tren Windows:
+Gợi ý cài tool trên Windows:
 
 - Ollama: `winget install Ollama.Ollama`
 - ffmpeg: `winget install Gyan.FFmpeg`
 
-## 6) ASR Quality Defaults (vi/en)
+## 6) Mặc định ASR cho tiếng Việt/tiếng Anh
 
-Mac dinh trong `.env.example`:
+Mặc định trong `.env.example`:
 
 - `ASR_MODEL_FASTER=large-v3`
 - `ASR_MODEL_TRANSFORMERS=openai/whisper-small`
 - `ASR_LANGUAGE_MODE=auto_vi_en`
 - `ASR_CANDIDATE_LANGS=vi,en`
 
-Y nghia:
+Ý nghĩa:
 
-- Uu tien do chinh xac cao cho tieng Viet/tieng Anh.
-- Neu `faster-whisper` loi, se fallback sang `transformers`.
+- Ưu tiên độ chính xác cao cho tiếng Việt/tiếng Anh.
+- Nếu `faster-whisper` lỗi, hệ thống tự fallback sang `transformers`.
 
-## 7) API Cong Khai Cho Frontend
+## 7) API công khai cho frontend
 
-Endpoint chinh:
+Endpoint chính:
 
 - `POST /api/ask_with_media`
 
 Form fields:
 
 - `question` (required)
-- `spread_type` (`three`; backend normalize ve `three`)
+- `spread_type` (`three`; backend normalize về `three`)
 - `random_draw` (`true` / `false`)
 - `image[]` (optional)
 - `audio` (optional)
 
-Output JSON quan trong:
+Output JSON quan trọng:
 
 - `question`, `transcript`, `spread_type`
-- `cards[]` (co `topk_candidates`)
+- `cards[]` (có `topk_candidates`)
 - `rag_snippets`, `warnings`, `final_answer`
-- `session_id` (neu DB persistence thanh cong)
+- `session_id` (nếu DB persistence thành công)
 
 ## SQL DB persistence
 
-Mac dinh backend tu dong tao SQLite DB tai `./data/app.db` va seed `tarot_cards` luc startup.
+Mặc định backend tự tạo SQLite DB tại `./data/app.db` và seed `tarot_cards` lúc startup.
 
-Bien moi truong lien quan:
+Biến môi trường liên quan:
 
-- `DB_ENABLED=true|false`: bat/tat luu DB
-- `DATABASE_URL`: ket noi SQLAlchemy (mac dinh `sqlite:///./data/app.db`)
-- `DB_ECHO=true|false`: in SQL de debug
+- `DB_ENABLED=true|false`: bật/tắt lưu DB
+- `DATABASE_URL`: kết nối SQLAlchemy (mặc định `sqlite:///./data/app.db`)
+- `DB_ECHO=true|false`: in SQL để debug
+- `APP_TIMEZONE`: timezone local của app (mặc định `Asia/Ho_Chi_Minh`, fallback `UTC`)
+- `SLOW_GENERATION_WARNING_SECONDS`: ngưỡng giây để thêm warning generation chậm (mặc định `45`)
 
-## 8) Health Checks
+## 8) Health checks
 
 ### Health endpoint
 
@@ -167,7 +169,7 @@ Bien moi truong lien quan:
 curl -s http://127.0.0.1:8000/
 ```
 
-### Mau request media
+### Mẫu request media
 
 ```bash
 curl -s -X POST http://127.0.0.1:8000/api/ask_with_media \
@@ -178,12 +180,12 @@ curl -s -X POST http://127.0.0.1:8000/api/ask_with_media \
 
 ## 9) Troubleshooting
 
-| Van de | Dau hieu | Cach xu ly |
+| Vấn đề | Dấu hiệu | Cách xử lý |
 |---|---|---|
-| `No module named open_clip` | Backend die ngay khi load vision | Cai deps: `pip install -r requirements.txt`; dam bao `VISION_STRICT_OPENCLIP=true` hoac tam thoi set `VISION_STRICT_OPENCLIP=false` de demo |
-| `Audio format is not WAV and ffmpeg is not installed` | `transcript` rong + warning ASR | Cai ffmpeg, restart backend |
-| Ollama unavailable | `warnings` co thong diep fallback deterministic | Chay `ollama serve`, kiem tra `OLLAMA_BASE_URL`, pull lai model |
-| Port 8000 da duoc dung | `Address already in use` | `fuser -k 8000/tcp` (Linux/WSL) hoac doi port uvicorn |
+| `No module named open_clip` | Backend dừng ngay khi load vision | Cài deps: `pip install -r requirements.txt`; đảm bảo `VISION_STRICT_OPENCLIP=true` hoặc tạm set `VISION_STRICT_OPENCLIP=false` để demo |
+| `Audio format is not WAV and ffmpeg is not installed` | `transcript` rỗng + warning ASR | Cài ffmpeg, rồi restart backend |
+| Ollama unavailable | `warnings` có thông điệp fallback deterministic | Chạy `ollama serve`, kiểm tra `OLLAMA_BASE_URL`, pull lại model |
+| Port 8000 đã được dùng | `Address already in use` | `fuser -k 8000/tcp` (Linux/WSL) hoặc đổi port uvicorn |
 
 ## 10) Restart nhanh backend
 
@@ -192,7 +194,7 @@ fuser -k 8000/tcp 2>/dev/null || true
 python -m uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-## 11) Kiem thu nhanh
+## 11) Kiểm thử nhanh
 
 ```bash
 cd /mnt/d/LTWeb/github
