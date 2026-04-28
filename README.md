@@ -1,6 +1,6 @@
 # Tarot Multimodal MVP
 
-Ứng dụng đọc bài Tarot 3 lá (quá khứ/hiện tại/tương lai) với văn bản + giọng nói + hình ảnh.
+Ứng dụng đọc bài Tarot 3 lá (quá khứ/hiện tại/tương lai) với văn bản + giọng nói + hình ảnh, kèm bộ tính năng nâng cao + gamification giữ chân người dùng.
 
 ## TL;DR 60 giây
 
@@ -27,8 +27,9 @@ npm run dev -- --host 127.0.0.1 --port 5173
 ## Bạn sẽ thấy gì khi chạy xong
 
 - Frontend: `http://127.0.0.1:5173`
-- Backend API docs: `http://127.0.0.1:8000/docs`
-- Health check: `http://127.0.0.1:8000/` trả về `{"status":"api running"}`
+- Backend API docs (Swagger UI): `http://127.0.0.1:8000/docs`
+- Health check: `GET http://127.0.0.1:8000/api/health` trả về version + DB status
+- Root: `GET http://127.0.0.1:8000/` trả về `{"status":"api running"}`
 
 ## Quy trình cho máy mới
 
@@ -79,6 +80,46 @@ npm install
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
+## Tính năng nổi bật
+
+### Core (đọc bài đa phương thức)
+
+- 3-card spread (past / present / future) qua text, voice (ASR), ảnh lá bài.
+- Vision card recognition + RAG snippets + LLM diễn giải, nhiều tầng fallback.
+
+### Advanced (f1 → f10)
+
+| ID | Tính năng | Endpoint chính |
+|---|---|---|
+| f1 | Conversational follow-up | `POST /api/sessions/{id}/followup` |
+| f2 | Archetype profiler | `GET /api/users/{id}/archetype_profile` |
+| f3 | Voice emotion analysis | tích hợp trong reading flow |
+| f4 | Pattern Oracle (monthly) | `GET /api/users/{id}/oracle_reports` |
+| f5 | Question Suggestion Engine | `GET /api/question_suggestions` |
+| f6 | Spread Recommender | `POST /api/spread/recommend` |
+| f7 | Duo Reading (REST + WS) | `POST /api/duo/sessions` + `WS /ws/duo/{id}` |
+| f8 | Community Reading Room | `POST /api/community/posts` + moderation |
+| f9 | Accuracy Rating Loop | `POST /api/readings/{id}/rating` |
+| f10 | Dream Journal | `POST /api/dreams` |
+
+### Tính năng độc đáo (v0.2)
+
+| Tên | Mô tả ngắn | Endpoint chính |
+|---|---|---|
+| **Daily Card + Streak** | Mỗi user 1 lá/ngày, đếm streak (Duolingo-style), kèm reflection note + mood pre/post. | `POST /api/daily-card/draw`, `GET /api/daily-card/streak` |
+| **Time Capsule Reading** | Khoá một dự đoán cho ngày mở trong tương lai; đến ngày, user verify accuracy → feed vào rating loop. | `POST /api/time-capsules`, `POST /api/time-capsules/{id}/reveal` |
+| **Card Affirmation widget** | Sinh affirmation deterministic theo card + ngày, dùng cho widget lock-screen. | `GET /api/affirmations/{card_name}` |
+
+Xem chi tiết tại [`tong-hop-tinh-nang-backend.md`](./tong-hop-tinh-nang-backend.md) và [`report.md`](./report.md).
+
+### Hardening v0.2
+
+- Rate limit cho `auth_register` (5/min) và `auth_login` (10/min); bật/tắt qua `RATE_LIMIT_ENABLED`.
+- Email validator chuẩn (regex) thay vì chỉ check `@`.
+- `request_id` middleware: mọi response có header `X-Request-Id`, log có id để debug.
+- Global exception handler trả JSON 500 sạch + cảnh báo nếu `JWT_SECRET_KEY` còn placeholder.
+- Endpoint `/api/health` cho DB connectivity + version.
+
 ## Lưu ý kỹ thuật hiện tại
 
 - `spread_type` hiện tại được normalize về `three` ở backend.
@@ -95,8 +136,22 @@ npm run dev -- --host 127.0.0.1 --port 5173
 2. Random flow: bấm `Random Draw` không cần ảnh.
 3. Voice flow: record hoặc upload audio, xác nhận UI hiển thị `TRANSCRIPT`.
 4. Kiểm tra `warnings` nếu transcript rỗng hoặc confidence thấp.
+5. Daily card: `POST /api/daily-card/draw` (cần JWT) → check `streak_at_draw=1`.
+6. Time capsule: `POST /api/time-capsules` với `reveal_at` 1 ngày sau → list ra trạng thái `sealed`.
+
+## Test suite
+
+```bash
+# Đặt API_UPLOAD_DIR ra ngoài repo nếu sandbox không cho ghi/xóa trong tmp_uploads
+API_UPLOAD_DIR=/tmp/tarot_test_uploads pytest tests/ --ignore=tests/test_vision_smoke.py --ignore=tests/test_rag_smoke.py
+```
+
+Trạng thái hiện tại (v0.2.0): **52 passed** (36 legacy + 15 unique features + 1 vision/RAG smoke khi data đầy đủ).
 
 ## Link tài liệu chi tiết
 
 - Backend runbook: [README.backend.md](./README.backend.md)
 - Frontend runbook: [frontend/README.md](./frontend/README.md)
+- Tổng hợp tính năng backend: [tong-hop-tinh-nang-backend.md](./tong-hop-tinh-nang-backend.md)
+- Báo cáo kiến trúc: [report.md](./report.md)
+- Changelog: [CHANGELOG.md](./CHANGELOG.md)

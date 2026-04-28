@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from src.auth.security import create_access_token, hash_password, verify_password
 from src.db.models import User
 from src.db.session import session_scope
+from src.utils.validators import is_valid_email, normalize_email
 
 
 @dataclass
@@ -17,9 +18,9 @@ class AuthUser:
 
 
 def register_user(*, email: str, password: str, role: str = "member") -> AuthUser:
-    clean_email = (email or "").strip().lower()
+    clean_email = normalize_email(email)
     clean_password = (password or "").strip()
-    if not clean_email or "@" not in clean_email:
+    if not is_valid_email(clean_email):
         raise ValueError("invalid email")
     if len(clean_password) < 6:
         raise ValueError("password must be at least 6 characters")
@@ -39,7 +40,7 @@ def register_user(*, email: str, password: str, role: str = "member") -> AuthUse
 
 
 def authenticate_user(*, email: str, password: str) -> tuple[AuthUser, str]:
-    clean_email = (email or "").strip().lower()
+    clean_email = normalize_email(email)
     clean_password = (password or "").strip()
 
     with session_scope() as session:
@@ -58,4 +59,3 @@ def get_user_by_id(user_id: int) -> AuthUser | None:
     if user is None:
         return None
     return AuthUser(id=user.id, email=user.email, role=user.role)
-

@@ -9,6 +9,7 @@ except Exception:  # pragma: no cover
 
 from src.advanced.archetype_profiler import run_archetype_weekly_job
 from src.advanced.oracle_reports import run_oracle_monthly_job
+from src.advanced.time_capsule import mark_due_capsules_notified
 from src.utils.logging import get_logger
 from src.utils.timezone import get_app_timezone
 
@@ -57,6 +58,16 @@ def start_analytics_scheduler() -> None:
             hour=3,
             minute=0,
             id="oracle-monthly-job",
+            replace_existing=True,
+            coalesce=True,
+            max_instances=1,
+        )
+    if _as_bool(os.getenv("TIME_CAPSULE_SCHEDULER_ENABLED", "true"), default=True):
+        scheduler.add_job(
+            mark_due_capsules_notified,
+            "interval",
+            minutes=15,
+            id="time-capsule-reveal-job",
             replace_existing=True,
             coalesce=True,
             max_instances=1,

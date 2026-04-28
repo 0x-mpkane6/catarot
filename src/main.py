@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 import uuid
@@ -6,10 +7,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, List
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from src.advanced.affirmations import generate_affirmation
 from src.advanced.analytics_scheduler import start_analytics_scheduler, stop_analytics_scheduler
 from src.advanced.archetype_profiler import get_user_archetype_profile
 from src.advanced.community_room import (
@@ -22,6 +25,13 @@ from src.advanced.community_room import (
     vote_interpretation,
 )
 from src.advanced.conversation import add_followup_turn, get_conversation_turns
+from src.advanced.daily_card import (
+    add_reflection,
+    draw_today_card,
+    get_streak,
+    get_today_card,
+    list_history as list_daily_history,
+)
 from src.advanced.dream_journal import create_dream_entry, get_dream_entry, list_dream_entries
 from src.advanced.duo_reading import (
     DUO_WS_MANAGER,
@@ -40,10 +50,22 @@ from src.advanced.rating_reminders import (
     stop_rating_scheduler,
 )
 from src.advanced.spread_recommender import recommend_spread
+from src.advanced.time_capsule import (
+    create_capsule,
+    get_capsule,
+    list_capsules,
+    open_capsule,
+    submit_verdict,
+)
 from src.auth.deps import CurrentUser, get_current_admin, get_current_user, get_websocket_user
 from src.auth.service import authenticate_user, register_user
 from src.db import initialize_database_if_needed, persist_reading_result
 from src.pipeline.tarot_pipeline import TarotPipeline
+from src.utils.logging import get_logger
+from src.utils.rate_limit import enforce_rate_limit
+
+LOGGER = get_logger("tarot.api")
+APP_VERSION = "0.2.0"
 
 
 def _allowed_origins_from_env() -> list[str]:
@@ -81,6 +103,10 @@ def _normalize_rating_reminder_days(value: Any) -> int:
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     initialize_database_if_needed(seed_reference_data=True)
+    if (os.getenv("JWT_SECRET_KEY", "") or "").strip().startswith("change_me"):
+        LOGGER.warning(
+            "JWT_SECRET_KEY is using the default placeholder. Set a strong secret in production."
+        )
     start_rating_scheduler()
     start_analytics_scheduler()
     try:
@@ -90,7 +116,12 @@ async def lifespan(_app: FastAPI):
         stop_rating_scheduler()
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    title="Tarot Multimodal API",
+    version=APP_VERSION,
+    description="Tarot reading API with multimodal input and gamified daily features.",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -98,6 +129,35 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    request_id = request.headers.get("x-request-id") or uuid.uuid4().hex[:16]
+    request.state.request_id = request_id
+    try:
+        response = await call_next(request)
+    except Exception:
+        LOGGER.exception("unhandled error in request %s %s id=%s", request.method, request.url.path, request_id)
+        raise
+    response.headers["x-request-id"] = request_id
+    return response
+
+
+@app.exception_handler(Exception)
+async def _generic_exception_handler(request: Request, exc: Exception):
+    if isinstance(exc, HTTPException):
+        # Let FastAPI's default handler take it.
+        raise exc
+    request_id = getattr(request.state, "request_id", "-")
+    LOGGER.exception("unhandled exception id=%s path=%s", request_id, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "internal server error",
+            "request_id": request_id,
+        },
+    )
 
 _pipeline: TarotPipeline | None = None
 
@@ -169,13 +229,62 @@ class ModerationRequest(BaseModel):
     reason: str | None = None
 
 
+class DailyCardDrawRequest(BaseModel):
+    mood_pre: str | None = None
+
+
+class DailyCardReflectionRequest(BaseModel):
+    reflection: str | None = None
+    mood_post: str | None = None
+
+
+class TimeCapsuleCreateRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    reveal_at: str = Field(description="ISO-8601 datetime when capsule unlocks")
+    session_id: int | None = None
+    question_text: str | None = None
+    prediction_text: str | None = None
+    cards: list[dict] | None = None
+
+
+class TimeCapsuleVerdictRequest(BaseModel):
+    accuracy_score: int = Field(ge=1, le=5)
+    accuracy_note: str | None = None
+
+
 @app.get("/")
 def root():
     return {"status": "api running"}
 
 
+@app.get("/api/health")
+def health_check():
+    """Operator-friendly health probe with version + db connectivity."""
+    db_ok = True
+    db_error: str | None = None
+    try:
+        from sqlalchemy import text
+        from src.db.session import get_engine
+
+        with get_engine().connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception as exc:  # pragma: no cover - defensive
+        db_ok = False
+        db_error = str(exc)[:200]
+
+    return {
+        "status": "ok" if db_ok else "degraded",
+        "version": APP_VERSION,
+        "db": "ok" if db_ok else "error",
+        "db_error": db_error,
+        "timezone": os.getenv("APP_TIMEZONE", "Asia/Ho_Chi_Minh"),
+        "now": datetime.now().isoformat(),
+    }
+
+
 @app.post("/api/auth/register")
-async def auth_register(req: RegisterRequest):
+async def auth_register(req: RegisterRequest, request: Request):
+    enforce_rate_limit(request=request, scope="auth_register", max_hits=5, window_seconds=60)
     role = req.role.strip().lower() if req.role else "member"
     if role not in {"member", "admin"}:
         role = "member"
@@ -191,7 +300,8 @@ async def auth_register(req: RegisterRequest):
 
 
 @app.post("/api/auth/login")
-async def auth_login(req: LoginRequest):
+async def auth_login(req: LoginRequest, request: Request):
+    enforce_rate_limit(request=request, scope="auth_login", max_hits=10, window_seconds=60)
     try:
         user, token = authenticate_user(email=req.email, password=req.password)
     except ValueError as exc:
@@ -633,3 +743,151 @@ async def dreams_detail(dream_id: int, current_user: CurrentUser = Depends(get_c
     if row is None:
         raise HTTPException(status_code=404, detail="dream entry not found")
     return row
+
+
+# =============================
+# Daily Card + Streak (gamified daily engagement)
+# =============================
+
+
+@app.get("/api/daily-card/today")
+async def daily_card_today(current_user: CurrentUser = Depends(get_current_user)):
+    record = get_today_card(user_id=current_user.id)
+    return {"item": record}
+
+
+@app.post("/api/daily-card/draw")
+async def daily_card_draw(
+    req: DailyCardDrawRequest | None = None,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    try:
+        record = draw_today_card(
+            user_id=current_user.id,
+            mood_pre=(req.mood_pre if req else None),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return record
+
+
+@app.post("/api/daily-card/{daily_card_id}/reflect")
+async def daily_card_reflect(
+    daily_card_id: int,
+    req: DailyCardReflectionRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    try:
+        return add_reflection(
+            user_id=current_user.id,
+            daily_card_id=daily_card_id,
+            reflection=req.reflection,
+            mood_post=req.mood_post,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/api/daily-card/streak")
+async def daily_card_streak(current_user: CurrentUser = Depends(get_current_user)):
+    return get_streak(user_id=current_user.id)
+
+
+@app.get("/api/daily-card/history")
+async def daily_card_history(
+    limit: int = Query(default=30, ge=1, le=180),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    return {"items": list_daily_history(user_id=current_user.id, limit=limit)}
+
+
+# =============================
+# Time Capsule (long-horizon prediction)
+# =============================
+
+
+@app.post("/api/time-capsules")
+async def time_capsule_create(
+    req: TimeCapsuleCreateRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    try:
+        return create_capsule(
+            user_id=current_user.id,
+            title=req.title,
+            question_text=req.question_text,
+            prediction_text=req.prediction_text,
+            reveal_at_iso=req.reveal_at,
+            cards=req.cards,
+            session_id=req.session_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/time-capsules")
+async def time_capsule_list(
+    revealed_only: bool = Query(default=False),
+    limit: int = Query(default=50, ge=1, le=200),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    return {
+        "items": list_capsules(
+            user_id=current_user.id,
+            include_revealed_only=revealed_only,
+            limit=limit,
+        )
+    }
+
+
+@app.get("/api/time-capsules/{capsule_id}")
+async def time_capsule_detail(
+    capsule_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    try:
+        return get_capsule(user_id=current_user.id, capsule_id=capsule_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/api/time-capsules/{capsule_id}/reveal")
+async def time_capsule_reveal(
+    capsule_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    try:
+        return open_capsule(user_id=current_user.id, capsule_id=capsule_id)
+    except ValueError as exc:
+        message = str(exc)
+        status = 400 if "sealed" in message else 404
+        raise HTTPException(status_code=status, detail=message) from exc
+
+
+@app.post("/api/time-capsules/{capsule_id}/verdict")
+async def time_capsule_verdict(
+    capsule_id: int,
+    req: TimeCapsuleVerdictRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    try:
+        return submit_verdict(
+            user_id=current_user.id,
+            capsule_id=capsule_id,
+            accuracy_score=req.accuracy_score,
+            accuracy_note=req.accuracy_note,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        status = 400 if "sealed" in message or "between" in message else 404
+        raise HTTPException(status_code=status, detail=message) from exc
+
+
+# =============================
+# Affirmations (no auth required - widget-friendly)
+# =============================
+
+
+@app.get("/api/affirmations/{card_name}")
+async def affirmations_for_card(card_name: str, orientation: str = Query(default="upright")):
+    return generate_affirmation(card_name=card_name, orientation=orientation)

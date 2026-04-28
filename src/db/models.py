@@ -66,6 +66,16 @@ class User(Base):
         back_populates="user",
         passive_deletes=True,
     )
+    daily_cards: Mapped[list["DailyCard"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    time_capsules: Mapped[list["TimeCapsule"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class TarotCard(Base):
@@ -512,3 +522,77 @@ class DreamEntry(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     user: Mapped[User | None] = relationship(back_populates="dream_entries")
+
+
+class DailyCard(Base):
+    """One card per user per local day, with streak tracking."""
+
+    __tablename__ = "daily_cards"
+    __table_args__ = (
+        UniqueConstraint("user_id", "draw_date", name="uq_daily_cards_user_date"),
+        CheckConstraint(
+            "orientation IN ('upright', 'reversed')",
+            name="ck_daily_cards_orientation",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    draw_date: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
+    card_id: Mapped[int] = mapped_column(ForeignKey("tarot_cards.id"), nullable=False, index=True)
+    card_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    orientation: Mapped[str] = mapped_column(String(16), nullable=False, default="upright", server_default="upright")
+    keywords_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
+    mood_pre: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    mood_post: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    reflection: Mapped[str | None] = mapped_column(Text, nullable=True)
+    streak_at_draw: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    affirmation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    user: Mapped[User] = relationship(back_populates="daily_cards")
+
+
+class TimeCapsule(Base):
+    """A user-locked prediction that reveals on a future date."""
+
+    __tablename__ = "time_capsules"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('sealed', 'revealed', 'verified')",
+            name="ck_time_capsules_status",
+        ),
+        CheckConstraint(
+            "accuracy_score IS NULL OR (accuracy_score >= 1 AND accuracy_score <= 5)",
+            name="ck_time_capsules_accuracy_score",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    session_id: Mapped[int | None] = mapped_column(
+        ForeignKey("reading_sessions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    question_text: Mapped[str] = mapped_column(Text, nullable=False)
+    prediction_text: Mapped[str] = mapped_column(Text, nullable=False)
+    cards_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
+    reveal_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="sealed", server_default="sealed")
+    opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    accuracy_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    accuracy_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notify_email_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    user: Mapped[User] = relationship(back_populates="time_capsules")
