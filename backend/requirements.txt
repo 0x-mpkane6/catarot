@@ -1,0 +1,38 @@
+# Minimal deps for the Seminar #1 MVP (CPU-friendly where possible)
+
+# Core
+numpy>=1.26,<3
+pillow>=10.0
+pyyaml>=6.0
+python-dotenv>=1.0
+tqdm>=4.66
+loguru>=0.7
+requests>=2.31
+
+# Vision retrieval (card recognition)
+torch>=2.2
+torchvision>=0.17
+open-clip-torch>=2.24  # provides `import open_clip`
+faiss-cpu>=1.7.4
+opencv-python>=4.8
+
+# RAG (meanings/snippets)
+sentence-transformers>=3.0
+transformers>=4.41
+scikit-learn>=1.4
+
+# UI
+fastapi>=0.115
+uvicorn>=0.30
+python-multipart>=0.0.9
+gradio>=4.44
+sqlalchemy>=2.0
+
+# Optional: LLM API (only if you will call OpenAI)
+openai>=1.30
+
+# ASR defaults (higher accuracy for vi/en)
+faster-whisper>=1.1.0
+
+# Tests
+pytest>=8.0

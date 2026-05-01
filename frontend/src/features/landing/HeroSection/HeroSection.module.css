@@ -1,0 +1,120 @@
+/* HeroSection.module.css */
+
+.hero {
+  position: relative;
+  width: 100%;
+
+  min-height: 100vh;  
+  overflow: hidden;
+
+  display: flex;
+  align-items: center; 
+}
+
+/* background */
+.bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  width: 100vw;
+  height: 100vh;
+
+  background-image: url("../../../assets/images/landing/background.avif");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* content */
+.content {
+  position: relative;
+  z-index: 1;
+
+  height: 100%;
+
+  display: flex;
+  align-items: flex-start;  
+  justify-content: flex-start;
+
+  padding-top: 120px;       
+  padding-left: 220px;    
+  align-items: flex-start; 
+}
+
+/* glass card */
+.card {
+  width: 400px;
+  max-width: 90%;
+  height: 500px;
+
+  border-radius: 50px;
+
+  background: rgba(30, 10, 60, 0.4); /* key fix */
+  
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+
+  border: 1px solid rgba(255,255,255,0.08);
+
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+
+  padding: 40px 32px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: left;  
+  text-align: left; 
+
+  gap: 16px;
+}
+/* logo */
+.logo {
+  width: 300px; 
+  align-self: center;
+}
+
+/* description */
+.desc {
+  font-family: 'Kadwa', serif;
+  font-size: 18px;
+  color: #EDE9FE;
+  line-height: 1.6;
+}
+
+/* button */
+.btn {
+  width: fit-content;
+
+  background: linear-gradient(90deg, #7C3AED 0%, #9333EA 100%);
+  color: #EDE9FE;
+
+  border: none;
+  border-radius: 25px;
+
+  padding: 12px 24px;
+
+  font-family: 'Kadwa', serif;
+  font-size: 16px;
+
+  cursor: pointer;
+}
+
+/* hover nhẹ */
+.btn:hover {
+  opacity: 0.9;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  background: radial-gradient(
+    circle at 30% 40%,
+    rgba(0,0,0,0.3),
+    rgba(0,0,0,0.6)
+  );
+
+  z-index: 0;
+}

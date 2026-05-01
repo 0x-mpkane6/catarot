@@ -1,0 +1,188 @@
+/* wrapper */
+.footer {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+
+  padding: 0px 0px;
+}
+
+/* container */
+.container {
+  width: 100%;  
+  max-width: none;
+
+  border-radius: 0px; 
+
+  padding: 40px 60px;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+
+  background: radial-gradient(
+    circle at 0% 100%,
+    #000000 0%,
+    #1A0B2E 50%,
+    #3B0A57 100%
+  );
+
+  align-items: start;
+}
+
+/* ===== TYPOGRAPHY ===== */
+
+/* title */
+.title {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900; /* black */
+  font-size: 20px;
+  color: #EDE9FE;
+}
+
+.titleRight {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900; /* black */
+  font-size: 20px;
+  color: #EDE9FE;
+  align-self: flex-end;
+}
+
+/* logo */
+.logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  color: #EDE9FE;
+}
+
+/* text */
+.text {
+  font-family: 'Kadwa', serif;
+  font-size: 12px;
+  color: #EDE9FE;
+  line-height: 1.6;  
+}
+
+.textRight {
+  font-family: 'Kadwa', serif;
+  font-size: 12px;
+  color: #EDE9FE;
+  line-height: 1.6;  
+  align-self: flex-end;
+}
+
+/* ===== LEFT ===== */
+
+.left {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center; 
+}
+
+/* ===== CENTER ===== */
+
+.center {
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;  
+
+  gap: 12px;
+  text-align: start;
+}
+
+.links {
+  display: flex;
+  gap: 16px;
+}
+
+.links a {
+  font-family: 'Kadwa', serif;
+  font-size: 12px;
+  color: #EDE9FE;
+  cursor: pointer;
+}
+
+/* ===== RIGHT ===== */
+
+.right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center; 
+  padding-right: 0px;
+}
+
+/* input */
+.input {
+  width: 50%;
+  flex: 1;
+  padding: 6px 10px;
+
+  border-radius: 6px;
+  border: none;
+
+  font-size: 12px;
+  align-self: flex-end;
+}
+
+/* button */
+.btn {
+
+  width: 20%; 
+  background: linear-gradient(90deg, #7C3AED, #9333EA);
+  color: #EDE9FE;
+
+  border: none;
+  border-radius: 20px;
+
+  padding: 6px 14px;
+
+  font-size: 12px;
+  cursor: pointer;
+
+  align-self: flex-end;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.item img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.copy {
+  font-family: 'Kadwa', serif;
+  font-size: 12px;
+  color: #EDE9FE;
+
+  flex-direction: column;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.copy::before {
+  content: "";
+  width: 180px;      
+  height: 1px;
+  background: rgba(237, 233, 254, 0.6);
+}
+
+.logo {
+  width: 140px;  
+  object-fit: contain;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;  
+  gap: 10px;
+}
