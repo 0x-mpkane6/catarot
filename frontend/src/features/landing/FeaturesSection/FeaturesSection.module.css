@@ -1,0 +1,45 @@
+.section {
+  width: 100%;
+  min-height: 100vh;
+
+  background: #EDE9FE;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+
+  padding: 80px 40px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+/* title */
+.title {
+  font-family: 'Playfair Display', serif;
+  font-size: 40px;
+  color: #1A0B2E;
+}
+
+/* grid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.card {
+  padding: 24px;
+  border-radius: 20px;
+
+  background: white;
+
+  font-family: 'Kadwa', serif;
+  color: #1A0B2E;
+}

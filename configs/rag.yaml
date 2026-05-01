@@ -1,5 +1,0 @@
-rag:
-  model_name: sentence-transformers/all-MiniLM-L6-v2
-  device: cpu
-  batch_size: 32
-  top_k: 3
