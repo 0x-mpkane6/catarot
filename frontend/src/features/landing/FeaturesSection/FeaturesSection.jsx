@@ -1,16 +1,41 @@
 import styles from "./FeaturesSection.module.css";
 
-export default function FeaturesSection() {
-  return (
-    <section id="features" className={styles.section}>
-      <div className={styles.container}>
-        <h2 className={styles.title}>Features</h2>
+import tarotImg from "../../../assets/images/landing/Tarot.png";
+import horoscopeImg from "../../../assets/images/landing/Horoscope.png";
+import natalImg from "../../../assets/images/landing/NatalChart.png";
 
-        <div className={styles.grid}>
-          <div className={styles.card}>Feature 1</div>
-          <div className={styles.card}>Feature 2</div>
-          <div className={styles.card}>Feature 3</div>
-        </div>
+export default function FeaturesSection() {
+  const features = [
+    {
+      name: "Tarot",
+      image: tarotImg,
+      onClick: () => console.log("Tarot clicked"),
+    },
+    {
+      name: "Horoscope",
+      image: horoscopeImg,
+      onClick: () => console.log("Horoscope clicked"),
+    },
+    {
+      name: "Natal Chart",
+      image: natalImg,
+      onClick: () => console.log("Natal clicked"),
+    },
+  ];
+
+  return (
+    <section className={styles.section}>
+      <div className={styles.container}>
+        {features.map((item, index) => (
+          <button
+            key={index}
+            className={styles.card}
+            onClick={item.onClick}
+          >
+            <img src={item.image} alt={item.name} />
+            <p>{item.name}</p>
+          </button>
+        ))}
       </div>
     </section>
   );
