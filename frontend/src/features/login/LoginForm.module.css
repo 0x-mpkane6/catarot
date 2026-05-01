@@ -1,0 +1,118 @@
+.container {
+  position: relative;
+
+  background: rgba(26, 11, 46, 0.5);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+
+  border-radius: 20px;
+  overflow: hidden;
+
+  width: 400px;  
+  padding: 16px 16px;
+}
+
+/* LEFT IMAGE */
+.left {
+  flex: 1;
+  background-image: url("../../assets/images/auth/black-hole-bg.png");
+  background-size: cover;
+  background-position: center;
+}
+
+/* RIGHT */
+.right {
+  flex: 1;
+
+  padding: 40px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  color: #EDE9FE;
+}
+
+/* TITLE */
+.title {
+  font-family: "Playfair Display", serif;
+  font-size: 28px;
+  text-align: center;
+}
+
+/* GOOGLE */
+.googleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  padding: 10px;
+
+  border-radius: 20px;
+  border: none;
+
+  background: linear-gradient(90deg, #7C3AED, #9333EA);
+  color: #fff;
+  cursor: pointer;
+}
+
+.googleBtn img {
+  width: 20px;
+}
+
+/* DIVIDER */
+.divider {
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* INPUT */
+.input {
+  padding: 10px;
+
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.2);
+
+  background: transparent;
+  color: #EDE9FE;
+}
+
+/* ROW */
+.row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+/* LINK */
+.link {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* LOGIN BTN */
+.loginBtn {
+  margin-top: 10px;
+
+  padding: 10px;
+  border-radius: 20px;
+  border: none;
+
+  background: linear-gradient(90deg, #7C3AED, #9333EA);
+  color: white;
+  cursor: pointer;
+}
+
+/* SIGNUP */
+.signup {
+  font-size: 12px;
+  text-align: center;
+}
+
+.remember {
+  display: flex;
+  align-items: center;  
+  gap: 8px;
+}
