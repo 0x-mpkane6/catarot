@@ -1,0 +1,172 @@
+.wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center; 
+
+  /* margin-top: -40px;  */
+
+  position: fixed;
+  bottom: 100px;   /* chỉnh cao thấp ở đây */
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* ===== MAIN BOX ===== */
+.inputBox {
+  width: 820px;
+  background: #120f14;
+
+  border-radius: 24px;
+  padding: 22px;
+
+  color: #ede9fe;
+
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+/* ===== INPUT ===== */
+.input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+
+  color: #ede9fe;
+  font-size: 16px;
+
+  font-family: "Kadwa", serif;
+
+  margin-bottom: 16px;
+}
+
+/* ===== BOTTOM ROW ===== */
+.bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* ===== DROPDOWN ===== */
+.dropdown {
+  position: relative;
+}
+
+.modeBtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  background: #ede9fe;
+  color: #120f14;
+
+  border: none;
+  border-radius: 24px;
+
+  padding: 8px 14px;
+  font-family: "Kadwa", serif;
+
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modeBtn:hover {
+  opacity: 0.85;
+}
+
+/* ❌ clear button */
+.clearBtn {
+  font-size: 14px;
+  cursor: pointer;
+
+  opacity: 0.6;
+  transition: all 0.2s;
+}
+
+.clearBtn:hover {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+/* dropdown menu */
+.menu {
+  position: absolute;
+  bottom: 48px;
+
+  background: #120f14;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+
+  padding: 6px 0;
+  min-width: 160px;
+
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+.option {
+  padding: 10px 14px;
+  cursor: pointer;
+
+  color: #ede9fe;
+  font-family: "Kadwa", serif;
+
+  transition: background 0.2s;
+}
+
+.option:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+/* ===== ACTIONS ===== */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* icon button */
+.iconBtn {
+  background: transparent;
+  border: none;
+
+  padding: 6px;
+  border-radius: 10px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.iconBtn:hover {
+  background: rgba(255,255,255,0.08);
+  transform: scale(1.1);
+}
+
+/* 🔥 fix méo icon */
+.iconBtn img {
+  width: 28px;
+  height: auto;
+}
+
+/* send */
+.sendBtn {
+  background: #ede9fe;
+  color: #120f14;
+
+  border: none;
+  border-radius: 50%;
+
+  width: 42px;
+  height: 42px;
+
+  cursor: pointer;
+  font-size: 18px;
+
+  transition: all 0.2s;
+}
+
+.sendBtn:hover {
+  transform: scale(1.1);
+}

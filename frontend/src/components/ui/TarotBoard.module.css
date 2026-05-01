@@ -1,0 +1,65 @@
+.board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  margin-top: 40px;
+  gap: 30px;
+}
+
+/* 2 hàng */
+.row {
+  display: flex;
+  justify-content: center;
+}
+
+/* ===== CARD ===== */
+.card {
+  width: 110px;
+  height: 160px;
+
+  cursor: pointer;
+
+  transition: all 0.25s ease;
+
+  /* 🔥 overlap */
+  margin-left: -45px;
+}
+
+.card:first-child {
+  margin-left: 0;
+}
+
+.card img {
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  object-fit: cover;
+}
+
+/* hover */
+.card:hover {
+  transform: translateY(-12px) scale(1.05);
+  z-index: 10;
+}
+
+/* chọn */
+.picked {
+  transform: scale(1.1);
+  box-shadow: 0 0 30px rgba(168, 85, 247, 0.8);
+  z-index: 20;
+}
+
+/* ===== CENTER MODE ===== */
+.centerMode {
+  flex-direction: row;
+  justify-content: center;
+  gap: 40px;
+
+  margin-top: 120px;
+}
+
+/* center mode không overlap */
+.centerMode .card {
+  margin-left: 0;
+}
