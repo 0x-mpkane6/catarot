@@ -37,7 +37,7 @@
   align-items: flex-start;  
   justify-content: flex-start;
 
-  padding-top: 120px;       
+  padding-top: 80px;       
   padding-left: 220px;    
   align-items: flex-start; 
 }
@@ -46,7 +46,7 @@
 .card {
   width: 400px;
   max-width: 90%;
-  height: 500px;
+  height: 450px;
 
   border-radius: 50px;
 
