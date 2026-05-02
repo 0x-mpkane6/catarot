@@ -1,0 +1,38 @@
+.section {
+  width: 100%;
+  min-height: 100vh;
+
+  background: #EDE9FE;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+
+  padding: 80px 40px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* title */
+.title {
+  font-family: 'Playfair Display', serif;
+  font-size: 40px;
+  color: #1A0B2E;
+}
+
+/* content */
+.text {
+  font-family: 'Kadwa', serif;
+  font-size: 18px; /* m chỉnh sau */
+  color: #1A0B2E;
+
+  max-width: 700px;
+  line-height: 1.6;
+}

@@ -1,0 +1,24 @@
+app:
+  # confidence_threshold: 0.18
+  confidence_threshold: 0.0 # Demo
+  top_k_candidates: 5
+  rag_snippets_per_card: 2
+  rag_min_snippets: 3
+  spread_positions:
+    single:
+      - single
+    three:
+      - past
+      - present
+      - future
+
+paths:
+  data_dir: ${DATA_DIR}
+  vision_index_path: ${FAISS_INDEX_PATH}
+  vision_meta_path: ${FAISS_META_PATH}
+  rag_index_path: ${RAG_INDEX_PATH}
+  rag_meta_path: ${RAG_META_PATH}
+  gallery_manifest: ./data/processed/gallery/gallery_manifest.jsonl
+  rag_corpus: ./data/rag_corpus/corpus.jsonl
+  card_data: ./data/rag_corpus/card_data.json
+  tarot_images_json: ./data/raw/tarot_json/tarot-images.json

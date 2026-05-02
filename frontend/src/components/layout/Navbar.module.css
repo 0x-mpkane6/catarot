@@ -1,0 +1,81 @@
+/* Navbar.module.css */
+
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+
+  z-index: 1000;
+
+  display: flex;
+  justify-content: center;
+
+  /* 🔥 thêm viền */
+  border-bottom: 1px solid rgba(237, 233, 254, 0.2);
+}
+
+/* container */
+.container {
+  width: 100%;
+  max-width: 1440px;
+  height: 55px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 0 40px;
+}
+
+/* logo */
+.logo img {
+  height: 50px;   /* chỉnh size logo */
+  object-fit: contain;
+}
+
+/* menu */
+.menu {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+
+  font-family: 'Kadwa', serif;
+  font-size: 18px;
+}
+
+.menu a {
+  color: #EDE9FE;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* button */
+.btn {
+  background: #7C3AED;
+  color: #EDE9FE;
+
+  border-radius: 25px;
+  padding: 8px 16px;
+
+  border: none;
+  cursor: pointer;
+}
+
+/* ===== variants ===== */
+
+.dark {
+  background: rgba(26, 11, 46, 0.8);
+
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  border-bottom: 1px solid rgba(237, 233, 254, 0.12);
+
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.light {
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+}
