@@ -2,9 +2,30 @@ import styles from "./LoginForm.module.css";
 import googleIcon from "../../assets/images/auth/google.webp";
 
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { login } from "../../services/authService";
 
 export default function LoginForm() {
   const navigate = useNavigate();
+
+  // 🔥 thêm state
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  // 🔥 thêm handle login
+  const handleLogin = async () => {
+    try {
+      const res = await login(email, password);
+
+      localStorage.setItem("token", res.token);
+      localStorage.setItem("user", JSON.stringify(res.user));
+
+      // 👉 chuyển trang
+      navigate("/chat");
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
   return (
     <div className={styles.container}>
@@ -27,12 +48,16 @@ export default function LoginForm() {
         <input
           className={styles.input}
           placeholder="username or email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
         />
 
         <input
           type="password"
           className={styles.input}
           placeholder="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
         />
 
         {/* ROW */}
@@ -51,7 +76,12 @@ export default function LoginForm() {
         </div>
 
         {/* LOGIN */}
-        <button className={styles.loginBtn}>Log in</button>
+        <button
+          className={styles.loginBtn}
+          onClick={handleLogin} // 🔥 thêm dòng này
+        >
+          Log in
+        </button>
 
         {/* SIGN UP */}
         <p className={styles.signup}>

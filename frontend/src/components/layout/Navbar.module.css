@@ -47,6 +47,7 @@
 .menu a {
   color: #EDE9FE;
   text-decoration: none;
+  cursor: pointer;
 }
 
 /* button */

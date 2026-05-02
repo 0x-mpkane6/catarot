@@ -1,27 +1,30 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import styles from "./TarotBoard.module.css";
 import back from "../../assets/images/chatpage/tarot-backside.png";
-import { FakeAPI } from "../../services/FakeAPI";
 
-export default function TarotBoard({ question }) {
+export default function TarotBoard({ onSelect, revealed, cards = [] }) {
   const [picked, setPicked] = useState([]);
-  const [cards, setCards] = useState([]);
 
-  const TOTAL = 36; // số lá hiển thị (chia 2 hàng)
+  const TOTAL = 36;
 
-  const handlePick = async (index) => {
+  // 🔥 reset khi bắt đầu lượt mới
+  useEffect(() => {
+    if (!revealed) {
+      setPicked([]);
+    }
+  }, [revealed]);
+
+  const handlePick = (index) => {
     if (picked.includes(index) || picked.length >= 3) return;
 
     const newPicked = [...picked, index];
     setPicked(newPicked);
 
     if (newPicked.length === 3) {
-      const res = await FakeAPI.drawTarot(newPicked);
-      setCards(res);
+      onSelect && onSelect(newPicked);
     }
   };
 
-  // 👉 chia 2 hàng
   const allIndexes =
     picked.length === 3
       ? picked
@@ -34,11 +37,11 @@ export default function TarotBoard({ question }) {
   return (
     <div
       className={`${styles.board} ${
-        picked.length === 3 ? styles.centerMode : ""
+        picked.length === 3 || revealed ? styles.centerMode : ""
       }`}
     >
-      {/* ===== NORMAL MODE ===== */}
-      {picked.length !== 3 ? (
+      {/* 🔮 CHƯA LẬT */}
+      {!revealed && picked.length !== 3 ? (
         <>
           <div className={styles.row}>
             {row1.map((i) => (
@@ -49,7 +52,7 @@ export default function TarotBoard({ question }) {
                 }`}
                 onClick={() => handlePick(i)}
               >
-                <img src={back} alt="card" />
+                <img src={back} />
               </div>
             ))}
           </div>
@@ -63,16 +66,25 @@ export default function TarotBoard({ question }) {
                 }`}
                 onClick={() => handlePick(i)}
               >
-                <img src={back} alt="card" />
+                <img src={back} />
               </div>
             ))}
           </div>
         </>
       ) : (
-        /* ===== CENTER MODE ===== */
+        /* 🔥 ĐÃ LẬT */
         cards.map((card, idx) => (
-          <div key={card.id} className={styles.card}>
-            <img src={card.image} alt={card.name} />
+          <div key={idx} className={styles.card}>
+            <img
+              src={card.image}
+              style={{
+                transform:
+                  card.orientation === "reversed"
+                    ? "rotate(180deg)"
+                    : "rotate(0deg)",
+                transition: "transform 0.4s ease", // 🔥 smooth hơn
+              }}
+            />
           </div>
         ))
       )}

@@ -11,10 +11,21 @@ export default function LandingPage() {
   return (
     <>
       <Navbar variant="dark" />
+
       <HeroSection />
-      <AboutSection />
-      <HowItWorksSection />
-      <FeaturesSection />
+
+      <div id="about" style={{ scrollMarginTop: "80px" }}>
+        <AboutSection />
+      </div>
+
+      <div id="how" style={{ scrollMarginTop: "80px" }}>
+        <HowItWorksSection />
+      </div>
+
+      <div id="features" style={{ scrollMarginTop: "80px" }}>
+        <FeaturesSection />
+      </div>
+
       <Footer />
       <ScrollTopBtn />
     </>
