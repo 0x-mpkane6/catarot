@@ -1,19 +1,12 @@
 .wrapper {
   width: 100%;
   display: flex;
-  justify-content: center; 
-
-  /* margin-top: -40px;  */
-
-  position: fixed;
-  bottom: 100px;   /* chỉnh cao thấp ở đây */
-  left: 50%;
-  transform: translateX(-50%);
+  justify-content: center;
 }
 
 /* ===== MAIN BOX ===== */
 .inputBox {
-  width: 820px;
+  width: 600px;
   background: #120f14;
 
   border-radius: 24px;
@@ -169,4 +162,66 @@
 
 .sendBtn:hover {
   transform: scale(1.1);
+}
+
+.error {
+  color: #f87171;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.previewRow {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.previewItem {
+  position: relative;
+}
+
+.previewItem img {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.previewItem button {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: red;
+  color: white;
+  border-radius: 50%;
+  font-size: 12px;
+  border: none;
+  cursor: pointer;
+}
+
+.audioBox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.recordingBtn {
+  background: #ef4444;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+.resetBtn {
+  background: #374151;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+.error {
+  color: #f87171;
+  font-size: 13px;
+  margin-bottom: 6px;
 }

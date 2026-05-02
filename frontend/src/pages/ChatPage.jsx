@@ -7,7 +7,7 @@ import ChatBox from "../components/ui/ChatBox";
 import ChatInput from "../components/ui/ChatInput";
 import TarotBoard from "../components/ui/TarotBoard";
 
-import tarotData from "../../backend/data/raw/tarot_json/tarot-images.json";
+import tarotData from "../assets/tarot/tarot_json/tarot-images.json";
 import { getTarotReading } from "../services/tarotService";
 
 export default function ChatPage() {
@@ -23,34 +23,56 @@ export default function ChatPage() {
   // 🔥 map name → image
   const getCardImage = (name) => {
     const found = tarotData.cards.find((c) => c.name === name);
+
     return found
-      ? `/assets/tarot/${found.img}`
-      : "/fallback.jpg";
+      ? new URL(
+          `../assets/tarot/tarot_json/cards/${found.img}`,
+          import.meta.url
+        ).href
+      : "";
   };
 
-  const handleSend = (text, selectedMode) => {
+  // =========================
+  // 🔥 HANDLE SEND (FIX CHÍNH)
+  // =========================
+  const handleSend = async ({ text, mode, images = [], audio = null }) => {
     setQuestion(text);
-    setMode(selectedMode);
+    setMode(mode);
 
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: text },
-    ]);
+    setMessages((prev) => [...prev, { role: "user", content: text }]);
 
-    if (selectedMode === "Tarot" && text.trim()) {
-      setStep("selecting");
+    // ❌ chưa chọn mode
+    if (!mode || mode === "Select mode") return;
+
+    // =========================
+    // 🔮 TAROT MODE
+    // =========================
+    if (mode === "Tarot") {
+      // 🔥 CASE 1: có IMAGE → gọi API luôn
+      if (images.length > 0) {
+        await callTarotAPI(text, images, null);
+      }
+
+      // 🔥 CASE 2: AUDIO hoặc TEXT → phải chọn bài
+      else {
+        setStep("selecting");
+      }
     }
   };
 
-  const handleReveal = async () => {
+  // =========================
+  // 🔥 CALL API
+  // =========================
+  const callTarotAPI = async (question, images = [], audio = null) => {
     try {
       setStep("revealed");
 
       const res = await getTarotReading({
         question,
+        images,
+        audio,
       });
 
-      // 🔥 attach image vào card
       const mappedCards = res.cards.map((c) => ({
         ...c,
         image: getCardImage(c.name),
@@ -71,8 +93,15 @@ export default function ChatPage() {
         },
       ]);
     } catch (err) {
-      console.error(err);
+      console.error("API ERROR:", err);
     }
+  };
+
+  // =========================
+  // 🔥 SAU KHI CHỌN 3 LÁ
+  // =========================
+  const handleReveal = async () => {
+    await callTarotAPI(question);
   };
 
   return (
@@ -84,52 +113,64 @@ export default function ChatPage() {
           collapsed ? styles.mainCollapsed : styles.mainExpanded
         }`}
       >
-        {/* IDLE */}
+        {/* ===== IDLE ===== */}
         {step === "idle" && (
-          <>
+          <div className={styles.chatOnly}>
             <ChatHeader />
-            <ChatBox messages={messages} />
-          </>
+
+            <div className={styles.chatCenter}>
+              <ChatBox messages={messages} />
+            </div>
+
+            <ChatInput onSend={handleSend} />
+          </div>
         )}
 
-        {/* SELECT */}
+        {/* ===== SELECT ===== */}
         {step === "selecting" && (
           <TarotBoard onSelect={handleReveal} />
         )}
 
-        {/* RESULT */}
+        {/* ===== RESULT ===== */}
         {step === "revealed" && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 300px",
-              height: "100%",
-            }}
-          >
-            {/* CHAT */}
-            <div style={{ display: "flex", justifyContent: "center" }}>
-              <div style={{ width: "100%", maxWidth: "650px" }}>
-                <ChatBox messages={messages} />
-              </div>
+          <div className={styles.resultLayout}>
+            {/* 💬 CHAT */}
+            <div className={styles.chatPanel}>
+              <ChatBox messages={messages} />
+              <ChatInput onSend={handleSend} />
             </div>
 
-            {/* TAROT */}
-            <div>
-              <TarotBoard revealed cards={cards} />
-
-              <div style={{ marginTop: 20, color: "white" }}>
+            {/* 🔮 TAROT */}
+            <div className={styles.rightPanel}>
+              <div className={styles.tarotList}>
                 {cards.map((c, i) => (
-                  <div key={i}>
-                    🔮 <b>{c.name}</b>{" "}
-                    ({c.orientation === "upright" ? "↑" : "↓"})
+                  <div key={i} className={styles.tarotItem}>
+                    <div className={styles.imgWrapper}>
+                      <img
+                        src={c.image}
+                        style={{
+                          transform:
+                            c.orientation === "reversed"
+                              ? "rotate(180deg)"
+                              : "none",
+                        }}
+                      />
+                    </div>
+
+                    <div className={styles.tarotText}>
+                      <b>{c.name}</b>
+                      <div>
+                        {c.orientation === "upright"
+                          ? "↑ Upright"
+                          : "↓ Reversed"}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           </div>
         )}
-
-        <ChatInput onSend={handleSend} />
       </div>
     </div>
   );
