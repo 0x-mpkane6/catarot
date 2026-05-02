@@ -94,7 +94,7 @@ def save_rating(*, session_id: int, score: int, note: str | None) -> dict[str, A
     with session_scope() as session:
         reading = session.scalar(select(Reading).where(Reading.session_id == session_id))
         if reading is None:
-            raise ValueError("reading session not found")
+            raise ValueError("reading not found for this session")
 
         reading.accuracy_score = score
         reading.accuracy_note = clean_note

@@ -55,6 +55,8 @@ def list_community_feed(page: int = 1, page_size: int = 20) -> dict:
     page_size = max(1, min(page_size, 50))
     offset = (page - 1) * page_size
 
+    # Load posts + all their interpretations in a single session to avoid
+    # the N+1 anti-pattern (one extra query per post).
     with session_scope() as session:
         posts = session.scalars(
             select(CommunityPost)
@@ -64,27 +66,43 @@ def list_community_feed(page: int = 1, page_size: int = 20) -> dict:
             .limit(page_size)
         ).all()
 
-    items: list[dict] = []
-    for post in posts:
-        post_payload = _post_payload(post)
-        with session_scope() as session:
-            interpretations = session.scalars(
-                select(CommunityInterpretation)
-                .where(CommunityInterpretation.post_id == post.id)
-                .order_by(CommunityInterpretation.vote_count.desc(), CommunityInterpretation.created_at.asc())
-                .limit(20)
-            ).all()
-        post_payload["interpretations"] = [
-            {
-                "id": row.id,
-                "content": row.content,
-                "vote_count": row.vote_count,
-                "resonated_by_post_owner": bool(row.resonated_by_post_owner),
-                "created_at": row.created_at.isoformat() if row.created_at else None,
-            }
-            for row in interpretations
-        ]
-        items.append(post_payload)
+        if not posts:
+            return {"page": page, "page_size": page_size, "items": []}
+
+        post_ids = [p.id for p in posts]
+
+        # Fetch all interpretations for the current page of posts at once.
+        all_interps = session.scalars(
+            select(CommunityInterpretation)
+            .where(CommunityInterpretation.post_id.in_(post_ids))
+            .order_by(
+                CommunityInterpretation.vote_count.desc(),
+                CommunityInterpretation.created_at.asc(),
+            )
+        ).all()
+
+        # Group interpretations by post_id, keeping at most 20 per post.
+        interp_map: dict[int, list[CommunityInterpretation]] = {pid: [] for pid in post_ids}
+        for interp in all_interps:
+            bucket = interp_map.get(interp.post_id)
+            if bucket is not None and len(bucket) < 20:
+                bucket.append(interp)
+
+        items: list[dict] = []
+        for post in posts:
+            post_payload = _post_payload(post)
+            post_payload["interpretations"] = [
+                {
+                    "id": row.id,
+                    "content": row.content,
+                    "vote_count": row.vote_count,
+                    "resonated_by_post_owner": bool(row.resonated_by_post_owner),
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                }
+                for row in interp_map.get(post.id, [])
+            ]
+            items.append(post_payload)
+
     return {"page": page, "page_size": page_size, "items": items}
 
 

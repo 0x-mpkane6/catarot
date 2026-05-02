@@ -126,6 +126,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins_from_env(),
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -227,6 +228,10 @@ class InterpretationRequest(BaseModel):
 
 class ModerationRequest(BaseModel):
     reason: str | None = None
+
+
+class JoinByInviteRequest(BaseModel):
+    invite_code: str = Field(min_length=1)
 
 
 class DailyCardDrawRequest(BaseModel):
@@ -548,9 +553,9 @@ async def duo_join(duo_session_id: int, current_user: CurrentUser = Depends(get_
 
 
 @app.post("/api/duo/sessions/join_by_invite")
-async def duo_join_by_invite(invite_code: str = Form(...), current_user: CurrentUser = Depends(get_current_user)):
+async def duo_join_by_invite(req: JoinByInviteRequest, current_user: CurrentUser = Depends(get_current_user)):
     try:
-        payload = join_duo_by_invite(invite_code=invite_code, user_id=current_user.id)
+        payload = join_duo_by_invite(invite_code=req.invite_code, user_id=current_user.id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     await DUO_WS_MANAGER.broadcast(payload["id"], {"type": "duo_joined", "data": payload})

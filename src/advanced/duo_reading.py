@@ -151,9 +151,11 @@ def join_duo_session(duo_session_id: int, user_id: int) -> dict[str, Any]:
                     slot_label="B",
                 )
             )
-
-        row.status = "waiting_cards"
-        row.updated_at = datetime.now(timezone.utc)
+            # Only advance status when a *new* participant actually joins.
+            # If the owner calls join on their own session, the status must
+            # remain "waiting_partner" until a real second player arrives.
+            row.status = "waiting_cards"
+            row.updated_at = datetime.now(timezone.utc)
         session.flush()
 
     reloaded = _load_duo_session(duo_session_id)
@@ -243,13 +245,39 @@ def submit_duo_card(
         if len(cards) >= 2 and len(participants) >= 2:
             duo.status = "generating"
             duo.updated_at = datetime.now(timezone.utc)
-            session.flush()
-
-            narrative, llm_model = _generate_duo_reading(cards[:2])
-            duo.status = "completed"
+            # Capture card data before closing the session so the LLM call
+            # happens *outside* the DB transaction (avoids holding the write
+            # lock for the full LLM latency of up to ~120 s).
+            cards_for_reading = [(c.card_name, c.orientation) for c in cards[:2]]
+            generate_reading = True
+        else:
+            duo.status = "waiting_cards"
             duo.updated_at = datetime.now(timezone.utc)
-            reading = session.scalar(select(DuoReading).where(DuoReading.duo_session_id == duo_session_id))
-            if reading is None:
+            cards_for_reading = []
+            generate_reading = False
+        session.flush()
+
+    # Phase 2: LLM generation is intentionally outside any session_scope so
+    # the database connection is not held during the potentially slow call.
+    if generate_reading:
+        # Build lightweight DuoCard-like objects to pass into the generator.
+        class _CardProxy:
+            def __init__(self, name: str, orientation: str) -> None:
+                self.card_name = name
+                self.orientation = orientation
+
+        proxy_cards = [_CardProxy(n, o) for n, o in cards_for_reading]
+        narrative, llm_model = _generate_duo_reading(proxy_cards)  # type: ignore[arg-type]
+
+        with session_scope() as session:
+            duo = session.scalar(select(DuoSession).where(DuoSession.id == duo_session_id))
+            if duo is not None:
+                duo.status = "completed"
+                duo.updated_at = datetime.now(timezone.utc)
+            existing_reading = session.scalar(
+                select(DuoReading).where(DuoReading.duo_session_id == duo_session_id)
+            )
+            if existing_reading is None:
                 session.add(
                     DuoReading(
                         duo_session_id=duo_session_id,
@@ -258,12 +286,8 @@ def submit_duo_card(
                     )
                 )
             else:
-                reading.generated_text = narrative
-                reading.llm_model = llm_model
-        else:
-            duo.status = "waiting_cards"
-            duo.updated_at = datetime.now(timezone.utc)
-        session.flush()
+                existing_reading.generated_text = narrative
+                existing_reading.llm_model = llm_model
 
     reloaded = _load_duo_session(duo_session_id)
     assert reloaded is not None
