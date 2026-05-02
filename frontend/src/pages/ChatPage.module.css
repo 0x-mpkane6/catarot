@@ -12,20 +12,14 @@
 
 .main {
   flex: 1;
-
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-
   padding: 40px;
+  transition: margin-left 0.3s ease;
 
-  transition: margin-left 0.3s ease; /* thêm */
+  overflow: hidden; /* 🔥 quan trọng */
 }
-
-/* thêm
-.shifted {
-  margin-left: 260px;
-} */
 
 .mainExpanded {
   margin-left: 260px;
@@ -33,4 +27,133 @@
 
 .mainCollapsed {
   margin-left: 70px;
+}
+
+/* ===== IDLE ===== */
+.chatOnly {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.chatCenter {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* ===== RESULT ===== */
+.resultLayout {
+  flex: 1;
+  display: flex;
+  gap: 30px;
+  overflow: hidden;
+}
+
+/* ===== CHAT ===== */
+.chatPanel {
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  overflow: hidden; 
+}
+
+/* chat content */
+.chatPanel > div:first-child {
+  flex: 1;
+  width: 100%;
+  max-width: 650px;
+
+  overflow-y: auto;
+}
+
+/* chat input */
+.chatPanel > div:last-child {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+/* ===== SCROLLBAR ===== */
+.chatPanel > div:first-child::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chatPanel > div:first-child::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #9333ea, #7c3aed);
+  border-radius: 10px;
+}
+
+/* ===== TAROT ===== */
+.rightPanel {
+  width: 320px;
+  min-width: 320px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  padding-top: 20px;
+
+  border-left: 1px solid rgba(255,255,255,0.1);
+}
+
+/* wrapper */
+.tarotList {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+  width: 100%;
+  max-width: 400px;
+
+  margin: 0 auto;
+  padding-left: 10px; /* giảm nhẹ thôi cho đẹp */
+}
+
+/* từng item */
+.tarotItem {
+  display: grid;
+  grid-template-columns: 90px 1fr; /* 🔥 FIX CỨNG */
+
+  align-items: center;
+  gap: 16px;
+
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+/* wrapper ảnh */
+.imgWrapper {
+  width: 90px;
+  height: 140px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ảnh */
+.tarotItem img {
+  width: 90px;
+  height: 140px;
+  border-radius: 12px;
+  object-fit: cover;
+  display: block;
+}
+
+/* text */
+.tarotText {
+  color: #EDE9FE;
+  font-family: "Playfair Display", serif;
+  font-size: 16px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }

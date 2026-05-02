@@ -2,7 +2,6 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-
   margin-top: 40px;
   gap: 30px;
 }
@@ -17,12 +16,10 @@
 .card {
   width: 110px;
   height: 160px;
-
   cursor: pointer;
-
   transition: all 0.25s ease;
 
-  /* 🔥 overlap */
+  /* overlap */
   margin-left: -45px;
 }
 
@@ -52,14 +49,21 @@
 
 /* ===== CENTER MODE ===== */
 .centerMode {
-  flex-direction: row;
+  display: flex;
   justify-content: center;
-  gap: 20px;
-  margin-top: 0; /* bỏ center cũ */
+  align-items: center;
 }
 
+/* wrapper khi đã lật */
+.revealedWrapper {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+/* card khi reveal */
 .centerMode .card {
   margin-left: 0;
-  width: 90px;
-  height: 130px;
+  width: 100px;
+  height: 150px;
 }

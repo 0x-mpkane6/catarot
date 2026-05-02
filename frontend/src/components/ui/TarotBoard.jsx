@@ -7,7 +7,7 @@ export default function TarotBoard({ onSelect, revealed, cards = [] }) {
 
   const TOTAL = 36;
 
-  // 🔥 reset khi bắt đầu lượt mới
+  // reset khi bắt đầu lượt mới
   useEffect(() => {
     if (!revealed) {
       setPicked([]);
@@ -52,7 +52,7 @@ export default function TarotBoard({ onSelect, revealed, cards = [] }) {
                 }`}
                 onClick={() => handlePick(i)}
               >
-                <img src={back} />
+                <img src={back} alt="card-back" />
               </div>
             ))}
           </div>
@@ -66,27 +66,33 @@ export default function TarotBoard({ onSelect, revealed, cards = [] }) {
                 }`}
                 onClick={() => handlePick(i)}
               >
-                <img src={back} />
+                <img src={back} alt="card-back" />
               </div>
             ))}
           </div>
         </>
       ) : (
         /* 🔥 ĐÃ LẬT */
-        cards.map((card, idx) => (
-          <div key={idx} className={styles.card}>
-            <img
-              src={card.image}
-              style={{
-                transform:
-                  card.orientation === "reversed"
-                    ? "rotate(180deg)"
-                    : "rotate(0deg)",
-                transition: "transform 0.4s ease", // 🔥 smooth hơn
-              }}
-            />
-          </div>
-        ))
+        <div className={styles.revealedWrapper}>
+          {cards.map((card, idx) => (
+            <div key={idx} className={styles.card}>
+              <img
+                src={card.image}
+                alt={card.name}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  transform:
+                    card.orientation === "reversed"
+                      ? "rotate(180deg)"
+                      : "rotate(0deg)",
+                  transition: "transform 0.4s ease",
+                }}
+              />
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
