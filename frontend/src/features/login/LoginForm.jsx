@@ -13,31 +13,52 @@ export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-const handleLogin = async () => {
-  try {
+  const [rememberMe, setRememberMe] = useState(false);
 
-    // validate empty fields
-    if (!email || !password) {
-      toast.error("Please fill all fields");
-      return;
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    try {
+      setLoading(true);
+
+      // validate empty fields
+      if (!email || !password) {
+        toast.error("Please fill all fields");
+        return;
+      }
+
+      const res = await login(
+        email.trim(),
+        password.trim()
+      );
+
+      // remember me
+      if (rememberMe) {
+        localStorage.setItem("token", res.token);
+
+        localStorage.setItem(
+          "user",
+          JSON.stringify(res.user)
+        );
+      } else {
+        sessionStorage.setItem("token", res.token);
+
+        sessionStorage.setItem(
+          "user",
+          JSON.stringify(res.user)
+        );
+      }
+
+      toast.success("Welcome back!");
+
+      navigate("/chat");
+
+    } catch (err) {
+      toast.error("Invalid email or password");
+    } finally {
+      setLoading(false);
     }
-
-    const res = await login(
-      email.trim(),
-      password.trim()
-    );
-
-    localStorage.setItem("token", res.token);
-    localStorage.setItem("user", JSON.stringify(res.user));
-
-    toast.success("Welcome back!");
-
-    navigate("/chat");
-
-  } catch (err) {
-    toast.error("Invalid email or password");
-  }
-};
+  };
 
   return (
     <div className={styles.container}>
@@ -46,42 +67,65 @@ const handleLogin = async () => {
 
       {/* RIGHT */}
       <div className={styles.right}>
-        <h2 className={styles.title}>Welcome back!</h2>
+        <h2 className={styles.title}>
+          Welcome back!
+        </h2>
 
         {/* GOOGLE */}
         <button className={styles.googleBtn}>
-          <img src={googleIcon} />
+          <img src={googleIcon} alt="google" />
           Google
         </button>
 
         <div className={styles.divider}>Or</div>
 
-        {/* INPUT */}
+        {/* EMAIL */}
         <input
           className={styles.input}
           placeholder="Example@gmail.com"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) =>
+            setEmail(e.target.value)
+          }
         />
 
+        {/* PASSWORD */}
         <input
           type="password"
           className={styles.input}
           placeholder="Password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) =>
+            setPassword(e.target.value)
+          }
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              handleLogin();
+            }
+          }}
         />
 
         {/* ROW */}
         <div className={styles.row}>
           <label className={styles.remember}>
-            <input type="checkbox" />
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) =>
+                setRememberMe(
+                  e.target.checked
+                )
+              }
+            />
+
             Remember me
           </label>
 
           <span
             className={styles.link}
-            onClick={() => navigate("/forgot-password")}
+            onClick={() =>
+              navigate("/forgot-password")
+            }
           >
             Forgot Password?
           </span>
@@ -90,17 +134,27 @@ const handleLogin = async () => {
         {/* LOGIN */}
         <button
           className={styles.loginBtn}
-          onClick={handleLogin} 
+          onClick={handleLogin}
+          disabled={loading}
+          style={{
+            opacity: loading ? 0.7 : 1,
+            cursor: loading
+              ? "not-allowed"
+              : "pointer",
+          }}
         >
-          Log in
+          {loading ? "Logging in..." : "Log in"}
         </button>
 
         {/* SIGN UP */}
         <p className={styles.signup}>
           Don’t have an account?{" "}
+
           <span
             className={styles.link}
-            onClick={() => navigate("/signin")}
+            onClick={() =>
+              navigate("/signin")
+            }
           >
             Sign up
           </span>
@@ -109,3 +163,4 @@ const handleLogin = async () => {
     </div>
   );
 }
+
