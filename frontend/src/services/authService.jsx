@@ -1,19 +1,24 @@
+import api from "./api";
+
 export const login = async (email, password) => {
-  // giả lập delay giống API
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  const response = await api.post("/api/auth/login", {
+    email,
+    password,
+  });
 
-  // mock data
-  if (email === "admin@gmail.com" && password === "123456") {
-    return {
-      success: true,
-      user: {
-        id: 1,
-        name: "Admin",
-        email: "admin@gmail.com",
-      },
-      token: "fake-jwt-token-123",
-    };
-  }
+  return response.data;
+};
 
-  throw new Error("Sai email hoặc mật khẩu");
+export const register = async (
+  email,
+  password,
+  role = "member"
+) => {
+  const response = await api.post("/api/auth/register", {
+    email,
+    password,
+    role,
+  });
+
+  return response.data;
 };

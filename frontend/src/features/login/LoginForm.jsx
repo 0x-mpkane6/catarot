@@ -5,27 +5,39 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { login } from "../../services/authService";
 
+import toast from "react-hot-toast";
+
 export default function LoginForm() {
   const navigate = useNavigate();
 
-  // 🔥 thêm state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // 🔥 thêm handle login
-  const handleLogin = async () => {
-    try {
-      const res = await login(email, password);
+const handleLogin = async () => {
+  try {
 
-      localStorage.setItem("token", res.token);
-      localStorage.setItem("user", JSON.stringify(res.user));
-
-      // 👉 chuyển trang
-      navigate("/chat");
-    } catch (err) {
-      alert(err.message);
+    // validate empty fields
+    if (!email || !password) {
+      toast.error("Please fill all fields");
+      return;
     }
-  };
+
+    const res = await login(
+      email.trim(),
+      password.trim()
+    );
+
+    localStorage.setItem("token", res.token);
+    localStorage.setItem("user", JSON.stringify(res.user));
+
+    toast.success("Welcome back!");
+
+    navigate("/chat");
+
+  } catch (err) {
+    toast.error("Invalid email or password");
+  }
+};
 
   return (
     <div className={styles.container}>
@@ -47,7 +59,7 @@ export default function LoginForm() {
         {/* INPUT */}
         <input
           className={styles.input}
-          placeholder="username or email"
+          placeholder="Example@gmail.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -55,7 +67,7 @@ export default function LoginForm() {
         <input
           type="password"
           className={styles.input}
-          placeholder="password"
+          placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -78,7 +90,7 @@ export default function LoginForm() {
         {/* LOGIN */}
         <button
           className={styles.loginBtn}
-          onClick={handleLogin} // 🔥 thêm dòng này
+          onClick={handleLogin} 
         >
           Log in
         </button>
@@ -88,7 +100,7 @@ export default function LoginForm() {
           Don’t have an account?{" "}
           <span
             className={styles.link}
-            onClick={() => navigate("/signup")}
+            onClick={() => navigate("/signin")}
           >
             Sign up
           </span>
