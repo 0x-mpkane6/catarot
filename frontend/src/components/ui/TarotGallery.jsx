@@ -1,32 +1,34 @@
 import CircularGallery from "./CircularGallery";
 
-import theChariot from "../../assets/images/homepage/the-chariot.png";
-import theEmperor from "../../assets/images/homepage/the-emperor.png";
-import theHierophant from "../../assets/images/homepage/the-hierophant.png";
-import theMoon from "../../assets/images/homepage/the-moon.png";
-import justice from "../../assets/images/homepage/justice.png";
+import dailyTarot from "../../assets/images/homepage/the-princess.png";
+import timeCapsule from "../../assets/images/homepage/the-emperor.png";
+import tarotReading from "../../assets/images/homepage/the-magician.png";
+import duoReading from "../../assets/images/homepage/the-lovers.png";
+import communityRoom from "../../assets/images/homepage/the-world.png";
 
-export default function TarotGallery() {
+export default function TarotGallery({
+  onCardClick,
+}) {
   const tarotCards = [
     {
-      image: theChariot,
-      text: "The Chariot",
+      image: dailyTarot,
+      text: "Daily Tarot",
     },
     {
-      image: theEmperor,
-      text: "The Emperor",
+      image: timeCapsule,
+      text: "Time Capsule",
     },
     {
-      image: theHierophant,
-      text: "The Hierophant",
+      image: tarotReading,
+      text: "Tarot Reading",
     },
     {
-      image: theMoon,
-      text: "The Moon",
+      image: duoReading,
+      text: "Duo Reading",
     },
     {
-      image: justice,
-      text: "Justice",
+      image: communityRoom,
+      text: "Community Room",
     },
   ];
 
@@ -44,12 +46,11 @@ export default function TarotGallery() {
       }}
     >
       <CircularGallery
+        onCardClick={onCardClick}
         items={tarotCards}
         bend={1}
         textColor="#ffffff"
         borderRadius={0.05}
-        scrollSpeed={2}
-        scrollEase={0.05}
 
         scrollSpeed={1.2}
         scrollEase={0.03}   

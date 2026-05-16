@@ -24,28 +24,76 @@ function autoBind(instance) {
   });
 }
 
-function createTextTexture(gl, text, font = 'bold 30px monospace', color = 'black') {
-  const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d');
+function createTextTexture(
+  gl,
+  text,
+  font = "500 34px Cinzel",
+  color = "#ffccff"
+) {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  // set font trước để measure
   context.font = font;
+
   const metrics = context.measureText(text);
+
   const textWidth = Math.ceil(metrics.width);
-  const textHeight = Math.ceil(parseInt(font, 10) * 1.2);
-  canvas.width = textWidth + 20;
-  canvas.height = textHeight + 20;
+
+  // lấy đúng số px trong string font
+  const fontSize =
+    parseInt(font.match(/(\d+)px/)?.[1] || 32, 10);
+
+  const textHeight =
+    Math.ceil(fontSize * 1.2);
+
+  // set canvas size
+  canvas.width = textWidth + 40;
+  canvas.height = textHeight + 40;
+
+  // phải set lại font sau resize canvas
   context.font = font;
+
   context.fillStyle = color;
-  context.textBaseline = 'middle';
-  context.textAlign = 'center';
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  context.fillText(text, canvas.width / 2, canvas.height / 2);
-  const texture = new Texture(gl, { generateMipmaps: false });
+
+  context.textBaseline = "middle";
+  context.textAlign = "center";
+
+  context.clearRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  context.fillText(
+    text,
+    canvas.width / 2,
+    canvas.height / 2
+  );
+
+  const texture = new Texture(gl, {
+    generateMipmaps: false
+  });
+
   texture.image = canvas;
-  return { texture, width: canvas.width, height: canvas.height };
+
+  return {
+    texture,
+    width: canvas.width,
+    height: canvas.height
+  };
 }
 
 class Title {
-  constructor({ gl, plane, renderer, text, textColor = '#545050', font = '30px sans-serif' }) {
+  constructor({
+    gl,
+    plane,
+    renderer,
+    text,
+    textColor = '#ffccff',
+    font = "500 34px Cinzel"
+  }) {
     autoBind(this);
     this.gl = gl;
     this.plane = plane;
@@ -72,12 +120,25 @@ class Title {
       `,
       fragment: `
         precision highp float;
+
         uniform sampler2D tMap;
+
         varying vec2 vUv;
+
         void main() {
+
           vec4 color = texture2D(tMap, vUv);
+
           if (color.a < 0.1) discard;
-          gl_FragColor = color;
+
+          float glow =
+            smoothstep(0.2, 0.8, color.a);
+
+          vec3 finalColor =
+            color.rgb + vec3(0.35, 0.1, 0.35) * glow * 0.25;
+
+          gl_FragColor =
+            vec4(finalColor, color.a);
         }
       `,
       uniforms: { tMap: { value: texture } },
@@ -88,13 +149,15 @@ class Title {
     const textHeight = this.plane.scale.y * 0.15;
     const textWidth = textHeight * aspect;
     this.mesh.scale.set(textWidth, textHeight, 1);
-    this.mesh.position.y = -this.plane.scale.y * 0.5 - textHeight * 0.5 - 0.05;
+    this.mesh.position.y =-this.plane.scale.y * 0.5 - textHeight * 0.30 - 0.05;
     this.mesh.setParent(this.plane);
   }
 }
 
 class Media {
   constructor({
+    data,
+    onCardClick,  
     geometry,
     gl,
     image,
@@ -110,6 +173,8 @@ class Media {
     borderRadius = 0,
     font
   }) {
+    this.data = data;
+    this.onCardClick = onCardClick;
     this.extra = 0;
     this.geometry = geometry;
     this.gl = gl;
@@ -127,8 +192,47 @@ class Media {
     this.font = font;
     this.createShader();
     this.createMesh();
-    // this.createTitle();
+    this.createTitle();
     this.onResize();
+
+    this.hover = 0;
+
+    window.addEventListener(
+      "mousemove",
+      this.onMouseMove.bind(this)
+    );
+
+  }
+  onClick(e) {
+
+    const mouseX =
+      (e.clientX / window.innerWidth) * 2 - 1;
+
+    const mouseY =
+      -(e.clientY / window.innerHeight) * 2 + 1;
+
+    const cardX =
+      this.plane.position.x /
+      (this.viewport.width * 0.5);
+
+    const cardY =
+      this.plane.position.y /
+      (this.viewport.height * 0.5);
+
+    const cardWidth = this.plane.scale.x / this.viewport.width;
+
+    const cardHeight = this.plane.scale.y / this.viewport.height;
+
+    const insideX = Math.abs(mouseX - cardX) < cardWidth * 0.45;
+
+    const insideY = Math.abs(mouseY - cardY) < cardHeight * 0.45;
+
+    if (insideX && insideY) {
+
+      if (this.onCardClick) {
+        this.onCardClick(this.data);
+      }
+    }
   }
   createShader() {
     const texture = new Texture(this.gl, {
@@ -159,6 +263,7 @@ class Media {
         uniform vec2 uPlaneSizes;
         uniform sampler2D tMap;
         uniform float uBorderRadius;
+        uniform float uHover;
         varying vec2 vUv;
         
         float roundedBoxSDF(vec2 p, vec2 b, float r) {
@@ -176,14 +281,25 @@ class Media {
             vUv.y * ratio.y + (1.0 - ratio.y) * 0.5
           );
           vec4 color = texture2D(tMap, uv);
-          
+          vec2 center = vUv - 0.5;
+
+          float glow =
+            0.45 / length(center * 1.15);
+
+          glow = pow(glow, 1.2);
+
+          vec3 glowColor =
+            vec3(0.85, 0.45, 1.0) *
+            glow *
+            uHover * 0.4;
+
           float d = roundedBoxSDF(vUv - 0.5, vec2(0.5 - uBorderRadius), uBorderRadius);
           
           // Smooth antialiasing for edges
           float edgeSmooth = 0.002;
           float alpha = 1.0 - smoothstep(-edgeSmooth, edgeSmooth, d);
           
-          gl_FragColor = vec4(color.rgb, alpha);
+          gl_FragColor = vec4(color.rgb + glowColor, alpha);
         }
       `,
       uniforms: {
@@ -192,7 +308,8 @@ class Media {
         uImageSizes: { value: [0, 0] },
         uSpeed: { value: 0 },
         uTime: { value: 100 * Math.random() },
-        uBorderRadius: { value: this.borderRadius }
+        uBorderRadius: { value: this.borderRadius },
+        uHover: { value: 0 }
       },
       transparent: true
     });
@@ -209,7 +326,12 @@ class Media {
       geometry: this.geometry,
       program: this.program
     });
+    this.hover = 0;
     this.plane.setParent(this.scene);
+    window.addEventListener(
+      "click",
+      this.onClick.bind(this)
+    );
   }
   createTitle() {
     this.title = new Title({
@@ -218,9 +340,36 @@ class Media {
       renderer: this.renderer,
       text: this.text,
       textColor: this.textColor,
-      fontFamily: this.font
+      font: this.font
     });
   }
+
+ onMouseMove(e) {
+
+  const mouseX =
+    (e.clientX / window.innerWidth) * 2 - 1;
+
+  const mouseY =
+    -(e.clientY / window.innerHeight) * 2 + 1;
+
+  const cardX =
+    this.plane.position.x /
+    (this.viewport.width * 0.5);
+
+  const cardY =
+    this.plane.position.y /
+    (this.viewport.height * 0.5);
+
+  const dx = mouseX - cardX;
+  const dy = mouseY - cardY;
+
+  const distance =
+    Math.sqrt(dx * dx + dy * dy);
+
+  this.hover =
+    Math.max(0, 1 - distance * 6);
+}
+
   update(scroll, direction) {
     this.plane.position.x = this.x - scroll.current - this.extra;
 
@@ -248,6 +397,11 @@ class Media {
     this.speed = scroll.current - scroll.last;
     this.program.uniforms.uTime.value += 0.04;
     this.program.uniforms.uSpeed.value = this.speed;
+    this.program.uniforms.uHover.value = lerp(
+      this.program.uniforms.uHover.value,
+      this.hover,
+      0.1
+    );
 
     const planeOffset = this.plane.scale.x / 2;
 
@@ -305,16 +459,18 @@ class App {
   constructor(
     container,
     {
+      onCardClick,
       items,
       bend,
       textColor = '#ffffff',
       borderRadius = 0,
-      font = 'bold 30px Figtree',
+      font = "800 34px sans-serif",
       scrollSpeed = 2,
       scrollEase = 0.05
     } = {}
-  ) {
+) {
     document.documentElement.classList.remove('no-js');
+    this.onCardClick = onCardClick;
     this.container = container;
     this.scrollSpeed = scrollSpeed;
     this.scroll = { ease: scrollEase, current: 0, target: 0, last: 0 };
@@ -373,20 +529,32 @@ class App {
       return new Media({
         geometry: this.planeGeometry,
         gl: this.gl,
+
         image: data.image,
+
+        data,
+
+        onCardClick: this.onCardClick,
+
         index,
         length: this.mediasImages.length,
+
         renderer: this.renderer,
         scene: this.scene,
+
         screen: this.screen,
+
         text: data.text,
+
         viewport: this.viewport,
+
         bend,
         textColor,
         borderRadius,
         font
       });
     });
+    
   }
   onTouchDown(e) {
     this.isDown = true;
@@ -480,13 +648,14 @@ export default function CircularGallery({
   bend = 3,
   textColor = '#ffffff',
   borderRadius = 0.05,
-  font = 'bold 30px Figtree',
+  font = "800 34px sans-serif",
   scrollSpeed = 2,
-  scrollEase = 0.05
+  scrollEase = 0.05,
+  onCardClick
 }) {
   const containerRef = useRef(null);
   useEffect(() => {
-    const app = new App(containerRef.current, { items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase });
+    const app = new App(containerRef.current, {onCardClick, items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase });
     return () => {
       app.destroy();
     };
