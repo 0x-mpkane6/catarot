@@ -1,6 +1,13 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  useEffect,
+} from "react";
+
 import { gsap } from "gsap";
 import { GoArrowUpRight } from "react-icons/go";
+
 import "./CardNav.css";
 
 const CardNav = ({
@@ -21,45 +28,83 @@ const CardNav = ({
   buttonLabel = "Get Started",
   onButtonClick,
 }) => {
-  const [isHamburgerOpen, setIsHamburgerOpen] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+
+  const [isHamburgerOpen, setIsHamburgerOpen] =
+    useState(false);
+
+  const [isExpanded, setIsExpanded] =
+    useState(false);
 
   const navRef = useRef(null);
   const cardsRef = useRef([]);
   const tlRef = useRef(null);
 
   const calculateHeight = () => {
+
     const navEl = navRef.current;
+
     if (!navEl) return 260;
 
-    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+    const isMobile =
+      window.matchMedia("(max-width: 768px)")
+        .matches;
 
     if (isMobile) {
-      const contentEl = navEl.querySelector(".card-nav-content");
+
+      const contentEl =
+        navEl.querySelector(".card-nav-content");
 
       if (contentEl) {
-        const wasVisible = contentEl.style.visibility;
-        const wasPointerEvents = contentEl.style.pointerEvents;
-        const wasPosition = contentEl.style.position;
-        const wasHeight = contentEl.style.height;
 
-        contentEl.style.visibility = "visible";
-        contentEl.style.pointerEvents = "auto";
-        contentEl.style.position = "static";
-        contentEl.style.height = "auto";
+        const wasVisible =
+          contentEl.style.visibility;
+
+        const wasPointerEvents =
+          contentEl.style.pointerEvents;
+
+        const wasPosition =
+          contentEl.style.position;
+
+        const wasHeight =
+          contentEl.style.height;
+
+        contentEl.style.visibility =
+          "visible";
+
+        contentEl.style.pointerEvents =
+          "auto";
+
+        contentEl.style.position =
+          "static";
+
+        contentEl.style.height =
+          "auto";
 
         contentEl.offsetHeight;
 
         const topBar = 60;
         const padding = 16;
-        const contentHeight = contentEl.scrollHeight;
 
-        contentEl.style.visibility = wasVisible;
-        contentEl.style.pointerEvents = wasPointerEvents;
-        contentEl.style.position = wasPosition;
-        contentEl.style.height = wasHeight;
+        const contentHeight =
+          contentEl.scrollHeight;
 
-        return topBar + contentHeight + padding;
+        contentEl.style.visibility =
+          wasVisible;
+
+        contentEl.style.pointerEvents =
+          wasPointerEvents;
+
+        contentEl.style.position =
+          wasPosition;
+
+        contentEl.style.height =
+          wasHeight;
+
+        return (
+          topBar +
+          contentHeight +
+          padding
+        );
       }
     }
 
@@ -67,6 +112,7 @@ const CardNav = ({
   };
 
   const createTimeline = () => {
+
     const navEl = navRef.current;
 
     if (!navEl) return null;
@@ -81,11 +127,13 @@ const CardNav = ({
       opacity: 0,
     });
 
-    const tl = gsap.timeline({ paused: true });
+    const tl = gsap.timeline({
+      paused: true,
+    });
 
     tl.to(navEl, {
       height: calculateHeight,
-      duration: 0.4,
+      duration: 0.3,
       ease,
     });
 
@@ -105,22 +153,30 @@ const CardNav = ({
   };
 
   useLayoutEffect(() => {
+
     const tl = createTimeline();
 
     tlRef.current = tl;
 
     return () => {
+
       tl?.kill();
+
       tlRef.current = null;
     };
+
   }, [ease, items]);
 
   useLayoutEffect(() => {
+
     const handleResize = () => {
+
       if (!tlRef.current) return;
 
       if (isExpanded) {
-        const newHeight = calculateHeight();
+
+        const newHeight =
+          calculateHeight();
 
         gsap.set(navRef.current, {
           height: newHeight,
@@ -128,77 +184,150 @@ const CardNav = ({
 
         tlRef.current.kill();
 
-        const newTl = createTimeline();
+        const newTl =
+          createTimeline();
 
         if (newTl) {
+
           newTl.progress(1);
+
           tlRef.current = newTl;
         }
+
       } else {
+
         tlRef.current.kill();
 
-        const newTl = createTimeline();
+        const newTl =
+          createTimeline();
 
         if (newTl) {
+
           tlRef.current = newTl;
         }
       }
     };
 
-    window.addEventListener("resize", handleResize);
+    window.addEventListener(
+      "resize",
+      handleResize
+    );
 
-    return () => window.removeEventListener("resize", handleResize);
+    return () => {
+
+      window.removeEventListener(
+        "resize",
+        handleResize
+      );
+    };
+
   }, [isExpanded]);
 
+  const closeMenu = () => {
+
+    const tl = tlRef.current;
+
+    setIsHamburgerOpen(false);
+    setIsExpanded(false);
+
+    tl?.reverse();
+  };
+
   const toggleMenu = () => {
+
     const tl = tlRef.current;
 
     if (!tl) return;
 
     if (!isExpanded) {
+
       setIsHamburgerOpen(true);
       setIsExpanded(true);
 
       tl.play(0);
+
     } else {
-      setIsHamburgerOpen(false);
 
-      tl.eventCallback("onReverseComplete", () =>
-        setIsExpanded(false)
-      );
-
-      tl.reverse();
+      closeMenu();
     }
   };
 
+  useEffect(() => {
+
+    const handleClickOutside = (e) => {
+
+      if (
+        navRef.current &&
+        !navRef.current.contains(
+          e.target
+        )
+      ) {
+
+        if (isExpanded) {
+
+          closeMenu();
+        }
+      }
+    };
+
+    document.addEventListener(
+      "mousedown",
+      handleClickOutside
+    );
+
+    return () => {
+
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutside
+      );
+    };
+
+  }, [isExpanded]);
+
   const setCardRef = (i) => (el) => {
-    if (el) cardsRef.current[i] = el;
+
+    if (el) {
+
+      cardsRef.current[i] = el;
+    }
   };
 
   return (
-    <div className={`card-nav-container ${className}`}>
+    <div
+      className={`card-nav-container ${className}`}
+    >
       <nav
         ref={navRef}
-        className={`card-nav ${isExpanded ? "open" : ""}`}
+        className={`card-nav ${
+          isExpanded ? "open" : ""
+        }`}
         style={{
           backgroundColor: baseColor,
         }}
       >
+
+        {/* TOP BAR */}
         <div className="card-nav-top">
 
           {/* HAMBURGER */}
           <div
             className={`hamburger-menu ${
-              isHamburgerOpen ? "open" : ""
+              isHamburgerOpen
+                ? "open"
+                : ""
             }`}
             onClick={toggleMenu}
             role="button"
             aria-label={
-              isExpanded ? "Close menu" : "Open menu"
+              isExpanded
+                ? "Close menu"
+                : "Open menu"
             }
             tabIndex={0}
             style={{
-              color: menuColor || "#000",
+              color:
+                menuColor || "#000",
             }}
           >
             <div className="hamburger-line" />
@@ -207,18 +336,25 @@ const CardNav = ({
 
           {/* LOGO */}
           <div className="logo-container">
+
             {logo ? (
+
               <img
                 src={logo}
                 alt={logoAlt}
                 className="logo"
               />
+
             ) : (
+
               <span
                 style={{
                   color: "white",
+
                   fontWeight: 700,
-                  letterSpacing: "0.15em",
+
+                  letterSpacing:
+                    "0.15em",
                 }}
               >
                 CATAROT
@@ -231,8 +367,11 @@ const CardNav = ({
             type="button"
             className="card-nav-cta-button"
             style={{
-              backgroundColor: buttonBgColor,
-              color: buttonTextColor,
+              backgroundColor:
+                buttonBgColor,
+
+              color:
+                buttonTextColor,
             }}
             onClick={onButtonClick}
           >
@@ -245,39 +384,61 @@ const CardNav = ({
           className="card-nav-content"
           aria-hidden={!isExpanded}
         >
-          {(items || []).slice(0, 3).map((item, idx) => (
-            <div
-              key={`${item.label}-${idx}`}
-              className="nav-card"
-              ref={setCardRef(idx)}
-              style={{
-                backgroundColor: item.bgColor,
-                color: item.textColor,
-              }}
-            >
-              <div className="nav-card-label">
-                {item.label}
-              </div>
 
-              <div className="nav-card-links">
-                {item.links?.map((lnk, i) => (
-                  <a
-                    key={`${lnk.label}-${i}`}
-                    className="nav-card-link"
-                    href={lnk.href}
-                    aria-label={lnk.ariaLabel}
-                  >
-                    <GoArrowUpRight
-                      className="nav-card-link-icon"
-                      aria-hidden="true"
-                    />
+          {(items || [])
+            .slice(0, 3)
+            .map((item, idx) => (
 
-                    {lnk.label}
-                  </a>
-                ))}
+              <div
+                key={`${item.label}-${idx}`}
+                className="nav-card"
+                ref={setCardRef(idx)}
+                style={{
+                  backgroundColor:
+                    item.bgColor,
+
+                  color:
+                    item.textColor,
+                }}
+              >
+
+                <div className="nav-card-label">
+                  {item.label}
+                </div>
+
+                <div className="nav-card-links">
+
+                  {item.links?.map(
+                    (lnk, i) => (
+
+                      <a
+                        key={`${lnk.label}-${i}`}
+                        className="nav-card-link"
+                        href={lnk.href}
+                        aria-label={
+                          lnk.ariaLabel
+                        }
+
+                        onClick={() => {
+
+                          lnk.onClick?.();
+
+                          closeMenu();
+                        }}
+                      >
+
+                        <GoArrowUpRight
+                          className="nav-card-link-icon"
+                          aria-hidden="true"
+                        />
+
+                        {lnk.label}
+                      </a>
+                    )
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
       </nav>
     </div>
@@ -285,3 +446,4 @@ const CardNav = ({
 };
 
 export default CardNav;
+

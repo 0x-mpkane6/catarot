@@ -1,13 +1,20 @@
 import CardNav from "../components/layout/CardNav";
+import UserProfile from "../components/ui/UserProfile";
+import ReadingHistory from "../components/ui/ReadingHistory";
+import MagicCat from "../components/ui/MagicCat";
 import { useState } from "react";
 
 export default function HomePage() {
 
   const [showProfile, setShowProfile] = useState(false);
 
+  // Username
   const username = "0x-mpkane6";
 
   // const [username, setUsername] = useState("");
+
+  // Reading History
+  const [showHistory, setShowHistory] = useState(false);
 
   const items = [
     {
@@ -16,7 +23,8 @@ export default function HomePage() {
       textColor: "#ffffff",
       links: [
         { label: "Daily Tarot" },
-        { label: "Love Reading" },
+        { label: "Reading History", 
+          onClick: () => setShowHistory(true) },
       ],
     },
 
@@ -75,6 +83,24 @@ export default function HomePage() {
 
         buttonBgColor="rgba(168,85,247,0.18)"
         buttonTextColor="#fff"
+      />
+
+        
+      <UserProfile
+        isOpen={showProfile}
+        onClose={() => setShowProfile(false)}
+        username={username}
+      />
+
+      <ReadingHistory
+        isOpen={showHistory}
+        onClose={() => setShowHistory(false)}
+      />
+
+      <MagicCat
+        onClick={() => {
+          console.log("meow");
+        }}
       />
 
       {/* stars */}
