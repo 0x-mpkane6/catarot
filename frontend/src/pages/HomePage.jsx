@@ -2,6 +2,7 @@ import CardNav from "../components/layout/CardNav";
 import UserProfile from "../components/ui/UserProfile";
 import ReadingHistory from "../components/ui/ReadingHistory";
 import MagicCat from "../components/ui/MagicCat";
+import ContactPanel from "../components/ui/ContactPanel";
 import { useState } from "react";
 
 export default function HomePage() {
@@ -15,6 +16,9 @@ export default function HomePage() {
 
   // Reading History
   const [showHistory, setShowHistory] = useState(false);
+
+  // Contact Panel
+  const [showContact, setShowContact] = useState(false);
 
   const items = [
     {
@@ -45,6 +49,11 @@ export default function HomePage() {
       links: [
         { label: "Github" },
         { label: "Discord" },
+        { label: "More Info",
+          onClick: () => { setShowContact(true); 
+
+          } 
+        },
       ],
     },
   ];
@@ -100,6 +109,14 @@ export default function HomePage() {
       <MagicCat
         onClick={() => {
           console.log("meow");
+        }}
+      />
+
+      <ContactPanel
+        isOpen={showContact}
+
+        onClose={() => {
+          setShowContact(false);
         }}
       />
 

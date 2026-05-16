@@ -50,7 +50,7 @@ export default function MagicCat({
 
     const audio = new Audio(catSound);
 
-    audio.volume = 0.7;
+    audio.volume = 1.0;
 
     audio.play();
 
@@ -60,7 +60,7 @@ export default function MagicCat({
 
         setCanMeow(true);
 
-    }, 10000);
+    }, 8000);
     };
 
   useEffect(() => {

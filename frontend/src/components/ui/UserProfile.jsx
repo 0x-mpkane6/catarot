@@ -98,7 +98,7 @@ export default function UserProfile({
             style={{
               color: "#ffffff",
 
-              fontSize: "1.4rem",
+              fontSize: "2.2rem",
               fontWeight: 700,
 
               marginBottom: "6px",

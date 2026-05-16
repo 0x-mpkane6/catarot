@@ -93,7 +93,7 @@ export default function ReadingHistory({
           style={{
             color: "#fff",
 
-            fontSize: "1.4rem",
+            fontSize: "2.2rem",
             fontWeight: 700,
 
             marginBottom: "26px",
