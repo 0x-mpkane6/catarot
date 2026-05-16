@@ -51,7 +51,7 @@ export default function LoginForm() {
 
       toast.success("Welcome back!");
 
-      navigate("/chat");
+      navigate("/home");
 
     } catch (err) {
       toast.error("Invalid email or password");

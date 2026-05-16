@@ -1,11 +1,13 @@
-import ASCIIText from "../components/layout/ASCIIText";
 import CardNav from "../components/layout/CardNav";
+import { useState } from "react";
 
-import { useNavigate } from "react-router-dom";
+export default function HomePage() {
 
-export default function LandingPage() {
+  const [showProfile, setShowProfile] = useState(false);
 
-  const navigate = useNavigate();
+  const username = "0x-mpkane6";
+
+  // const [username, setUsername] = useState("");
 
   const items = [
     {
@@ -54,13 +56,28 @@ export default function LandingPage() {
         `,
 
         position: "relative",
-
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
       }}
     >
-      {/* STARS */}
+
+      {/* NAVBAR */}
+      <CardNav
+        logo=""
+        items={items}
+
+        buttonLabel={username || "User"}
+
+        onButtonClick={() => {
+          setShowProfile(true);
+        }}
+
+        baseColor="rgba(10,10,25,0.55)"
+        menuColor="#fff"
+
+        buttonBgColor="rgba(168,85,247,0.18)"
+        buttonTextColor="#fff"
+      />
+
+      {/* stars */}
       <div
         style={{
           position: "absolute",
@@ -76,45 +93,6 @@ export default function LandingPage() {
           pointerEvents: "none",
         }}
       />
-
-      {/* NAVBAR */}
-      <CardNav
-        logo=""
-        items={items}
-
-        buttonLabel="Get Started"
-
-        onButtonClick={() => navigate("/login")}
-
-        baseColor="rgba(10,10,25,0.55)"
-        menuColor="#fff"
-
-        buttonBgColor="rgba(168,85,247,0.18)"
-        buttonTextColor="#fff"
-      />
-
-      {/* ASCII TITLE */}
-      <div
-        style={{
-          position: "relative",
-          zIndex: 2,
-
-          width: "1400px",
-          height: "500px",
-
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <ASCIIText
-          text="CATAROT"
-          enableWaves={true}
-          asciiFontSize={8}
-          textFontSize={420}
-          planeBaseHeight={7}
-        />
-      </div>
     </div>
   );
 }

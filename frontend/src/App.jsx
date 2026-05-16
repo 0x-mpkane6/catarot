@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
-import ChatPage from "./pages/ChatPage";
+import HomePage from "./pages/HomePage";
 import SigninPage from "./pages/SigninPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 
@@ -49,7 +49,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signin" element={<SigninPage />} />
-          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/home" element={<HomePage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         </Routes>
       </BrowserRouter>
