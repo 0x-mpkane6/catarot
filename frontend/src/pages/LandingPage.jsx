@@ -111,8 +111,8 @@ export default function LandingPage() {
           text="CATAROT"
           enableWaves={true}
           asciiFontSize={8}
-          textFontSize={420}
-          planeBaseHeight={7}
+          textFontSize={150}
+          planeBaseHeight={10}
         />
       </div>
     </div>

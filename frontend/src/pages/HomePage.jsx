@@ -3,6 +3,7 @@ import UserProfile from "../components/ui/UserProfile";
 import ReadingHistory from "../components/ui/ReadingHistory";
 import MagicCat from "../components/ui/MagicCat";
 import ContactPanel from "../components/ui/ContactPanel";
+import TarotGallery from "../components/ui/TarotGallery";
 import { useState } from "react";
 
 export default function HomePage() {
@@ -119,6 +120,8 @@ export default function HomePage() {
           setShowContact(false);
         }}
       />
+
+      <TarotGallery />
 
       {/* stars */}
       <div
