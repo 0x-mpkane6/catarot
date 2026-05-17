@@ -1,8 +1,35 @@
+import { useNavigate }
+from "react-router-dom";
+
 export default function UserProfile({
   isOpen,
   onClose,
   username = "User",
-}) {
+}) 
+{
+    const navigate =
+    useNavigate();
+
+  const handleLogout = () => {
+
+    localStorage.removeItem(
+      "token"
+    );
+
+    localStorage.removeItem(
+      "access_token"
+    );
+
+    sessionStorage.removeItem(
+      "token"
+    );
+
+    sessionStorage.removeItem(
+      "access_token"
+    );
+
+    navigate("/");
+  };
   return (
     <>
       {/* BACKDROP */}
@@ -117,35 +144,62 @@ export default function UserProfile({
           </div>
         </div>
 
-        {/* empty content */}
-        <div
-          style={{
-            marginTop: "40px",
+       {/* actions */}
+<div
+  style={{
+    marginTop: "40px",
 
-            width: "100%",
-            height: "180px",
+    display: "flex",
 
-            borderRadius: "22px",
+    flexDirection: "column",
 
-            border:
-              "1px solid rgba(255,255,255,0.06)",
+    gap: "16px",
+  }}
+>
 
-            background:
-              "rgba(255,255,255,0.025)",
+  <button
+    onClick={handleLogout}
 
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+    style={{
+      width: "100%",
 
-            color: "rgba(255,255,255,0.35)",
+      padding: "16px",
 
-            fontSize: "0.95rem",
+      borderRadius: "18px",
 
-            backdropFilter: "blur(12px)",
-          }}
-        >
-          Empty profile card
-        </div>
+      border:
+        "1px solid rgba(239,68,68,0.18)",
+
+      background:
+        "rgba(239,68,68,0.08)",
+
+      color: "#fca5a5",
+
+      fontSize: "1rem",
+
+      fontWeight: 600,
+
+      cursor: "pointer",
+
+      transition: "0.25s ease",
+
+      backdropFilter: "blur(12px)",
+    }}
+
+    onMouseEnter={(e) => {
+      e.currentTarget.style.background =
+        "rgba(239,68,68,0.14)";
+    }}
+
+    onMouseLeave={(e) => {
+      e.currentTarget.style.background =
+        "rgba(239,68,68,0.08)";
+    }}
+  >
+    Log Out
+  </button>
+
+</div>
       </div>
     </>
   );

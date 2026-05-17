@@ -7,6 +7,16 @@ import TarotGallery from "../components/ui/TarotGallery";
 import ChatBox from "../components/ui/ChatBox";
 import TarotSpreadGrid from "../components/ui/TarotSpreadGrid";
 
+import DailyChatBox
+from "../components/ui/DailyChatBox";
+
+import DailyResultPanel
+from "../components/ui/DailyResultPanel";
+
+import {
+  getConversation,
+} from "../services/historyService";
+
 import {
   saveSessionMeta,
 } from "../services/sessionCache";
@@ -28,7 +38,15 @@ import {
 
 import {
   askDailyQuestion,
-} from "../services/dailyService";
+} 
+
+from "../services/dailyService";
+
+  import {
+  reflectDailyCard
+}
+
+from "../services/dailyService";
 
 import toast from "react-hot-toast";
 
@@ -68,9 +86,141 @@ export default function HomePage() {
   const [pendingInput, setPendingInput] = useState(null);
   const [isBackendLoading, setIsBackendLoading] = useState(false);
 
+  const [currentSession, setCurrentSession] = useState(null);
+
   const requiredCards =
     selectedCard?.mode === "daily" ? 1 : 3;
 
+    const handleReflectSubmit =
+  async (
+    cardId,
+    reflectionData
+  ) => {
+
+    try {
+
+      const updatedCard =
+        await reflectDailyCard(
+          cardId,
+          reflectionData
+        );
+
+      setRevealedCards((prev) => {
+
+        if (!prev?.length)
+          return prev;
+
+        return [
+          {
+            ...prev[0],
+
+            ...updatedCard,
+
+            reflection:
+              updatedCard.reflection
+              ?? reflectionData.reflection,
+
+            mood_post:
+              updatedCard.mood_post
+              ?? reflectionData.mood_post,
+          },
+        ];
+      });
+
+      toast.success(
+        "Reflection saved"
+      );
+
+    } catch (error) {
+
+      console.error(error);
+
+      toast.error(
+        error.message ||
+        "Failed to save reflection"
+      );
+    }
+};
+
+  const handleDailySubmit =
+  async ({
+    mood_pre,
+    question,
+  }) => {
+
+    try {
+
+      setIsBackendLoading(true);
+
+      const response =
+        await askDailyQuestion({
+          mood_pre,
+          question,
+        });
+
+      console.log(
+        "daily response",
+        response
+      );
+
+      const dailyItem =
+        response?.item;
+
+      if (!dailyItem) {
+
+        toast.error(
+          "No daily card returned"
+        );
+
+        return;
+      }
+
+      setMessages([
+        {
+          role: "user",
+
+          content:
+            question ||
+            mood_pre,
+        },
+
+        {
+          role: "assistant",
+
+          content:
+            dailyItem?.affirmation
+            || "Your daily card has arrived.",
+        },
+      ]);
+
+      setRevealedCards([
+        dailyItem,
+      ]);
+
+      setShowSpreadGrid(false);
+
+      setShowResult(true);
+
+      toast.success(
+        response.alreadyDrawn
+          ? "Today's card already exists"
+          : "Daily card drawn"
+      );
+
+    } catch (error) {
+
+      console.error(error);
+
+      toast.error(
+        error.message ||
+        "Failed to draw daily card"
+      );
+
+    } finally {
+
+      setIsBackendLoading(false);
+    }
+};
   const handleCardClick = (card) => {
 
     // feature chưa làm
@@ -116,10 +266,101 @@ export default function HomePage() {
     }, 500);
   };
 
-  const handleChatSubmitDraft = (draft) => {
+const handleChatSubmitDraft =
+  async (draft) => {
+
+    const hasImages =
+      draft.images?.length > 0;
+
+    // IMAGE MODE
+    // -> skip spread grid
+    if (hasImages) {
+
+      try {
+
+        setIsBackendLoading(true);
+
+        const response =
+          await askTarotQuestion({
+            question:
+              draft.question,
+
+            images:
+              draft.images,
+
+            audio:
+              draft.audio,
+          });
+
+        setMessages([
+          {
+            role: "user",
+            content:
+              draft.question,
+          },
+
+          {
+            role: "assistant",
+            content:
+              response.final_answer,
+          },
+        ]);
+
+        setRevealedCards(
+          response.cards || []
+        );
+
+        setShowResult(true);
+
+        const sessionMeta = {
+          sessionId:
+            response.session_id,
+
+          title:
+            draft.question ||
+            "Untitled Reading",
+
+          mode:
+            selectedCard.mode,
+
+          createdAt:
+            new Date().toISOString(),
+        };
+
+        saveSessionMeta(
+          sessionMeta
+        );
+
+        setCurrentSession(
+          sessionMeta
+        );
+
+        toast.success(
+          "Reading complete"
+        );
+
+      } catch (error) {
+
+        console.error(error);
+
+        toast.error(
+          "Something went wrong"
+        );
+
+      } finally {
+
+        setIsBackendLoading(false);
+      }
+
+      return;
+    }
+
+    // TEXT / AUDIO
+    // -> still open spread grid
     setPendingInput(draft);
+
     setShowSpreadGrid(true);
-  };
+};
 
   const handleSpreadConfirm = async (selectedCards) => {
     if (!pendingInput || !selectedCard) return;
@@ -134,8 +375,9 @@ export default function HomePage() {
     try {
       setIsBackendLoading(true);
 
+      let response = null;
       if (selectedCard.mode === "daily") {
-        const response = await askDailyQuestion({
+          response = await askDailyQuestion({
           question: pendingInput.question,
           selectedCards,
         });
@@ -168,7 +410,7 @@ export default function HomePage() {
             : "Daily card drawn"
         );
       } else {
-        const response = await askTarotQuestion({
+        response = await askTarotQuestion({
           question: pendingInput.question,
           images: pendingInput.images,
           audio: pendingInput.audio,
@@ -200,6 +442,29 @@ export default function HomePage() {
         toast.success("Reading complete");
       }
 
+      const sessionMeta = {
+        sessionId:
+          response.session_id,
+
+        title:
+          pendingInput.question ||
+          "Untitled Reading",
+
+        mode:
+          selectedCard.mode,
+
+        createdAt:
+          new Date().toISOString(),
+      };
+
+      saveSessionMeta(
+        sessionMeta
+      );
+
+      setCurrentSession(
+        sessionMeta
+      );
+
       setShowSpreadGrid(false);
       setPendingInput(null);
     } catch (error) {
@@ -214,13 +479,51 @@ export default function HomePage() {
     }
   };
 
+  const handleSelectSession =
+  async (session) => {
+
+    try {
+
+      setIsBackendLoading(true);
+
+      const data =
+        await getConversation(
+          session.sessionId
+        );
+
+      setCurrentSession(
+            session
+          );
+
+          setMessages(
+            data.messages || []
+          );
+
+          setShowResult(true);
+
+          setShowHistory(false);
+
+        } catch (error) {
+
+          console.error(error);
+
+          toast.error(
+            "Failed to load session"
+          );
+
+        } finally {
+
+          setIsBackendLoading(false);
+        }
+    };
+
   const items = [
     {
       label: "Readings",
       bgColor: "rgba(25, 18, 40, 0.82)",
       textColor: "#ffffff",
       links: [
-        { label: "Daily Tarot" },
+        { label: "Reflection History" },
         { label: "Reading History", 
           onClick: () => setShowHistory(true) },
       ],
@@ -298,7 +601,13 @@ export default function HomePage() {
 
       <ReadingHistory
         isOpen={showHistory}
-        onClose={() => setShowHistory(false)}
+        onClose={() =>
+          setShowHistory(false)
+        }
+
+        onSelectSession={
+          handleSelectSession
+        }
       />
 
       <MagicCat
@@ -462,11 +771,30 @@ export default function HomePage() {
       </div>
     )}
 
-    {showResult && (
-      <TarotResultPanel
-        cards={revealedCards}
-      />
-    )}
+      {showResult && (
+
+        selectedCard?.mode ===
+        "daily" ? (
+
+        <DailyResultPanel
+          card={revealedCards?.[0]}
+          isLoading={isBackendLoading}
+          onReflectSubmit={
+            handleReflectSubmit
+          }
+        />
+
+        ) : (
+
+          <TarotResultPanel
+            cards={
+              revealedCards
+            }
+          />
+
+        )
+
+      )}
 
     {showChatUI && !showSpreadGrid && (
        <div
@@ -508,19 +836,38 @@ export default function HomePage() {
     )}
 
     {/* input */}
-    {!showSpreadGrid && (
-      <ChatBox
-        mode={selectedCard?.mode}
+{/* input */}
+{!showSpreadGrid && (
 
-        disabled={
-          isBackendLoading
-        }
+  selectedCard?.mode === "daily" ? (
 
-        onSubmitDraft={
-          handleChatSubmitDraft
-        }
-      />
-    )}
+    <DailyChatBox
+      disabled={
+        isBackendLoading
+      }
+
+      onSubmit={
+        handleDailySubmit
+      }
+    />
+
+  ) : (
+
+    <ChatBox
+      mode={selectedCard?.mode}
+
+      disabled={
+        isBackendLoading
+      }
+
+      onSubmitDraft={
+        handleChatSubmitDraft
+      }
+    />
+
+  )
+
+)}
 
   </div>
 

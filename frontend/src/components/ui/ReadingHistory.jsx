@@ -3,11 +3,13 @@ import { useEffect, useState } from "react";
 import { getReadingHistory } from "../../services/historyService";
 import AnimatedList from "./AnimatedList";
 
+import { LogIn } from "lucide-react";
+
 export default function ReadingHistory({
   isOpen,
   onClose,
+  onSelectSession,
 }) {
-
   const [sessions, setSessions] = useState([]);
 
   useEffect(() => {
@@ -113,10 +115,12 @@ export default function ReadingHistory({
             (s) => s.title
             )}
 
-            onItemSelect={(item, index) => {
+          onItemSelect={(item, index) => {
 
-            console.log(item, index);
-            }}
+            onSelectSession?.(
+              sessions[index]
+            );
+          }}
         />
         </div>
       </div>

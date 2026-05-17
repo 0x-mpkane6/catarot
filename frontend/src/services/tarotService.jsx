@@ -201,3 +201,20 @@ export const getTarotReading = async (input = {}) => {
 };
 
 export const askTarotQuestion = getTarotReading;
+
+export const followupSession =
+  async (
+    sessionId,
+    question
+  ) => {
+
+    const response =
+      await api.post(
+        `/api/sessions/${sessionId}/followup`,
+        {
+          question,
+        }
+      );
+
+    return response.data;
+};
