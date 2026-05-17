@@ -13,22 +13,28 @@ export default function TarotGallery({
     {
       image: dailyTarot,
       text: "Daily Tarot",
+      mode: "daily"
     },
     {
       image: timeCapsule,
       text: "Time Capsule",
+      mode: "coming-soon"
     },
     {
       image: tarotReading,
       text: "Tarot Reading",
+      mode: "reading"
     },
     {
       image: duoReading,
       text: "Duo Reading",
+      mode: "coming-soon"
+
     },
     {
       image: communityRoom,
       text: "Community Room",
+      mode: "coming-soon"
     },
   ];
 

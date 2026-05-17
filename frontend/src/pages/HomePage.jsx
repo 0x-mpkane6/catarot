@@ -5,11 +5,47 @@ import MagicCat from "../components/ui/MagicCat";
 import ContactPanel from "../components/ui/ContactPanel";
 import TarotGallery from "../components/ui/TarotGallery";
 import ChatBox from "../components/ui/ChatBox";
+import TarotSpreadGrid from "../components/ui/TarotSpreadGrid";
+
+import {
+  saveSessionMeta,
+} from "../services/sessionCache";
+
+import ScrollStyle
+from "../components/common/Scroll";
+
+import TarotResultPanel
+from "../components/ui/TarotResultPanel";
+
+import ChatConversation
+from "../components/ui/ChatConversation";
+
 import { useState } from "react";
+
+import {
+  askTarotQuestion,
+} from "../services/tarotService";
+
+import {
+  askDailyQuestion,
+} from "../services/dailyService";
+
+import toast from "react-hot-toast";
 
 import { Undo2 } from "lucide-react";
 
 export default function HomePage() {
+
+  const [messages, setMessages] =
+  useState([]);
+
+  const [revealedCards, setRevealedCards] =
+    useState([]);
+
+  const [showResult, setShowResult] =
+    useState(false);
+
+  const [isToastVisible, setIsToastVisible] = useState(false);
 
   const [showProfile, setShowProfile] = useState(false);
 
@@ -28,8 +64,42 @@ export default function HomePage() {
   const [selectedCard, setSelectedCard] = useState(null);
   const [hideGallery, setHideGallery] = useState(false);
   const [showChatUI, setShowChatUI] = useState(false);
+  const [showSpreadGrid, setShowSpreadGrid] = useState(false);
+  const [pendingInput, setPendingInput] = useState(null);
+  const [isBackendLoading, setIsBackendLoading] = useState(false);
+
+  const requiredCards =
+    selectedCard?.mode === "daily" ? 1 : 3;
 
   const handleCardClick = (card) => {
+
+    // feature chưa làm
+   if (
+      card.mode !== "daily" &&
+      card.mode !== "reading"
+    ) {
+
+      if (!isToastVisible) {
+
+        setIsToastVisible(true);
+
+        toast.error(
+          "This feature is currently under development.",
+          {
+            duration: 1800,
+          }
+        );
+
+        setTimeout(() => {
+          setIsToastVisible(false);
+        }, 1800);
+      }
+
+      return;
+    }
+
+    // chống spam click
+    if (hideGallery) return;
 
     setHideGallery(true);
 
@@ -40,8 +110,108 @@ export default function HomePage() {
       setSelectedCard(card);
 
       setShowChatUI(true);
+      setShowSpreadGrid(false);
+      setPendingInput(null);
 
     }, 500);
+  };
+
+  const handleChatSubmitDraft = (draft) => {
+    setPendingInput(draft);
+    setShowSpreadGrid(true);
+  };
+
+  const handleSpreadConfirm = async (selectedCards) => {
+    if (!pendingInput || !selectedCard) return;
+
+    if (selectedCards.length < requiredCards) {
+      toast.error(
+        `Please select ${requiredCards} card${requiredCards > 1 ? "s" : ""} before continuing.`
+      );
+      return;
+    }
+
+    try {
+      setIsBackendLoading(true);
+
+      if (selectedCard.mode === "daily") {
+        const response = await askDailyQuestion({
+          question: pendingInput.question,
+          selectedCards,
+        });
+
+        console.log("daily response", response);
+
+        setMessages([
+        {
+          role: "user",
+          content:
+            pendingInput.question,
+        },
+
+        {
+          role: "assistant",
+          content:
+            response.final_answer,
+        },
+      ]);
+
+      setRevealedCards(
+        response.cards || []
+      );
+
+      setShowResult(true);
+
+        toast.success(
+          response.alreadyDrawn
+            ? "Today's card is already drawn"
+            : "Daily card drawn"
+        );
+      } else {
+        const response = await askTarotQuestion({
+          question: pendingInput.question,
+          images: pendingInput.images,
+          audio: pendingInput.audio,
+          selectedCards,
+        });
+
+        console.log("tarot response", response);
+
+        setMessages([
+        {
+          role: "user",
+          content:
+            pendingInput.question,
+        },
+
+        {
+          role: "assistant",
+          content:
+            response.final_answer,
+        },
+      ]);
+
+      setRevealedCards(
+        response.cards || []
+      );
+
+      setShowResult(true);
+
+        toast.success("Reading complete");
+      }
+
+      setShowSpreadGrid(false);
+      setPendingInput(null);
+    } catch (error) {
+      console.error(error);
+
+      toast.error(
+        error.message ||
+          "Something went wrong"
+      );
+    } finally {
+      setIsBackendLoading(false);
+    }
   };
 
   const items = [
@@ -118,6 +288,7 @@ export default function HomePage() {
         buttonTextColor="#fff"
       />
 
+      <ScrollStyle />
         
       <UserProfile
         isOpen={showProfile}
@@ -166,7 +337,13 @@ export default function HomePage() {
     {selectedCard && (
       <Undo2
       onClick={() => {
+        setMessages([]);
+        setRevealedCards([]);
+        setShowResult(false);
         setShowChatUI(false);
+        setShowSpreadGrid(false);
+        setPendingInput(null);
+        setIsBackendLoading(false);
 
         setTimeout(() => {
 
@@ -266,25 +443,127 @@ export default function HomePage() {
       </div>
     )}
 
-    {showChatUI && (
+    {showSpreadGrid && (
       <div
         style={{
           position: "absolute",
-
-          width: "700px",
-          left: "50%",
-          bottom: "80px",
-
-          transform: "translateX(-50%)",
-
-          opacity: showChatUI ? 1 : 0,
-
-          transition: "0.5s ease",
-
-          zIndex: 20,
+          inset: 0,
+          zIndex: 18,
+          background:
+            "rgba(5, 5, 16, 0.68)",
+          backdropFilter: "blur(12px)",
         }}
       >
-        <ChatBox />
+        <TarotSpreadGrid
+          requiredCards={requiredCards}
+          disabled={isBackendLoading}
+          onConfirm={handleSpreadConfirm}
+        />
+      </div>
+    )}
+
+    {showResult && (
+      <TarotResultPanel
+        cards={revealedCards}
+      />
+    )}
+
+    {showChatUI && !showSpreadGrid && (
+       <div
+    style={{
+      position: "absolute",
+
+      left: "50%",
+      bottom: "40px",
+
+      transform:
+        "translateX(-50%)",
+
+      width: "900px",
+
+      zIndex: 20,
+    }}
+  >
+
+    {/* conversation */}
+    {showResult && (
+      <div
+        style={{
+          marginBottom: "42px",
+
+          transform:
+            "translateY(-40px)",
+
+          maxHeight: "62vh",
+
+          overflowY: "auto",
+
+          paddingRight: "10px",
+        }}
+      >
+        <ChatConversation
+          messages={messages}
+        />
+      </div>
+    )}
+
+    {/* input */}
+    {!showSpreadGrid && (
+      <ChatBox
+        mode={selectedCard?.mode}
+
+        disabled={
+          isBackendLoading
+        }
+
+        onSubmitDraft={
+          handleChatSubmitDraft
+        }
+      />
+    )}
+
+  </div>
+
+    )}
+
+    {isBackendLoading && (
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 50,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background:
+            "rgba(2, 2, 8, 0.38)",
+          pointerEvents: "none",
+        }}
+      >
+        <div
+          style={{
+            width: "74px",
+            height: "74px",
+            borderRadius: "50%",
+            border:
+              "4px solid rgba(255,255,255,0.16)",
+            borderTopColor: "#e879f9",
+            boxShadow:
+              "0 0 32px rgba(232,121,249,0.35)",
+            animation:
+              "tarot-loading-spin 0.9s linear infinite",
+          }}
+        />
+
+        <style>
+          {`
+            @keyframes tarot-loading-spin {
+              to {
+                transform: rotate(360deg);
+              }
+            }
+          `}
+        </style>
       </div>
     )}
 

@@ -6,7 +6,10 @@ export const login = async (email, password) => {
     password,
   });
 
-  return response.data;
+  return {
+    ...response.data,
+    token: response.data.access_token,
+  };
 };
 
 export const register = async (
