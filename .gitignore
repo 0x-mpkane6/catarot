@@ -36,6 +36,7 @@ htmlcov/
 # ============================================
 node_modules/
 dist/
+dist-*/
 build/
 .vite/
 npm-debug.log*
@@ -58,7 +59,7 @@ data/*.db
 backend/data/*.db
 
 # ============================================
-# Large media (already in old gitignore)
+# Large media
 # ============================================
 frontend/public/galaxy_background.mp4
 
