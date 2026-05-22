@@ -1,0 +1,51 @@
+/* .text-block {
+
+  margin: 0;
+
+  display: inline-block;
+
+  font-family: monospace;
+
+  font-size: 1rem;
+
+  line-height: 1.5;
+
+  color: #fff;
+}
+
+.text-block p {
+
+  margin: 0;
+}
+
+.char {
+
+  will-change: transform;
+
+  display: inline-block;
+} */
+
+.text-block {
+
+  margin: 0;
+
+  display: inline-block;
+
+  font-family: monospace;
+
+  font-size: inherit;
+
+  color: #fff;
+}
+
+.text-block p {
+
+  margin: 0;
+}
+
+.char {
+
+  will-change: transform;
+
+  display: inline-block;
+}

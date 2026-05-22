@@ -5,25 +5,58 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { login } from "../../services/authService";
 
+import toast from "react-hot-toast";
+
 export default function LoginForm() {
   const navigate = useNavigate();
 
-  // 🔥 thêm state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // 🔥 thêm handle login
+  const [rememberMe, setRememberMe] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+
   const handleLogin = async () => {
     try {
-      const res = await login(email, password);
+      setLoading(true);
 
-      localStorage.setItem("token", res.token);
-      localStorage.setItem("user", JSON.stringify(res.user));
+      // validate empty fields
+      if (!email || !password) {
+        toast.error("Please fill all fields");
+        return;
+      }
 
-      // 👉 chuyển trang
-      navigate("/chat");
+      const res = await login(
+        email.trim(),
+        password.trim()
+      );
+
+      // remember me
+      if (rememberMe) {
+        localStorage.setItem("token", res.token);
+
+        localStorage.setItem(
+          "user",
+          JSON.stringify(res.user)
+        );
+      } else {
+        sessionStorage.setItem("token", res.token);
+
+        sessionStorage.setItem(
+          "user",
+          JSON.stringify(res.user)
+        );
+      }
+
+      toast.success("Welcome back!");
+
+      navigate("/home");
+
     } catch (err) {
-      alert(err.message);
+      toast.error("Invalid email or password");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -34,42 +67,65 @@ export default function LoginForm() {
 
       {/* RIGHT */}
       <div className={styles.right}>
-        <h2 className={styles.title}>Welcome back!</h2>
+        <h2 className={styles.title}>
+          Welcome back!
+        </h2>
 
         {/* GOOGLE */}
         <button className={styles.googleBtn}>
-          <img src={googleIcon} />
+          <img src={googleIcon} alt="google" />
           Google
         </button>
 
         <div className={styles.divider}>Or</div>
 
-        {/* INPUT */}
+        {/* EMAIL */}
         <input
           className={styles.input}
-          placeholder="username or email"
+          placeholder="Example@gmail.com"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) =>
+            setEmail(e.target.value)
+          }
         />
 
+        {/* PASSWORD */}
         <input
           type="password"
           className={styles.input}
-          placeholder="password"
+          placeholder="Password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) =>
+            setPassword(e.target.value)
+          }
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              handleLogin();
+            }
+          }}
         />
 
         {/* ROW */}
         <div className={styles.row}>
           <label className={styles.remember}>
-            <input type="checkbox" />
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) =>
+                setRememberMe(
+                  e.target.checked
+                )
+              }
+            />
+
             Remember me
           </label>
 
           <span
             className={styles.link}
-            onClick={() => navigate("/forgot-password")}
+            onClick={() =>
+              navigate("/forgot-password")
+            }
           >
             Forgot Password?
           </span>
@@ -78,17 +134,27 @@ export default function LoginForm() {
         {/* LOGIN */}
         <button
           className={styles.loginBtn}
-          onClick={handleLogin} // 🔥 thêm dòng này
+          onClick={handleLogin}
+          disabled={loading}
+          style={{
+            opacity: loading ? 0.7 : 1,
+            cursor: loading
+              ? "not-allowed"
+              : "pointer",
+          }}
         >
-          Log in
+          {loading ? "Logging in..." : "Log in"}
         </button>
 
         {/* SIGN UP */}
         <p className={styles.signup}>
           Don’t have an account?{" "}
+
           <span
             className={styles.link}
-            onClick={() => navigate("/signup")}
+            onClick={() =>
+              navigate("/signin")
+            }
           >
             Sign up
           </span>
@@ -97,3 +163,4 @@ export default function LoginForm() {
     </div>
   );
 }
+
