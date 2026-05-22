@@ -34,6 +34,10 @@ alembic>=1.13
 openai>=1.30
 PyJWT>=2.8
 
+# Google Gemini (free tier) — code dùng REST nên SDK là optional
+# Có thể cài để hỗ trợ count_tokens hoặc streaming nếu cần sau:
+# google-generativeai>=0.8
+
 # ASR defaults (higher accuracy for vi/en)
 faster-whisper>=1.1.0
 
