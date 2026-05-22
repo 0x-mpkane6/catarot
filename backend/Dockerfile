@@ -29,20 +29,29 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Copy source code.
 COPY . .
 
-# Tạo non-root user.
-RUN useradd --create-home --shell /bin/bash appuser \
+# Tạo non-root user với UID 1000 — convention cho HuggingFace Spaces.
+# Spaces yêu cầu container không chạy root + UID 1000 để writeable persistent storage.
+RUN useradd --create-home --shell /bin/bash --uid 1000 appuser \
     && mkdir -p ${APP_HOME}/data ${APP_HOME}/tmp_uploads ${APP_HOME}/models \
     && chown -R appuser:appuser ${APP_HOME}
 
+# HuggingFace Spaces cũng cần HF_HOME writeable để cache model.
+ENV HF_HOME=/app/.cache/huggingface \
+    TRANSFORMERS_CACHE=/app/.cache/huggingface \
+    SENTENCE_TRANSFORMERS_HOME=/app/.cache/huggingface
+
+RUN mkdir -p ${HF_HOME} && chown -R appuser:appuser /app/.cache
+
 USER appuser
 
+# Spaces default port 7860, có thể override qua app_port trong README metadata.
 EXPOSE 8000
 
 # Healthcheck dùng endpoint /api/health (operator-friendly, kiểm tra DB).
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
     CMD curl -fsS http://127.0.0.1:8000/api/health || exit 1
 
-# Production server: gunicorn + uvicorn workers.
-# Workers số CPU * 2 + 1 thường, nhưng vision model nặng → giữ 2 workers cho 1 CPU.
-ENV WEB_CONCURRENCY=2
+# Production server. Workers=1 cho HF Space free tier (16GB RAM nhưng 2 vCPU).
+# Mỗi worker load vision/RAG model riêng → 1 worker đủ cho demo, không OOM.
+ENV WEB_CONCURRENCY=1
 CMD ["sh", "-c", "uvicorn src.main:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY}"]
