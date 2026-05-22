@@ -98,55 +98,70 @@ def _detect_theme(question: str, transcript: str | None) -> str:
     return "general"
 
 
+_POSITION_VI: dict[str, str] = {
+    "past": "Quá khứ",
+    "present": "Hiện tại",
+    "future": "Tương lai",
+    "single": "Tổng thể",
+}
+
+
+def _position_label(position: str) -> str:
+    return _POSITION_VI.get((position or "single").lower(), "Tổng thể")
+
+
 def _advice_line(theme: str, position: str, orientation: str, card_name: str) -> str:
-    position = (position or "single").lower()
-    orientation = (orientation or "upright").lower()
+    position_key = (position or "single").lower()
+    orientation_key = (orientation or "upright").lower()
 
     theme_actions: dict[str, dict[str, str]] = {
         "love": {
-            "past": "nhin lai mot mau xung dot cu va ghi ro dieu ban khong muon lap lai.",
-            "present": "mo cuoc noi chuyen thang than ve nhu cau tinh cam trong tuan nay.",
-            "future": "dat 1 tieu chuan moi cho moi quan he va hanh dong theo tieu chuan do.",
-            "single": "uu tien giao tiep chan thanh va dat ranh gioi tinh cam ro rang.",
+            "past": "nhìn lại một mâu thuẫn cũ và ghi rõ điều bạn không muốn lặp lại.",
+            "present": "mở một cuộc nói chuyện thẳng thắn về nhu cầu tình cảm trong tuần này.",
+            "future": "đặt một tiêu chuẩn mới cho mối quan hệ và hành động theo tiêu chuẩn đó.",
+            "single": "ưu tiên giao tiếp chân thành và đặt ranh giới tình cảm rõ ràng.",
         },
         "career": {
-            "past": "tong ket 1 bai hoc tu du an cu de tranh lap lai sai sot.",
-            "present": "chon 1 muc tieu cong viec quan trong nhat va lam ngay trong 24h.",
-            "future": "chuan bi 1 buoc nang cap ky nang de mo rong co hoi thang tien.",
-            "single": "tap trung vao 1 ket qua nghe nghiep co the do luong trong 7 ngay.",
+            "past": "tổng kết một bài học từ dự án cũ để tránh lặp lại sai sót.",
+            "present": "chọn mục tiêu công việc quan trọng nhất và làm ngay trong 24 giờ tới.",
+            "future": "chuẩn bị một bước nâng cấp kỹ năng để mở rộng cơ hội thăng tiến.",
+            "single": "tập trung vào một kết quả nghề nghiệp đo lường được trong 7 ngày.",
         },
         "finance": {
-            "past": "ra soat 1 khoan chi co the cat giam ma khong anh huong lon den chat luong song.",
-            "present": "lap ngan sach don gian cho 7 ngay toi va bam sat.",
-            "future": "dat muc tiet kiem nho nhung deu, uu tien tinh ben vung.",
-            "single": "kiem soat dong tien hang ngay va tranh quyet dinh tai chinh voi.",
+            "past": "rà soát một khoản chi có thể cắt giảm mà không ảnh hưởng lớn đến chất lượng sống.",
+            "present": "lập ngân sách đơn giản cho 7 ngày tới và bám sát.",
+            "future": "đặt mục tiêu tiết kiệm nhỏ nhưng đều, ưu tiên tính bền vững.",
+            "single": "kiểm soát dòng tiền hằng ngày và tránh quyết định tài chính vội vàng.",
         },
         "health": {
-            "past": "nhan dien 1 thoi quen cu lam giam nang luong va thay the dan.",
-            "present": "giu lich ngu on dinh va van dong nhe moi ngay.",
-            "future": "thiet lap ke hoach cham soc suc khoe co the duy tri lau dai.",
-            "single": "uu tien phuc hoi nang luong truoc khi tang tai.",
+            "past": "nhận diện một thói quen cũ làm giảm năng lượng và thay thế dần.",
+            "present": "giữ lịch ngủ ổn định và vận động nhẹ mỗi ngày.",
+            "future": "thiết lập kế hoạch chăm sóc sức khoẻ có thể duy trì lâu dài.",
+            "single": "ưu tiên phục hồi năng lượng trước khi tăng tải.",
         },
         "study": {
-            "past": "xem lai cach hoc cu, giu lai dieu hieu qua va bo dieu gay xao nhang.",
-            "present": "dung phien hoc 25-30 phut de hoan thanh 1 muc tieu ro rang moi ngay.",
-            "future": "lap ke hoach on tap som cho cot moc sap toi.",
-            "single": "duy tri nhip hoc deu thay vi hoc don vao phut cuoi.",
+            "past": "xem lại cách học cũ, giữ điều hiệu quả và bỏ điều gây xao nhãng.",
+            "present": "dùng phiên học 25-30 phút để hoàn thành một mục tiêu rõ ràng mỗi ngày.",
+            "future": "lập kế hoạch ôn tập sớm cho cột mốc sắp tới.",
+            "single": "duy trì nhịp học đều thay vì học dồn vào phút cuối.",
         },
         "general": {
-            "past": "rut ra 1 bai hoc cu then chot de lam diem tua cho tuan nay.",
-            "present": "chon 1 hanh dong nho nhung cu the va bat dau ngay hom nay.",
-            "future": "xay dung buoc tiep theo de giu dong tien trien on dinh.",
-            "single": "giu nhip do deu va theo doi tien do moi ngay.",
+            "past": "rút ra một bài học cũ then chốt để làm điểm tựa cho tuần này.",
+            "present": "chọn một hành động nhỏ nhưng cụ thể và bắt đầu ngay hôm nay.",
+            "future": "xây dựng bước tiếp theo để giữ đà tiến triển ổn định.",
+            "single": "giữ nhịp độ đều và theo dõi tiến độ mỗi ngày.",
         },
     }
 
     action_map = theme_actions.get(theme, theme_actions["general"])
-    base = action_map.get(position, action_map["single"])
-
-    if orientation == "reversed":
-        return f"- [{position}] {card_name}: {base} Dong thoi di cham lai mot nhip de tranh quyet dinh voi."
-    return f"- [{position}] {card_name}: {base}"
+    base = action_map.get(position_key, action_map["single"])
+    label = _position_label(position_key)
+    suffix = (
+        " Đồng thời chậm lại một nhịp để tránh quyết định vội."
+        if orientation_key == "reversed"
+        else ""
+    )
+    return f"{label} — **{card_name}**: {base}{suffix}"
 
 
 def _mask_secret(value: str) -> str:
@@ -418,49 +433,72 @@ class ReadingGenerator:
     ) -> str:
         lines: list[str] = []
         theme = _detect_theme(question, transcript)
+        theme_label = {
+            "love": "tình cảm",
+            "career": "sự nghiệp",
+            "finance": "tài chính",
+            "health": "sức khoẻ",
+            "study": "học tập",
+            "general": "chung",
+        }.get(theme, "chung")
 
-        lines.append("### Tong quan")
-        lines.append(f"- Cau hoi: {question}")
-        lines.append(f"- Chu de chinh: {theme}")
+        lines.append("## Tổng quan")
+        lines.append(f"- Câu hỏi: *{question or 'Chưa có câu hỏi rõ ràng.'}*")
+        lines.append(f"- Chủ đề chính: **{theme_label}**.")
         if transcript:
-            lines.append(f"- Ngu canh tu audio: {transcript}")
-
+            lines.append(f"- Ngữ cảnh từ giọng nói: {transcript}")
         lines.append("")
-        lines.append("### Dien giai theo tung la")
+
+        lines.append("### Diễn giải từng lá")
         if cards:
             for card in cards:
-                position = card.get("position", "single")
-                name = card.get("name", "Unknown Card")
-                orientation = card.get("orientation", "upright")
-                lines.append(f"- {position}: **{name}** ({orientation})")
+                name = str(card.get("name", "Unknown Card"))
+                orientation = (
+                    "Xuôi"
+                    if str(card.get("orientation", "upright")).lower() != "reversed"
+                    else "Ngược"
+                )
+                position = _position_label(str(card.get("position", "single")))
+                lines.append(
+                    f"- **{name}** *({position} — {orientation})*: "
+                    f"năng lượng định hướng phù hợp chủ đề {theme_label}."
+                )
         else:
-            lines.append("- Chua co la bai duoc nhan dang.")
-
+            lines.append(
+                "- Chưa nhận diện được lá bài nào — hãy chụp lại ảnh hoặc bật chế độ random."
+            )
         lines.append("")
-        lines.append("### Loi khuyen hanh dong (7 ngay)")
+
+        lines.append("### Lời khuyên 7 ngày")
         if cards:
-            for card in cards[:3]:
-                position = card.get("position", "single")
-                name = card.get("name", "Unknown Card")
-                orientation = card.get("orientation", "upright")
-                lines.append(_advice_line(theme, str(position), str(orientation), str(name)))
+            for idx, card in enumerate(cards[:3], start=1):
+                position = str(card.get("position", "single"))
+                name = str(card.get("name", "Unknown Card"))
+                orientation = str(card.get("orientation", "upright"))
+                lines.append(
+                    f"{idx}. {_advice_line(theme, position, orientation, name)}"
+                )
         else:
-            lines.append(_advice_line(theme, "single", "upright", "General guidance"))
-            lines.append(_advice_line(theme, "present", "upright", "General guidance"))
-            lines.append(_advice_line(theme, "future", "upright", "General guidance"))
+            for idx, position in enumerate(["past", "present", "future"], start=1):
+                lines.append(
+                    f"{idx}. {_advice_line(theme, position, 'upright', 'Định hướng chung')}"
+                )
 
         if rag_snippets:
             lines.append("")
-            lines.append("### Trich dan du lieu tham khao")
+            lines.append("### Tư liệu tham khảo")
             for snippet in rag_snippets[:3]:
                 snippet_text = str(snippet.get("text", "")).replace("\n", " ").strip()
-                lines.append(f"- {snippet_text[:120]}...")
+                if snippet_text:
+                    lines.append(f"- {snippet_text[:160]}…")
 
         if warnings:
             lines.append("")
-            lines.append("### Luu y")
-            lines.append("- Ket qua nay mang tinh tham khao va con do chua chac.")
-            lines.append("- Neu can, chup lai la bai ro hon hoac chon lai card tu top goi y.")
+            lines.append("### Lưu ý")
+            lines.append("- Kết quả mang tính tham khảo, độ chắc chắn có thể chưa cao.")
+            lines.append(
+                "- Nếu cần, hãy chụp lại lá bài rõ hơn hoặc chọn lại từ danh sách gợi ý."
+            )
 
         return "\n".join(lines)
 

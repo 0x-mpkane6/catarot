@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, List
 
+import sqlalchemy as sa
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -58,7 +59,15 @@ from src.advanced.time_capsule import (
     submit_verdict,
 )
 from src.auth.deps import CurrentUser, get_current_admin, get_current_user, get_websocket_user
-from src.auth.service import authenticate_user, register_user
+from src.auth.service import (
+    ProfileUpdatePayload,
+    authenticate_user_by_identifier,
+    authenticate_with_google,
+    register_user,
+    request_password_reset,
+    reset_password_with_token,
+    update_user_profile,
+)
 from src.db import initialize_database_if_needed, persist_reading_result
 from src.pipeline.tarot_pipeline import TarotPipeline
 from src.utils.logging import get_logger
@@ -210,11 +219,36 @@ class RegisterRequest(BaseModel):
     email: str
     password: str = Field(min_length=6)
     role: str = "member"
+    username: str | None = Field(default=None, min_length=3, max_length=64)
+    display_name: str | None = Field(default=None, max_length=120)
 
 
 class LoginRequest(BaseModel):
-    email: str
+    # Accept either email hoặc username trong cùng 1 field. `email` giữ lại
+    # cho backward-compat với client cũ; `identifier` ưu tiên hơn.
+    identifier: str | None = Field(default=None, min_length=1, max_length=255)
+    email: str | None = Field(default=None)
     password: str = Field(min_length=1)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=8, max_length=255)
+    new_password: str = Field(min_length=6, max_length=128)
+
+
+class GoogleLoginRequest(BaseModel):
+    id_token: str = Field(min_length=10)
+
+
+class ProfileUpdateRequest(BaseModel):
+    display_name: str | None = Field(default=None, max_length=120)
+    avatar_url: str | None = Field(default=None, max_length=512)
+    bio: str | None = Field(default=None, max_length=2000)
+    username: str | None = Field(default=None, min_length=3, max_length=64)
 
 
 class CommunityPostRequest(BaseModel):
@@ -287,6 +321,19 @@ def health_check():
     }
 
 
+def _user_response(user) -> dict:
+    """Standard shape cho /api/auth/* và /api/profile/* response."""
+    return {
+        "id": user.id,
+        "email": user.email,
+        "role": user.role,
+        "username": getattr(user, "username", None),
+        "display_name": getattr(user, "display_name", None),
+        "avatar_url": getattr(user, "avatar_url", None),
+        "bio": getattr(user, "bio", None),
+    }
+
+
 @app.post("/api/auth/register")
 async def auth_register(req: RegisterRequest, request: Request):
     enforce_rate_limit(request=request, scope="auth_register", max_hits=5, window_seconds=60)
@@ -294,33 +341,128 @@ async def auth_register(req: RegisterRequest, request: Request):
     if role not in {"member", "admin"}:
         role = "member"
     try:
-        user = register_user(email=req.email, password=req.password, role=role)
+        user = register_user(
+            email=req.email,
+            password=req.password,
+            role=role,
+            username=req.username,
+            display_name=req.display_name,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {
-        "id": user.id,
-        "email": user.email,
-        "role": user.role,
-    }
+    return _user_response(user)
 
 
 @app.post("/api/auth/login")
 async def auth_login(req: LoginRequest, request: Request):
     enforce_rate_limit(request=request, scope="auth_login", max_hits=10, window_seconds=60)
+    raw_identifier = (req.identifier or req.email or "").strip()
+    if not raw_identifier:
+        raise HTTPException(status_code=400, detail="missing username/email")
     try:
-        user, token = authenticate_user(email=req.email, password=req.password)
+        user, token = authenticate_user_by_identifier(
+            identifier=raw_identifier,
+            password=req.password,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
     return {
         "access_token": token,
         "token_type": "bearer",
-        "user": {"id": user.id, "email": user.email, "role": user.role},
+        "user": _user_response(user),
     }
 
 
 @app.get("/api/auth/me")
 async def auth_me(current_user: CurrentUser = Depends(get_current_user)):
-    return {"id": current_user.id, "email": current_user.email, "role": current_user.role}
+    return _user_response(current_user)
+
+
+@app.post("/api/auth/forgot-password")
+async def auth_forgot_password(req: ForgotPasswordRequest, request: Request):
+    enforce_rate_limit(
+        request=request,
+        scope="auth_forgot_password",
+        max_hits=5,
+        window_seconds=60,
+    )
+    try:
+        found, dev_token, expires_at = request_password_reset(email=req.email)
+    except Exception as exc:  # pragma: no cover - defensive
+        LOGGER.warning("forgot-password failed: %s", exc)
+        found = False
+        dev_token = None
+        expires_at = None
+
+    # Response giống nhau dù email tồn tại hay không để chống enumeration.
+    response: dict = {
+        "message": "Nếu email tồn tại, hệ thống đã gửi hướng dẫn đặt lại mật khẩu.",
+    }
+    if dev_token:
+        response["dev_only_token"] = dev_token
+        response["expires_at"] = expires_at.isoformat() if expires_at else None
+    return response
+
+
+@app.post("/api/auth/reset-password")
+async def auth_reset_password(req: ResetPasswordRequest, request: Request):
+    enforce_rate_limit(
+        request=request,
+        scope="auth_reset_password",
+        max_hits=5,
+        window_seconds=60,
+    )
+    try:
+        reset_password_with_token(token=req.token, new_password=req.new_password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"message": "Mật khẩu đã được đặt lại thành công."}
+
+
+@app.post("/api/auth/google")
+async def auth_google(req: GoogleLoginRequest, request: Request):
+    enforce_rate_limit(request=request, scope="auth_google", max_hits=10, window_seconds=60)
+    try:
+        user, token = authenticate_with_google(id_token_str=req.id_token)
+    except RuntimeError as exc:
+        # Config / library lỗi → 503 để client biết phía server thiếu thiết lập.
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": _user_response(user),
+    }
+
+
+@app.get("/api/profile/me")
+async def profile_me(current_user: CurrentUser = Depends(get_current_user)):
+    return _user_response(current_user)
+
+
+@app.patch("/api/profile/me")
+@app.post("/api/profile/me")
+async def profile_update(
+    req: ProfileUpdateRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    try:
+        updated = update_user_profile(
+            user_id=current_user.id,
+            payload=ProfileUpdatePayload(
+                display_name=req.display_name,
+                avatar_url=req.avatar_url,
+                bio=req.bio,
+                username=req.username,
+            ),
+        )
+    except ValueError as exc:
+        # username conflict → 409, lỗi khác → 400
+        message = str(exc)
+        status = 409 if "username already" in message else 400
+        raise HTTPException(status_code=status, detail=message) from exc
+    return _user_response(updated)
 
 
 def _ask_rate_limit_config() -> tuple[int, int]:
@@ -491,6 +633,110 @@ async def ask_with_image(
         image_files=image,
         audio_file=None,
     )
+
+
+@app.get("/api/sessions")
+async def list_sessions(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Danh sách session của user hiện tại — newest first.
+
+    Trả id + question_text + created_at + status + số lá rút để FE hiển thị
+    sidebar history mà không cần cache thủ công.
+    """
+    from sqlalchemy import func as sa_func
+    from src.db.models import ReadingSession, RecognizedCard
+    from src.db.session import session_scope
+
+    with session_scope() as session:
+        total = (
+            session.scalar(
+                sa.select(sa_func.count())
+                .select_from(ReadingSession)
+                .where(ReadingSession.user_id == current_user.id)
+            )
+            or 0
+        )
+
+        rows = (
+            session.scalars(
+                sa.select(ReadingSession)
+                .where(ReadingSession.user_id == current_user.id)
+                .order_by(ReadingSession.created_at.desc())
+                .limit(limit)
+                .offset(offset)
+            )
+            .all()
+        )
+
+        items: list[dict] = []
+        for row in rows:
+            card_count = (
+                session.scalar(
+                    sa.select(sa_func.count())
+                    .select_from(RecognizedCard)
+                    .where(RecognizedCard.session_id == row.id)
+                )
+                or 0
+            )
+            items.append(
+                {
+                    "id": row.id,
+                    "question_text": row.question_text,
+                    "status": row.status,
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                    "card_count": int(card_count),
+                }
+            )
+
+    return {"items": items, "total": int(total), "limit": limit, "offset": offset}
+
+
+@app.get("/api/sessions/{session_id}")
+async def get_session_detail(
+    session_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Detail 1 session: card đã rút + final answer."""
+    from src.db.models import ReadingSession, RecognizedCard, TarotCard, Reading
+    from src.db.session import session_scope
+
+    with session_scope() as session:
+        row = session.get(ReadingSession, session_id)
+        if row is None or row.user_id != current_user.id:
+            raise HTTPException(status_code=404, detail="session not found")
+
+        card_rows = session.execute(
+            sa.select(RecognizedCard, TarotCard)
+            .join(TarotCard, RecognizedCard.card_id == TarotCard.id)
+            .where(RecognizedCard.session_id == row.id)
+            .order_by(RecognizedCard.order_index.nullslast(), RecognizedCard.id)
+        ).all()
+
+        cards = [
+            {
+                "name": card.name,
+                "orientation": rec.orientation,
+                "position": rec.position_label,
+                "confidence": rec.confidence,
+            }
+            for rec, card in card_rows
+        ]
+
+        reading = session.scalar(sa.select(Reading).where(Reading.session_id == row.id))
+
+        return {
+            "id": row.id,
+            "question_text": row.question_text,
+            "audio_transcript": row.audio_transcript,
+            "status": row.status,
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+            "cards": cards,
+            "final_answer": reading.generated_text if reading else None,
+            "llm_model": reading.llm_model if reading else None,
+        }
 
 
 @app.post("/api/sessions/{session_id}/followup")

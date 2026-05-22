@@ -16,6 +16,10 @@ class CurrentUser:
     id: int
     email: str
     role: str
+    username: str | None = None
+    display_name: str | None = None
+    avatar_url: str | None = None
+    bio: str | None = None
 
 
 def _current_user_from_token(token: str) -> CurrentUser:
@@ -36,7 +40,15 @@ def _current_user_from_token(token: str) -> CurrentUser:
     user: AuthUser | None = get_user_by_id(user_id)
     if user is None:
         raise HTTPException(status_code=401, detail="user not found")
-    return CurrentUser(id=user.id, email=user.email, role=user.role)
+    return CurrentUser(
+        id=user.id,
+        email=user.email,
+        role=user.role,
+        username=user.username,
+        display_name=user.display_name,
+        avatar_url=user.avatar_url,
+        bio=user.bio,
+    )
 
 
 def get_current_user(

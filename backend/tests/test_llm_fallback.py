@@ -33,6 +33,7 @@ def test_love_theme_advice_not_forced_to_career(monkeypatch) -> None:
     )
 
     assert any("No LLM backend configured" in warning for warning in warnings)
-    assert "Chu de chinh: love" in answer
-    assert "nghe nghiep" not in answer.lower()
-    assert "[past]" in answer and "[present]" in answer and "[future]" in answer
+    # Fallback chuyển sang tiếng Việt + markdown
+    assert "tình cảm" in answer
+    assert "sự nghiệp" not in answer
+    assert "Quá khứ" in answer and "Hiện tại" in answer and "Tương lai" in answer
