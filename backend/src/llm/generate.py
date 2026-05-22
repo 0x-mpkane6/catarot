@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import unicodedata
 from typing import Any
 
 import requests
@@ -13,8 +14,17 @@ LOGGER = get_logger(__name__)
 TOKEN_RE = re.compile(r"[a-z0-9_]+", re.IGNORECASE)
 
 
+def _strip_diacritics(text: str) -> str:
+    """Bỏ dấu tiếng Việt để keyword matching không phụ thuộc dấu."""
+    if not text:
+        return ""
+    nfkd = unicodedata.normalize("NFD", text)
+    return "".join(ch for ch in nfkd if not unicodedata.combining(ch))
+
+
 def _normalize_text(text: str) -> str:
-    return text.lower().strip()
+    """Lowercase + strip + bỏ dấu để khớp keyword (vd: 'Tình cảm' → 'tinh cam')."""
+    return _strip_diacritics(text.lower()).strip()
 
 
 def _detect_theme(question: str, transcript: str | None) -> str:
