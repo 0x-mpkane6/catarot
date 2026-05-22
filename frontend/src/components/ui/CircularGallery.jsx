@@ -370,6 +370,7 @@ class Media {
     Math.max(0, 1 - distance * 6);
 }
 
+  // eslint-disable-next-line no-unused-vars -- direction giữ trong interface, dùng cho future paging
   update(scroll, direction) {
     this.plane.position.x = this.x - scroll.current - this.extra;
 

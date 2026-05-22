@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
+// eslint-disable-next-line no-unused-vars -- motion dùng dưới dạng <motion.div>
 import { motion, useInView } from 'motion/react';
 import './AnimatedList.css';
 
@@ -118,6 +119,7 @@ const AnimatedList = ({
         });
       }
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- pattern intentional cho keyboard nav reset
     setKeyboardNav(false);
   }, [selectedIndex, keyboardNav]);
 

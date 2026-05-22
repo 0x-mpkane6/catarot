@@ -51,3 +51,18 @@ models/**/*.safetensors
 .gradio/
 gradio_cached_examples/
 flagged/
+
+# SQLite runtime databases (chứa user/password hash, sessions)
+data/*.db
+data/*.db-*
+data/*.sqlite
+data/*.sqlite3
+
+# Upload tạm
+tmp_uploads/
+backend/tmp_uploads/
+
+# Secret backup
+secrets.json
+*.pem
+*.key

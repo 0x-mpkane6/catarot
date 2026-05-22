@@ -323,8 +323,38 @@ async def auth_me(current_user: CurrentUser = Depends(get_current_user)):
     return {"id": current_user.id, "email": current_user.email, "role": current_user.role}
 
 
+def _ask_rate_limit_config() -> tuple[int, int]:
+    """Per-IP budget for the LLM-backed /api/ask* endpoints.
+
+    Defaults: 20 lượt mỗi 60 giây. Có thể override bằng env var.
+    """
+    try:
+        max_hits = int(os.getenv("ASK_RATE_LIMIT_MAX", "20"))
+    except ValueError:
+        max_hits = 20
+    try:
+        window_seconds = int(os.getenv("ASK_RATE_LIMIT_WINDOW", "60"))
+    except ValueError:
+        window_seconds = 60
+    return max_hits, window_seconds
+
+
+def _enforce_ask_rate_limit(request: Request, scope: str = "ask") -> None:
+    # Hỗ trợ unit test gọi hàm trực tiếp với request=None.
+    if request is None:
+        return
+    max_hits, window_seconds = _ask_rate_limit_config()
+    enforce_rate_limit(
+        request=request,
+        scope=scope,
+        max_hits=max_hits,
+        window_seconds=window_seconds,
+    )
+
+
 @app.post("/api/ask")
-async def ask(req: QuestionRequest):
+async def ask(req: QuestionRequest, request: Request):
+    _enforce_ask_rate_limit(request, scope="ask")
     clean_spread = _normalize_spread_type(req.spread_type)
     reminder_days = _normalize_rating_reminder_days(req.rating_reminder_days)
     result = _get_pipeline().run_pipeline(
@@ -421,6 +451,7 @@ def _run_pipeline_from_uploads(
 
 @app.post("/api/ask_with_media")
 async def ask_with_media(
+    request: Request,
     question: str = Form(...),
     user_id: int | None = Form(None),
     spread_type: str = Form("three"),
@@ -429,6 +460,7 @@ async def ask_with_media(
     image: List[UploadFile] | None = File(default=None),
     audio: UploadFile | None = File(default=None),
 ):
+    _enforce_ask_rate_limit(request, scope="ask_with_media")
     return _run_pipeline_from_uploads(
         question=question,
         user_id=user_id,
@@ -442,12 +474,14 @@ async def ask_with_media(
 
 @app.post("/api/ask_with_image")
 async def ask_with_image(
+    request: Request,
     question: str = Form(...),
     user_id: int | None = Form(None),
     spread_type: str = Form("three"),
     rating_reminder_days: int = Form(7),
     image: List[UploadFile] = File(...),
 ):
+    _enforce_ask_rate_limit(request, scope="ask_with_image")
     return _run_pipeline_from_uploads(
         question=question,
         user_id=user_id,

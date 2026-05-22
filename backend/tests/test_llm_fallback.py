@@ -5,8 +5,11 @@ from src.llm.generate import ReadingGenerator
 
 def test_love_theme_advice_not_forced_to_career(monkeypatch) -> None:
     monkeypatch.setenv("OLLAMA_ENABLED", "false")
+    monkeypatch.setenv("OPENAI_API_KEY", "")
+    monkeypatch.setenv("GEMINI_API_KEY", "")
     generator = ReadingGenerator()
     generator.api_key = ""
+    generator.gemini_api_key = ""
 
     cards = [
         {"name": "Temperance", "orientation": "upright", "position": "past", "confidence": 0.8, "topk_candidates": []},

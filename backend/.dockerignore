@@ -1,0 +1,42 @@
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local secrets / data
+.env
+.env.*
+!.env.example
+data/*.db
+data/*.db-*
+tmp_uploads/
+
+# Heavy models (cần mount volume thay vì copy vào image)
+models/*.faiss
+models/*.index
+models/*.pkl
+models/*.bin
+models/*.onnx
+models/*.safetensors
+
+# Tests / dev artifacts
+tests/__pycache__/
+*.log
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,3 +1,7 @@
+/* eslint-disable react-refresh/only-export-components --
+ * File này là service module thuần (export hàm helper + 1 vài component nhỏ).
+ * Fast-refresh chỉ áp dụng cho component file. Không refactor lúc này.
+ */
 /**
  * Daily Tarot Service
  * Provides full integration with backend daily-card API endpoints

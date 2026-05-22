@@ -53,7 +53,7 @@ export default function LoginForm() {
 
       navigate("/home");
 
-    } catch (err) {
+    } catch {
       toast.error("Invalid email or password");
     } finally {
       setLoading(false);

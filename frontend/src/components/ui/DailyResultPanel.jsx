@@ -108,6 +108,7 @@ export default function DailyResultPanel({
   /**
    * Get mood badge styling
    */
+  // eslint-disable-next-line no-unused-vars -- giữ chỗ để tùy biến theo mood sau
   const getMoodBadgeStyle = (mood) => ({
     display: "inline-block",
     padding: "6px 14px",
