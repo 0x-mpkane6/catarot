@@ -61,6 +61,7 @@ alembic upgrade head
 ```
 
 Nếu là DB cũ đã tạo bảng bằng `Base.metadata.create_all()`:
+
 ```bash
 alembic stamp head    # mark là đã ở baseline, không re-create
 ```
@@ -89,13 +90,17 @@ Truy cập: `http://localhost:5173` (frontend), `http://localhost:8000/docs` (AP
 ### Backend (Render / Railway / Fly.io)
 
 1. Tạo dịch vụ Python, build command:
+
    ```bash
    pip install -r requirements.txt
    ```
+
 2. Start command:
+
    ```bash
    alembic upgrade head && uvicorn src.main:app --host 0.0.0.0 --port $PORT --workers 2
    ```
+
 3. Set env vars theo phần 1 ở trên.
 4. Mount persistent disk vào `/app/data` và `/app/models`.
 
@@ -105,6 +110,7 @@ Truy cập: `http://localhost:5173` (frontend), `http://localhost:8000/docs` (AP
 2. Output dir: `dist`
 3. Set env vars `VITE_API_BASE_URL` trỏ về backend đã deploy.
 4. Cấu hình SPA fallback: nếu Vercel → tự động, nếu Netlify → file `_redirects`:
+
    ```
    /*    /index.html   200
    ```
@@ -145,6 +151,7 @@ Sau đó sửa các `import` từ `.png` sang `.webp`.
 ### Tăng concurrency backend
 
 Sửa `WEB_CONCURRENCY` trong docker-compose hoặc env:
+
 ```env
 WEB_CONCURRENCY=4    # mặc định 2
 ```
@@ -154,22 +161,23 @@ Lưu ý: mỗi worker giữ 1 bản model vision/RAG trong RAM (~2 GB). 4 worker
 ### Vision/RAG models
 
 Models faiss/sentence-transformers cần download lúc khởi động. Để tránh download mỗi lần restart:
+
 - Mount `/app/models` từ persistent volume
 - Pre-build vision/RAG index bằng `scripts/build_vision_index.py` và `scripts/build_rag_index.py` (nếu có)
 
 ## Checklist trước go-live
 
-- [ ] `JWT_SECRET_KEY` set ≥ 32 chars, không phải placeholder
-- [ ] `APP_ENV=production` (auth security sẽ enforce strict mode)
-- [ ] `EXPOSE_RESET_TOKEN_IN_RESPONSE=false`
-- [ ] `API_ALLOWED_ORIGINS` chỉ chứa domain thật, không có localhost
-- [ ] `GEMINI_API_KEY` hoặc `OPENAI_API_KEY` set; key đã hoạt động (test bằng `/api/ask`)
-- [ ] HTTPS bật (Let's Encrypt hoặc Cloudflare)
-- [ ] Database backup schedule (SQLite: copy file, Postgres: pg_dump)
-- [ ] Monitoring: gọi `/api/health` mỗi 30s, alert nếu fail
-- [ ] Log rotation cấu hình
-- [ ] `npm audit` báo 0 vulnerabilities
-- [ ] `pytest` toàn bộ pass
+- `JWT_SECRET_KEY` set ≥ 32 chars, không phải placeholder
+- `APP_ENV=production` (auth security sẽ enforce strict mode)
+- `EXPOSE_RESET_TOKEN_IN_RESPONSE=false`
+- `API_ALLOWED_ORIGINS` chỉ chứa domain thật, không có localhost
+- `GEMINI_API_KEY` hoặc `OPENAI_API_KEY` set; key đã hoạt động (test bằng `/api/ask`)
+- HTTPS bật (Let's Encrypt hoặc Cloudflare)
+- Database backup schedule (SQLite: copy file, Postgres: pg_dump)
+- Monitoring: gọi `/api/health` mỗi 30s, alert nếu fail
+- Log rotation cấu hình
+- `npm audit` báo 0 vulnerabilities
+- `pytest` toàn bộ pass
 
 ## Known limitations
 
