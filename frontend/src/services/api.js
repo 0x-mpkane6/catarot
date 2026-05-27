@@ -10,9 +10,18 @@ const api = axios.create({
   baseURL: baseURL.replace(/\/+$/, ""),
 });
 
+const getStoredToken = () => {
+  const storageList = [localStorage, sessionStorage];
+  for (const storage of storageList) {
+    const token = storage.getItem("token") || storage.getItem("access_token");
+    if (token) return token;
+  }
+  return null;
+};
+
 api.interceptors.request.use((config) => {
   try {
-    const token = localStorage.getItem("token");
+    const token = getStoredToken();
     if (token && !config.headers?.Authorization) {
       config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;

@@ -186,6 +186,20 @@ def _ensure_self_or_admin(current_user: CurrentUser, target_user_id: int) -> Non
         raise HTTPException(status_code=403, detail="access denied")
 
 
+def _ensure_session_owner_or_admin(current_user: CurrentUser, session_id: int) -> int | None:
+    from src.db.models import ReadingSession
+    from src.db.session import session_scope
+
+    with session_scope() as session:
+        owner_id = session.scalar(sa.select(ReadingSession.user_id).where(ReadingSession.id == session_id))
+
+    if owner_id is None:
+        raise HTTPException(status_code=404, detail="session not found")
+    if current_user.role != "admin" and owner_id != current_user.id:
+        raise HTTPException(status_code=404, detail="session not found")
+    return owner_id
+
+
 # =============================
 # JSON endpoint (giữ lại)
 # =============================
@@ -740,11 +754,16 @@ async def get_session_detail(
 
 
 @app.post("/api/sessions/{session_id}/followup")
-async def followup(session_id: int, req: FollowupRequest):
+async def followup(
+    session_id: int,
+    req: FollowupRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    owner_id = _ensure_session_owner_or_admin(current_user, session_id)
     try:
         return add_followup_turn(
             session_id=session_id,
-            user_id=req.user_id,
+            user_id=owner_id,
             message=req.message,
         )
     except ValueError as exc:
@@ -755,7 +774,12 @@ async def followup(session_id: int, req: FollowupRequest):
 
 
 @app.get("/api/sessions/{session_id}/conversation")
-async def conversation(session_id: int, limit: int = Query(default=20, ge=1, le=200)):
+async def conversation(
+    session_id: int,
+    limit: int = Query(default=20, ge=1, le=200),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    _ensure_session_owner_or_admin(current_user, session_id)
     return {
         "session_id": session_id,
         "turns": get_conversation_turns(session_id=session_id, limit=limit),
@@ -774,7 +798,12 @@ async def spread_recommend(req: SpreadRecommendationRequest):
 
 
 @app.post("/api/readings/{session_id}/rating")
-async def submit_rating(session_id: int, req: RatingRequest):
+async def submit_rating(
+    session_id: int,
+    req: RatingRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    _ensure_session_owner_or_admin(current_user, session_id)
     try:
         return save_rating(session_id=session_id, score=req.score, note=req.note)
     except ValueError as exc:
@@ -782,7 +811,12 @@ async def submit_rating(session_id: int, req: RatingRequest):
 
 
 @app.get("/api/users/{user_id}/pending_ratings")
-async def pending_ratings(user_id: int, limit: int = Query(default=20, ge=1, le=100)):
+async def pending_ratings(
+    user_id: int,
+    limit: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    _ensure_self_or_admin(current_user, user_id)
     rows = list_pending_ratings(user_id=user_id, limit=limit)
     return {"user_id": user_id, "items": rows}
 

@@ -7,7 +7,7 @@ const ENDPOINTS = {
 };
 
 const DEFAULT_READING_OPTIONS = {
-  userId: 0,
+  userId: null,
   spreadType: "three",
   randomDraw: true,
   ratingReminderDays: 7,
@@ -22,6 +22,27 @@ const toArray = (value) => {
   if (Array.isArray(value)) return value;
   if (isUploadFile(value)) return [value];
   return Array.from(value);
+};
+
+const normalizeUserId = (value) => {
+  const numericId = Number(value);
+  return Number.isInteger(numericId) && numericId > 0 ? numericId : null;
+};
+
+const getStoredUserId = () => {
+  try {
+    const storageList = [localStorage, sessionStorage];
+    for (const storage of storageList) {
+      const rawUser = storage.getItem("user");
+      if (!rawUser) continue;
+      const user = JSON.parse(rawUser);
+      const userId = normalizeUserId(user?.id);
+      if (userId !== null) return userId;
+    }
+  } catch {
+    /* ignore malformed storage data */
+  }
+  return null;
 };
 
 const postJson = async (endpoint, payload) => {
@@ -49,7 +70,9 @@ const appendCommonFormFields = (
   }
 ) => {
   formData.append("question", question);
-  formData.append("user_id", String(userId));
+  if (userId !== null) {
+    formData.append("user_id", String(userId));
+  }
   formData.append("spread_type", spreadType);
   formData.append("rating_reminder_days", String(ratingReminderDays));
 
@@ -87,7 +110,10 @@ const normalizeReadingInput = ({
 
   return {
     question: String(question || "").trim(),
-    userId: userId ?? user_id ?? DEFAULT_READING_OPTIONS.userId,
+    userId:
+      normalizeUserId(userId ?? user_id) ??
+      getStoredUserId() ??
+      DEFAULT_READING_OPTIONS.userId,
     spreadType:
       spreadType ?? spread_type ?? DEFAULT_READING_OPTIONS.spreadType,
     randomDraw:
@@ -114,15 +140,20 @@ export const askTarot = async (input = {}) => {
     audioPath,
   } = normalizeReadingInput(input);
 
-  return postJson(ENDPOINTS.ask, {
+  const payload = {
     question,
-    user_id: userId,
     audio_path: audioPath,
     image_paths: imagePaths,
     spread_type: spreadType,
     random_draw: Boolean(randomDraw),
     rating_reminder_days: ratingReminderDays,
-  });
+  };
+
+  if (userId !== null) {
+    payload.user_id = userId;
+  }
+
+  return postJson(ENDPOINTS.ask, payload);
 };
 
 export const askTarotWithImages = async (input = {}) => {
