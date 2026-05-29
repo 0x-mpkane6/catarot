@@ -42,21 +42,27 @@ Nếu thiếu:
 - Tùy chọn:
   - `OPENAI_API_KEY` (nếu muốn ưu tiên OpenAI thay vì Ollama)
 
-## 3) Quickstart 1 lệnh (khuyến nghị)
+## 3) Quickstart bằng Docker (khuyến nghị)
 
 ```bash
 cd /mnt/d/LTWeb/github
-bash scripts/61_run_api_with_ollama.sh
+# Cần backend/.env (có GEMINI_API_KEY). Sau MỖI lần đổi code phải kèm --build.
+docker compose up --build
 ```
 
-Script sẽ:
+- Backend: <http://localhost:8000> (health: `/api/health`) — Frontend: <http://localhost:5173>
+- Docker đóng băng code lúc build (`COPY . .`) → đổi code xong **luôn** chạy lại với `--build`, nếu không container phục vụ code cũ (đây là lý do hay gặp "code mới mà vẫn ra cũ").
+- LLM mặc định dùng `GEMINI_API_KEY` trong `backend/.env`. Muốn dùng Ollama trên host thì compose đã map sẵn `host.docker.internal`.
 
-1. Tạo `.env` từ `.env.example` nếu chưa có.
-2. Đặt `OLLAMA_ENABLED=true`.
-3. Start `ollama serve` nếu chưa chạy.
-4. Pull model trong `OLLAMA_MODEL` nếu chưa có.
-5. Tạo/kích hoạt `.venv`, cài dependency cần thiết.
-6. Chạy API `uvicorn` tại `127.0.0.1:8000`.
+### Chạy trực tiếp không Docker (dev nhanh)
+
+```bash
+cd /mnt/d/LTWeb/github/backend
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # điền GEMINI_API_KEY
+python -m uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
+```
 
 ## 4) Cài thủ công (WSL/Linux)
 

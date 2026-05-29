@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from fastapi import Depends, HTTPException, WebSocket
+from fastapi import Depends, HTTPException, Request, WebSocket
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from src.auth.security import decode_access_token
@@ -63,6 +63,26 @@ def get_current_admin(current_user: CurrentUser = Depends(get_current_user)) -> 
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="admin role required")
     return current_user
+
+
+def resolve_optional_user_id(request: Request | None) -> int | None:
+    """Lấy user_id từ Bearer token nếu hợp lệ; None nếu thiếu/không hợp lệ.
+
+    Dùng cho các endpoint cho phép cả khách lẫn user đăng nhập. KHÔNG tin user_id
+    do client tự khai trong body/form → tránh ghi đè lịch sử/nhắc nhở của user khác.
+    """
+    if request is None:
+        return None
+    header = request.headers.get("Authorization", "") or ""
+    if not header.lower().startswith("bearer "):
+        return None
+    token = header[7:].strip()
+    if not token:
+        return None
+    try:
+        return _current_user_from_token(token).id
+    except HTTPException:
+        return None
 
 
 def get_websocket_user(websocket: WebSocket) -> CurrentUser:

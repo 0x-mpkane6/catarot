@@ -2,21 +2,18 @@
 
 Ứng dụng đọc bài Tarot 3 lá (quá khứ/hiện tại/tương lai) với văn bản + giọng nói + hình ảnh, kèm bộ tính năng nâng cao + gamification giữ chân người dùng.
 
-## TL;DR 60 giây
+## TL;DR 60 giây (Docker — khuyến nghị)
 
 ```bash
-# Terminal 1 (backend, khuyến nghị cho người mới)
 cd /mnt/d/LTWeb/github
-bash scripts/61_run_api_with_ollama.sh
+# Cần file backend/.env (có GEMINI_API_KEY). Lần đầu & sau mỗi lần đổi code: LUÔN kèm --build
+docker compose up --build
 ```
 
-```bash
-# Terminal 2 (frontend)
-cd /mnt/d/LTWeb/github/frontend
-cp .env.example .env
-npm install
-npm run dev -- --host 127.0.0.1 --port 5173
-```
+- Frontend: <http://localhost:5173>
+- Backend API: <http://localhost:8000> (health: <http://localhost:8000/api/health>)
+
+> Docker đóng băng code lúc build → đổi code xong phải chạy lại `docker compose up --build`, nếu không container vẫn chạy code cũ.
 
 ## Dữ liệu (bắt buộc)
 
@@ -40,12 +37,15 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 ## Chọn môi trường chạy
 
-### WSL/Linux
+### WSL/Linux (chạy trực tiếp, không Docker)
 
 ```bash
-# Backend quickstart
-cd /mnt/d/LTWeb/github
-bash scripts/61_run_api_with_ollama.sh
+# Backend
+cd /mnt/d/LTWeb/github/backend
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # điền GEMINI_API_KEY (hoặc bật Ollama)
+python -m uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
 
 # Frontend quickstart
 cd /mnt/d/LTWeb/github/frontend
@@ -65,10 +65,7 @@ pip install --upgrade pip
 pip install -r requirements.txt
 if (!(Test-Path .env)) { Copy-Item .env.example .env }
 
-# Script one-shot yêu cầu bash/WSL. Nếu không dùng WSL, chạy thủ công:
-# 1) mở terminal khác: ollama serve
-# 2) pull model: ollama pull qwen2.5:3b-instruct
-# 3) run API:
+# Dùng GEMINI_API_KEY trong .env là đủ. (Tùy chọn Ollama: terminal khác chạy `ollama serve` + `ollama pull qwen2.5:3b-instruct`.)
 python -m uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
 ```
 

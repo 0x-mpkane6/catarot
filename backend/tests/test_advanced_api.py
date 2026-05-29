@@ -97,9 +97,9 @@ def test_advanced_endpoints_happy_path(monkeypatch: pytest.MonkeyPatch, tmp_path
     with TestClient(main_module.app) as client:
         ask_resp = client.post(
             "/api/ask",
+            headers=headers,
             json={
                 "question": "I need guidance",
-                "user_id": user_id,
                 "spread_type": "three",
                 "random_draw": True,
                 "rating_reminder_days": 14,
@@ -188,7 +188,8 @@ def test_private_session_endpoints_require_auth(monkeypatch: pytest.MonkeyPatch,
     with TestClient(main_module.app) as client:
         ask_resp = client.post(
             "/api/ask",
-            json={"question": "private reading", "user_id": user_id, "random_draw": True},
+            headers=ctx["headers"],
+            json={"question": "private reading", "random_draw": True},
         )
         session_id = ask_resp.json()["session_id"]
 
@@ -216,7 +217,8 @@ def test_private_session_endpoints_reject_other_user(monkeypatch: pytest.MonkeyP
     with TestClient(main_module.app) as client:
         ask_resp = client.post(
             "/api/ask",
-            json={"question": "owner reading", "user_id": user_id, "random_draw": True},
+            headers=ctx["headers"],
+            json={"question": "owner reading", "random_draw": True},
         )
         session_id = ask_resp.json()["session_id"]
 

@@ -37,13 +37,17 @@ export default function SigninForm() {
         return;
       }
 
-      // API
-      const res = await register(
-        email.trim(),
-        password.trim()
-      );
+      if (username.trim() && username.trim().length < 3) {
+        toast.error("Username must be at least 3 characters");
+        return;
+      }
 
-      console.log(res);
+      // API — gửi cả username (tùy chọn) lên backend
+      await register(
+        email.trim(),
+        password.trim(),
+        username.trim()
+      );
 
       toast.success("Account created!");
 

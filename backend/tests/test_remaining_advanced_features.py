@@ -71,14 +71,29 @@ def _bootstrap(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     return main_module
 
 
+def _promote_to_admin(user_id: int) -> None:
+    # API đăng ký công khai chỉ tạo 'member' (bảo mật). Admin tạo ở tầng DB,
+    # mô phỏng seeding. get_current_admin đọc role từ DB nên token cũ vẫn hiệu lực.
+    from sqlalchemy import update
+
+    from src.db.models import User
+    from src.db.session import session_scope
+
+    with session_scope() as session:
+        session.execute(update(User).where(User.id == user_id).values(role="admin"))
+
+
 def _register_login(client, email: str, password: str, role: str = "member") -> tuple[str, int]:
-    reg = client.post("/api/auth/register", json={"email": email, "password": password, "role": role})
+    reg = client.post("/api/auth/register", json={"email": email, "password": password})
     assert reg.status_code == 200
     user_id = reg.json()["id"]
 
     login = client.post("/api/auth/login", json={"email": email, "password": password})
     assert login.status_code == 200
     token = login.json()["access_token"]
+
+    if role == "admin":
+        _promote_to_admin(user_id)
     return token, user_id
 
 
@@ -202,9 +217,9 @@ def test_auth_me_and_remaining_features(monkeypatch: pytest.MonkeyPatch, tmp_pat
         for idx in range(6):
             ask = client.post(
                 "/api/ask",
+                headers=_auth_headers(token_member),
                 json={
                     "question": f"question {idx} about relationship",
-                    "user_id": user_member,
                     "spread_type": "three",
                     "random_draw": True,
                 },

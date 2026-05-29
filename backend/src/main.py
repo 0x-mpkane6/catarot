@@ -58,7 +58,13 @@ from src.advanced.time_capsule import (
     open_capsule,
     submit_verdict,
 )
-from src.auth.deps import CurrentUser, get_current_admin, get_current_user, get_websocket_user
+from src.auth.deps import (
+    CurrentUser,
+    get_current_admin,
+    get_current_user,
+    get_websocket_user,
+    resolve_optional_user_id,
+)
 from src.auth.service import (
     ProfileUpdatePayload,
     authenticate_user_by_identifier,
@@ -232,7 +238,6 @@ class RatingRequest(BaseModel):
 class RegisterRequest(BaseModel):
     email: str
     password: str = Field(min_length=6)
-    role: str = "member"
     username: str | None = Field(default=None, min_length=3, max_length=64)
     display_name: str | None = Field(default=None, max_length=120)
 
@@ -351,14 +356,12 @@ def _user_response(user) -> dict:
 @app.post("/api/auth/register")
 async def auth_register(req: RegisterRequest, request: Request):
     enforce_rate_limit(request=request, scope="auth_register", max_hits=5, window_seconds=60)
-    role = req.role.strip().lower() if req.role else "member"
-    if role not in {"member", "admin"}:
-        role = "member"
+    # Bảo mật: KHÔNG cho client tự chọn role. Đăng ký công khai LUÔN là 'member';
+    # tài khoản admin chỉ được tạo qua seeding/DB, không qua API công khai.
     try:
         user = register_user(
             email=req.email,
             password=req.password,
-            role=role,
             username=req.username,
             display_name=req.display_name,
         )
@@ -520,10 +523,11 @@ async def ask(req: QuestionRequest, request: Request):
         spread_type=clean_spread,
         random_draw=req.random_draw,
     )
+    # Bảo mật: lấy user_id từ JWT (nếu có), KHÔNG tin req.user_id do client tự khai.
     session_id = persist_reading_result(
         question=req.question,
         result=result,
-        user_id=req.user_id,
+        user_id=resolve_optional_user_id(request),
         rating_reminder_days=reminder_days,
     )
     if session_id is not None:
@@ -609,7 +613,6 @@ def _run_pipeline_from_uploads(
 async def ask_with_media(
     request: Request,
     question: str = Form(...),
-    user_id: int | None = Form(None),
     spread_type: str = Form("three"),
     random_draw: str | bool = Form(False),
     rating_reminder_days: int = Form(7),
@@ -619,7 +622,8 @@ async def ask_with_media(
     _enforce_ask_rate_limit(request, scope="ask_with_media")
     return _run_pipeline_from_uploads(
         question=question,
-        user_id=user_id,
+        # Bảo mật: user_id lấy từ JWT, KHÔNG nhận từ form do client tự khai.
+        user_id=resolve_optional_user_id(request),
         spread_type=spread_type,
         random_draw=_as_bool(random_draw),
         rating_reminder_days=rating_reminder_days,
@@ -632,7 +636,6 @@ async def ask_with_media(
 async def ask_with_image(
     request: Request,
     question: str = Form(...),
-    user_id: int | None = Form(None),
     spread_type: str = Form("three"),
     rating_reminder_days: int = Form(7),
     image: List[UploadFile] = File(...),
@@ -640,7 +643,8 @@ async def ask_with_image(
     _enforce_ask_rate_limit(request, scope="ask_with_image")
     return _run_pipeline_from_uploads(
         question=question,
-        user_id=user_id,
+        # Bảo mật: user_id lấy từ JWT, KHÔNG nhận từ form do client tự khai.
+        user_id=resolve_optional_user_id(request),
         spread_type=spread_type,
         random_draw=False,
         rating_reminder_days=rating_reminder_days,

@@ -15,7 +15,7 @@
 /* LEFT IMAGE */
 .left {
   flex: 1;
-  background-image: url("../../assets/images/auth/black-hole-bg.png");
+  background-image: url("../../assets/images/auth/black-hole-bg.jpg");
   background-size: cover;
   background-position: center;
 }

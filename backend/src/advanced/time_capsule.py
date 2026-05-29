@@ -72,9 +72,14 @@ def _validate_reveal_at(moment: datetime) -> None:
         raise ValueError(f"reveal_at cannot be more than {MAX_REVEAL_DAYS} days ahead")
 
 
-def _hydrate_cards_from_session(session, session_id):
+def _hydrate_cards_from_session(session, session_id, owner_user_id):
+    # Bảo mật: chỉ cho hydrate từ session THUỘC chính user. Lọc theo user_id để
+    # tránh IDOR (đoán session_id của người khác để lộ câu hỏi/bài đọc/lá bài).
     reading_session = session.scalar(
-        select(ReadingSession).where(ReadingSession.id == session_id)
+        select(ReadingSession).where(
+            ReadingSession.id == session_id,
+            ReadingSession.user_id == owner_user_id,
+        )
     )
     if reading_session is None:
         raise ValueError("reading session not found")
@@ -161,7 +166,9 @@ def create_capsule(
 
     with session_scope() as session:
         if session_id is not None:
-            hydrated_cards, hydrated_question, hydrated_prediction = _hydrate_cards_from_session(session, session_id)
+            hydrated_cards, hydrated_question, hydrated_prediction = _hydrate_cards_from_session(
+                session, session_id, owner_user_id=user_id
+            )
             cards = cards if cards else hydrated_cards
             question_text = (question_text or hydrated_question or "").strip()
             prediction_text = (prediction_text or hydrated_prediction or "").strip()
