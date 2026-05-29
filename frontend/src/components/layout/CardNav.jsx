@@ -3,6 +3,7 @@ import {
   useRef,
   useState,
   useEffect,
+  useCallback,
 } from "react";
 
 import { gsap } from "gsap";
@@ -39,7 +40,7 @@ const CardNav = ({
   const cardsRef = useRef([]);
   const tlRef = useRef(null);
 
-  const calculateHeight = () => {
+  const calculateHeight = useCallback(() => {
 
     const navEl = navRef.current;
 
@@ -109,9 +110,9 @@ const CardNav = ({
     }
 
     return 260;
-  };
+  }, []);
 
-  const createTimeline = () => {
+  const createTimeline = useCallback(() => {
 
     const navEl = navRef.current;
 
@@ -150,7 +151,7 @@ const CardNav = ({
     );
 
     return tl;
-  };
+  }, [calculateHeight, ease]);
 
   useLayoutEffect(() => {
 
@@ -165,7 +166,7 @@ const CardNav = ({
       tlRef.current = null;
     };
 
-  }, [ease, items]);
+  }, [createTimeline, items]);
 
   useLayoutEffect(() => {
 
@@ -221,7 +222,7 @@ const CardNav = ({
       );
     };
 
-  }, [isExpanded]);
+  }, [calculateHeight, createTimeline, isExpanded]);
 
   const closeMenu = () => {
 
