@@ -9,10 +9,41 @@ from typing import Any
 
 import jwt
 
+_DEFAULT_JWT_SECRET = "change_me_in_production_min_32_chars"
+_INSECURE_JWT_SECRETS = {
+    "",
+    _DEFAULT_JWT_SECRET,
+    "change_me",
+    "change_me_in_production",
+    "secret",
+    "changeme",
+}
+_BOOL_TRUE = {"1", "true", "yes", "y", "on"}
+
+
+def _is_production() -> bool:
+    env = os.getenv("APP_ENV", "").strip().lower()
+    if env in {"prod", "production"}:
+        return True
+    if os.getenv("PRODUCTION", "").strip().lower() in _BOOL_TRUE:
+        return True
+    return False
+
 
 def _jwt_secret() -> str:
-    default_secret = "change_me_in_production_min_32_chars"
-    return os.getenv("JWT_SECRET_KEY", default_secret).strip() or default_secret
+    raw = (os.getenv("JWT_SECRET_KEY", "") or "").strip()
+    if _is_production():
+        if not raw or raw in _INSECURE_JWT_SECRETS or len(raw) < 32:
+            raise RuntimeError(
+                "JWT_SECRET_KEY is missing, insecure, or shorter than 32 characters in production. "
+                "Set APP_ENV=production and a strong JWT_SECRET_KEY in your deployment environment. "
+                "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+            )
+        return raw
+    # Development: warn nhưng không chặn để dev không bị tắc.
+    if not raw or raw in _INSECURE_JWT_SECRETS:
+        return _DEFAULT_JWT_SECRET
+    return raw
 
 
 def _jwt_algorithm() -> str:

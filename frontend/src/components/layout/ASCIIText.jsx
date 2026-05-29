@@ -253,7 +253,7 @@ class CanvAscii {
     try {
       await document.fonts.load('600 200px "IBM Plex Mono"');
       await document.fonts.load('500 12px "IBM Plex Mono"');
-    } catch (e) {
+    } catch {
       // Font loading failed, continue with fallback
     }
     await document.fonts.ready;

@@ -34,10 +34,15 @@ export default function MagicCat({
     useState(0);
 
   const randomizedDialogues = useMemo(() => {
-
-    return [...DIALOGUES]
-      .sort(() => Math.random() - 0.5);
-
+    // Fisher-Yates shuffle để tránh sort không ổn định + Math.random impure
+    // warning của react-hooks/purity.
+    const shuffled = [...DIALOGUES];
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+      // eslint-disable-next-line react-hooks/purity -- shuffle 1 lần lúc mount
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
   }, []);
 
   const [canMeow, setCanMeow] = useState(true);

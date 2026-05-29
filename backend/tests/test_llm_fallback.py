@@ -5,8 +5,11 @@ from src.llm.generate import ReadingGenerator
 
 def test_love_theme_advice_not_forced_to_career(monkeypatch) -> None:
     monkeypatch.setenv("OLLAMA_ENABLED", "false")
+    monkeypatch.setenv("OPENAI_API_KEY", "")
+    monkeypatch.setenv("GEMINI_API_KEY", "")
     generator = ReadingGenerator()
     generator.api_key = ""
+    generator.gemini_api_key = ""
 
     cards = [
         {"name": "Temperance", "orientation": "upright", "position": "past", "confidence": 0.8, "topk_candidates": []},
@@ -30,6 +33,7 @@ def test_love_theme_advice_not_forced_to_career(monkeypatch) -> None:
     )
 
     assert any("No LLM backend configured" in warning for warning in warnings)
-    assert "Chu de chinh: love" in answer
-    assert "nghe nghiep" not in answer.lower()
-    assert "[past]" in answer and "[present]" in answer and "[future]" in answer
+    # Fallback chuyển sang tiếng Việt + markdown
+    assert "tình cảm" in answer
+    assert "sự nghiệp" not in answer
+    assert "Quá khứ" in answer and "Hiện tại" in answer and "Tương lai" in answer

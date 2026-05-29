@@ -127,6 +127,7 @@ def test_ask_with_image_caps_to_three_files_and_cleans_all_uploads(monkeypatch, 
 
     result = asyncio.run(
         main_module.ask_with_image(
+            request=None,
             question="test question",
             spread_type="single",
             image=files,
@@ -182,6 +183,7 @@ def test_ask_with_image_three_spread_uses_three_files(monkeypatch, tmp_path) -> 
 
     result = asyncio.run(
         main_module.ask_with_image(
+            request=None,
             question="test question",
             spread_type="three",
             image=files,

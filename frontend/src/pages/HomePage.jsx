@@ -86,6 +86,7 @@ export default function HomePage() {
   const [pendingInput, setPendingInput] = useState(null);
   const [isBackendLoading, setIsBackendLoading] = useState(false);
 
+  // eslint-disable-next-line no-unused-vars -- TODO: hook up session reuse
   const [currentSession, setCurrentSession] = useState(null);
 
   const requiredCards =

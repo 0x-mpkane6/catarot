@@ -1,5 +1,6 @@
 import { useRef, useLayoutEffect, useState } from 'react';
 import {
+  // eslint-disable-next-line no-unused-vars -- dùng dưới dạng <motion.div>
   motion,
   useScroll,
   useSpring,

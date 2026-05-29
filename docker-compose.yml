@@ -1,0 +1,47 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tarot-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      # Override để CORS chấp nhận frontend container.
+      API_ALLOWED_ORIGINS: "http://localhost:5173,http://localhost,http://frontend"
+      DATABASE_URL: "sqlite:///./data/app.db"
+      WEB_CONCURRENCY: 2
+    volumes:
+      # Persist DB và vision/RAG models giữa các lần restart.
+      - tarot-data:/app/data
+      - tarot-models:/app/models
+      - tarot-uploads:/app/tmp_uploads
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: "${VITE_API_BASE_URL:-http://localhost:8000}"
+        VITE_GOOGLE_CLIENT_ID: "${VITE_GOOGLE_CLIENT_ID:-}"
+    container_name: tarot-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  tarot-data:
+  tarot-models:
+  tarot-uploads:

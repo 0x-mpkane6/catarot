@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 
 export default function ChatConversation({
   messages = [],
@@ -138,11 +139,32 @@ export default function ChatConversation({
               >
 
                 <div
+                  className={
+                    isUser ? "chat-bubble user" : "chat-bubble assistant"
+                  }
                   style={{
-                    whiteSpace: "pre-wrap",
+                    // User message giữ plain text (đơn giản, ko cần markdown).
+                    // Assistant: render markdown để bold/list/heading hiển thị đẹp.
+                    whiteSpace: isUser ? "pre-wrap" : "normal",
                   }}
                 >
-                  {message.content}
+                  {isUser ? (
+                    message.content
+                  ) : (
+                    <ReactMarkdown
+                      components={{
+                        a: (props) => (
+                          <a
+                            {...props}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          />
+                        ),
+                      }}
+                    >
+                      {String(message.content ?? "")}
+                    </ReactMarkdown>
+                  )}
                 </div>
 
                 {/* copy button */}

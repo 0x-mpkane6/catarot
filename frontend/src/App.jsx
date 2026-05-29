@@ -1,14 +1,35 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
-import LandingPage from "./pages/LandingPage";
-import LoginPage from "./pages/LoginPage";
-import HomePage from "./pages/HomePage";
-import SigninPage from "./pages/SigninPage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 
 import SplashCursor from "./components/common/SplashCursor";
 
 import { Toaster } from "react-hot-toast";
+
+// Code-split: chỉ tải page khi user vào route đó để giảm bundle ban đầu.
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const HomePage = lazy(() => import("./pages/HomePage"));
+const SigninPage = lazy(() => import("./pages/SigninPage"));
+const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
+
+function RouteFallback() {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#0b0719",
+        color: "#c4b5fd",
+        fontSize: 14,
+        letterSpacing: 0.4,
+      }}
+    >
+      Đang tải...
+    </div>
+  );
+}
 
 function App() {
   return (
@@ -26,32 +47,31 @@ function App() {
         COLOR="#A855F7"
       />
 
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            style: {
-              background: "rgba(20, 8, 35, 0.92)",
-              color: "#fff",
-              border: "1px solid rgba(168,85,247,0.25)",
-              backdropFilter: "blur(12px)",
-
-              padding: "16px 20px",
-              borderRadius: "16px",
-
-              boxShadow:
-                "0 0 30px rgba(168,85,247,0.18)",
-            },
-          }}
-        />
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          style: {
+            background: "rgba(20, 8, 35, 0.92)",
+            color: "#fff",
+            border: "1px solid rgba(168,85,247,0.25)",
+            backdropFilter: "blur(12px)",
+            padding: "16px 20px",
+            borderRadius: "16px",
+            boxShadow: "0 0 30px rgba(168,85,247,0.18)",
+          },
+        }}
+      />
 
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signin" element={<SigninPage />} />
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        </Routes>
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signin" element={<SigninPage />} />
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </>
   );

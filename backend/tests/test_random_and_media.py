@@ -118,6 +118,7 @@ def test_ask_with_media_upload_audio_cleanup(monkeypatch, tmp_path) -> None:
     audio = UploadFile(filename="voice.webm", file=BytesIO(b"fake-audio"))
     result = asyncio.run(
         main_module.ask_with_media(
+            request=None,
             question="Audio test",
             spread_type="single",
             random_draw="false",
@@ -172,6 +173,7 @@ def test_ask_with_media_random_without_images(monkeypatch, tmp_path) -> None:
 
     result = asyncio.run(
         main_module.ask_with_media(
+            request=None,
             question="Random test",
             spread_type="three",
             random_draw="true",

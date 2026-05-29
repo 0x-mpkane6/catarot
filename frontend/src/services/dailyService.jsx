@@ -1,3 +1,7 @@
+/* eslint-disable react-refresh/only-export-components --
+ * File này là service module thuần (export hàm helper + 1 vài component nhỏ).
+ * Fast-refresh chỉ áp dụng cho component file. Không refactor lúc này.
+ */
 /**
  * Daily Tarot Service
  * Provides full integration with backend daily-card API endpoints
@@ -448,7 +452,7 @@ export const getDailyHistory = async ({ limit = 30 } = {}) => {
  * Ask a question and draw a daily card (convenience function)
  * Checks if card already drawn today, returns existing or draws new
  * @param {Object} params - Parameters object
- * @param {string} params.question - Question to ask (optional, used as mood if no mood provided)
+ * @param {string} params.question - Question to ask (optional UI context)
  * @param {string} params.moodPre - Pre-draw mood (camelCase)
  * @param {string} params.mood_pre - Pre-draw mood (snake_case)
  * @returns {Promise<{item: Object, alreadyDrawn: boolean}>} Card and draw status
@@ -460,13 +464,10 @@ export const getDailyHistory = async ({ limit = 30 } = {}) => {
  * console.log(alreadyDrawn ? 'Reusing today\'s card' : 'New card drawn');
  */
 export const askDailyQuestion = async ({
-  question = "",
   moodPre,
   mood_pre,
 } = {}) => {
   try {
-    const cleanQuestion = String(question || "").trim();
-
     // Check if card already drawn today
     const today = await getTodayDailyCard();
 
@@ -477,9 +478,9 @@ export const askDailyQuestion = async ({
       };
     }
 
-    // Draw new card, using mood if provided, otherwise question
+    // Draw new card. The question is UI context only; backend stores mood separately.
     const providedMood = moodPre ?? mood_pre;
-    const finalMood = providedMood || (cleanQuestion || null);
+    const finalMood = providedMood || null;
 
     const item = await drawDailyCard({
       mood_pre: finalMood,
