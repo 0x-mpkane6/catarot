@@ -95,14 +95,14 @@ def analyze_voice_emotion(audio_path: str | None) -> tuple[str | None, dict[str,
 
     path = Path(audio_path)
     if not path.exists():
-        warnings.append("audio file missing for emotion analysis")
+        warnings.append("thiếu file âm thanh để phân tích cảm xúc")
         return None, {}, warnings
 
     wav_path: Path | None
     temp_dir: Path | None
     wav_path, temp_dir = _to_wav_if_needed(path)
     if wav_path is None:
-        warnings.append("emotion analysis skipped: wav conversion unavailable")
+        warnings.append("bỏ qua phân tích cảm xúc: không chuyển đổi được sang WAV")
         return None, {}, warnings
 
     try:
@@ -120,7 +120,7 @@ def analyze_voice_emotion(audio_path: str | None) -> tuple[str | None, dict[str,
         return emotion_state, signal, warnings
     except Exception as exc:
         LOGGER.warning("emotion analysis failed: %s", exc)
-        warnings.append("emotion analysis failed")
+        warnings.append("phân tích cảm xúc thất bại")
         return None, {}, warnings
     finally:
         if temp_dir is not None:

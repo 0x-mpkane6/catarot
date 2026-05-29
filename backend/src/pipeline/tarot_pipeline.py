@@ -136,10 +136,10 @@ class TarotPipeline:
         positions = self._spread_positions(spread_type)
 
         if len(image_paths) > 3:
-            warnings.append("Spread three expects up to 3 images; extra images were ignored.")
+            warnings.append("Kiểu trải bài three tối đa 3 ảnh; các ảnh dư đã bị bỏ qua.")
             image_paths = image_paths[:3]
         if 0 < len(image_paths) < 3:
-            warnings.append("Spread three ideally uses 3 images (past/present/future).")
+            warnings.append("Kiểu trải bài three nên dùng đủ 3 ảnh (quá khứ/hiện tại/tương lai).")
 
         for idx, image_path in enumerate(image_paths):
             result = self.card_predictor.predict(image_path)
@@ -150,9 +150,9 @@ class TarotPipeline:
             if confidence < self.confidence_threshold:
                 warnings.append(
                     (
-                        f"Low confidence for image {Path(image_path).name} "
+                        f"Độ tin cậy thấp cho ảnh {Path(image_path).name} "
                         f"({confidence:.2f} < {self.confidence_threshold:.2f}). "
-                        "Ket qua chua chac. Try recropping or selecting from top-5 candidates."
+                        "Kết quả chưa chắc chắn. Hãy thử cắt lại ảnh hoặc chọn từ danh sách top-5 gợi ý."
                     )
                 )
 
@@ -207,7 +207,7 @@ class TarotPipeline:
                 }
             )
 
-        warnings.append(f"Random draw enabled: generated {len(cards)} card(s) without image prediction.")
+        warnings.append(f"Đã bật rút bài ngẫu nhiên: tạo {len(cards)} lá bài mà không nhận dạng từ ảnh.")
         return cards
 
     def _apply_overrides(self, cards: list[dict], card_overrides: dict[int, dict] | None) -> None:
@@ -313,7 +313,7 @@ class TarotPipeline:
         clean_question = (question or "").strip()
         clean_spread = "three"
         if clean_spread != spread_type:
-            warnings.append(f"Only spread_type 'three' is supported; received '{spread_type}', defaulted to 'three'.")
+            warnings.append(f"Chỉ hỗ trợ kiểu trải bài 'three'; nhận được '{spread_type}', đã mặc định về 'three'.")
 
         transcript, asr_warnings = transcribe_audio(audio_path)
         warnings.extend(asr_warnings)
@@ -323,11 +323,11 @@ class TarotPipeline:
         normalized_images = _coerce_image_paths(image_paths)
         if random_draw:
             if normalized_images:
-                warnings.append("Random draw enabled; uploaded images ignored.")
+                warnings.append("Đã bật rút bài ngẫu nhiên; các ảnh tải lên đã bị bỏ qua.")
             cards = self._draw_random_cards(clean_spread, warnings)
         else:
             if not normalized_images:
-                warnings.append("No image provided. Upload at least one tarot card image for prediction.")
+                warnings.append("Chưa có ảnh nào. Hãy tải lên ít nhất một ảnh lá bài Tarot để nhận dạng.")
             cards = self._build_card_outputs(normalized_images, clean_spread, warnings)
 
         self._apply_overrides(cards, card_overrides)
@@ -354,7 +354,7 @@ class TarotPipeline:
         slow_threshold = _slow_generation_threshold_seconds()
         if generation_duration >= slow_threshold:
             warnings.append(
-                f"Slow generation: interpretation took {generation_duration:.1f}s (threshold {slow_threshold:.1f}s)."
+                f"Sinh nội dung chậm: phần diễn giải mất {generation_duration:.1f}s (ngưỡng {slow_threshold:.1f}s)."
             )
         warnings.extend(generation_warnings)
 

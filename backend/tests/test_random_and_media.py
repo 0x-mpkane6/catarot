@@ -24,8 +24,8 @@ def test_pipeline_random_draw_defaults_to_three_when_single_requested() -> None:
     assert result["spread_type"] == "three"
     assert len(result["cards"]) == 3
     assert [card["position"] for card in result["cards"]] == ["past", "present", "future"]
-    assert all("No image provided" not in warning for warning in result["warnings"])
-    assert any("Random draw enabled" in warning for warning in result["warnings"])
+    assert all("Chưa có ảnh nào" not in warning for warning in result["warnings"])
+    assert any("rút bài ngẫu nhiên" in warning for warning in result["warnings"])
 
 
 def test_pipeline_random_three_positions() -> None:
@@ -57,7 +57,7 @@ def test_pipeline_random_ignores_uploaded_images(tmp_path) -> None:
     )
 
     assert len(result["cards"]) == 3
-    assert any("uploaded images ignored" in warning for warning in result["warnings"])
+    assert any("ảnh tải lên đã bị bỏ qua" in warning for warning in result["warnings"])
 
 
 def test_pipeline_adds_slow_generation_warning(monkeypatch) -> None:
@@ -74,7 +74,7 @@ def test_pipeline_adds_slow_generation_warning(monkeypatch) -> None:
         random_draw=True,
     )
 
-    assert any("Slow generation:" in warning for warning in result["warnings"])
+    assert any("Sinh nội dung chậm:" in warning for warning in result["warnings"])
 
 
 def test_ask_with_media_upload_audio_cleanup(monkeypatch, tmp_path) -> None:

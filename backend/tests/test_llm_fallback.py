@@ -32,7 +32,7 @@ def test_love_theme_advice_not_forced_to_career(monkeypatch) -> None:
         warnings=[],
     )
 
-    assert any("No LLM backend configured" in warning for warning in warnings)
+    assert any("Chưa cấu hình mô hình ngôn ngữ" in warning for warning in warnings)
     # Fallback chuyển sang tiếng Việt + markdown
     assert "tình cảm" in answer
     assert "sự nghiệp" not in answer

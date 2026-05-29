@@ -41,6 +41,19 @@ def _normalize_orientation(value: Any) -> str:
     return "upright"
 
 
+def _normalize_user_id(value: int | None) -> int | None:
+    # Client có thể gửi user_id = 0 cho khách (chưa đăng nhập). Không có user 0
+    # trong DB nên giữ nguyên 0 sẽ vi phạm khóa ngoại và làm cả phiên lưu thất bại
+    # âm thầm. Coerce mọi id không hợp lệ về None (lưu ẩn danh).
+    try:
+        user_id = int(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+    if user_id is None or user_id <= 0:
+        return None
+    return user_id
+
+
 def _get_or_create_tarot_card(session: Session, card_name: str) -> TarotCard:
     clean_name = _normalize_text(card_name) or "Unknown Card"
 
@@ -87,6 +100,8 @@ def persist_reading_result(
 ) -> int | None:
     if not _db_enabled():
         return None
+
+    user_id = _normalize_user_id(user_id)
 
     try:
         initialize_database_if_needed(seed_reference_data=True)

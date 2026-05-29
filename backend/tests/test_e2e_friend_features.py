@@ -540,7 +540,7 @@ class TestF1VietnameseLLM:
         assert "career" not in answer.lower() or "sự nghiệp" in answer
 
         # Fallback warning
-        assert any("No LLM backend" in w for w in warnings)
+        assert any("Chưa cấu hình mô hình ngôn ngữ" in w for w in warnings)
 
 
 # =====================================================================
