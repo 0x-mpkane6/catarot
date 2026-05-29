@@ -25,6 +25,7 @@ export default function DailyResultPanel({
   card = null,
   onReflectSubmit = () => {},
   isLoading = false,
+  infoNote = "",
 }) {
   const [previewExpanded, setPreviewExpanded] =
     useState(false);
@@ -160,30 +161,35 @@ export default function DailyResultPanel({
         }}
       >
         {/* MAIN CARD IMAGE */}
-        <img
-          src={getImagePath(card.card_name)}
-          alt={card.card_name}
-          onClick={() => setPreviewExpanded(true)}
+        <div
           style={{
-            cursor: "pointer",
-            height: "340px",
-            objectFit: "contain",
-            borderRadius: "18px",
-            transform:
-              card.orientation === "reversed"
-                ? "rotate(180deg)"
-                : "rotate(0deg)",
-            transition: "0.35s ease",
             animation:
               "floatingReveal 3s ease-in-out infinite",
-            boxShadow:
-              "0 0 34px rgba(192,132,252,0.22)",
-            _hover: {
-              boxShadow:
-                "0 0 45px rgba(192,132,252,0.35)",
-            },
           }}
-        />
+        >
+          <img
+            src={getImagePath(card.card_name)}
+            alt={card.card_name}
+            onClick={() => setPreviewExpanded(true)}
+            style={{
+              cursor: "pointer",
+              height: "340px",
+              objectFit: "contain",
+              borderRadius: "18px",
+              transform:
+                card.orientation === "reversed"
+                  ? "rotate(180deg)"
+                  : "rotate(0deg)",
+              transition: "0.35s ease",
+              boxShadow:
+                "0 0 34px rgba(192,132,252,0.22)",
+              _hover: {
+                boxShadow:
+                  "0 0 45px rgba(192,132,252,0.35)",
+              },
+            }}
+          />
+        </div>
 
         {/* STREAK BADGE */}
         <div
@@ -218,6 +224,26 @@ export default function DailyResultPanel({
         >
           {formatDate(card.draw_date || card.created_at)}
         </div>
+
+        {infoNote && (
+          <div
+            style={{
+              marginTop: "12px",
+              padding: "10px 12px",
+              borderRadius: "14px",
+              background:
+                "rgba(255,255,255,0.05)",
+              border:
+                "1px solid rgba(192,132,252,0.16)",
+              color: "#e9d5ff",
+              fontSize: "0.82rem",
+              lineHeight: "1.45",
+              textAlign: "center",
+            }}
+          >
+            {infoNote}
+          </div>
+        )}
       </div>
 
       {/* PREVIEW & DETAILS MODAL */}
@@ -384,7 +410,7 @@ export default function DailyResultPanel({
                   fontWeight: 600,
                 }}
               >
-                ✨ Affirmation
+                Affirmation
               </div>
               <div
                 style={{
@@ -421,7 +447,7 @@ export default function DailyResultPanel({
                       fontWeight: 600,
                     }}
                   >
-                    🏷️ Keywords
+                    Keywords
                   </div>
                   <div
                     style={{
@@ -474,7 +500,7 @@ export default function DailyResultPanel({
                   fontWeight: 600,
                 }}
               >
-                🎭 Moods
+                Moods
               </div>
 
               {/* PRE-MOOD */}
@@ -569,7 +595,7 @@ export default function DailyResultPanel({
                     fontWeight: 600,
                   }}
                 >
-                  💭 Your Reflection
+                  Your Reflection
                 </div>
                 <div
                   style={{
@@ -603,7 +629,7 @@ export default function DailyResultPanel({
                   fontWeight: 600,
                 }}
               >
-                🔥 Streak
+                Streak
               </div>
               <div
                 style={{

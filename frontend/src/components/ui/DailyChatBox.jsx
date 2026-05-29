@@ -7,6 +7,8 @@ import {
 } from "../../services/dailyService";
 
 import {
+  useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -21,18 +23,54 @@ export default function DailyChatBox({
   disabled = false,
   onSubmit,
 }) {
+  const baseHeight = 28;
+  const maxHeight = 180;
 
   const [mood, setMood] =
     useState("");
 
   const [question, setQuestion] =
     useState("");
+  const [isMultiline, setIsMultiline] =
+    useState(false);
+  const textareaRef = useRef(null);
 
   const [showMoodMenu,
     setShowMoodMenu] =
     useState(false);
 
-  const handleSubmit = () => {
+  useEffect(() => {
+    const textarea =
+      textareaRef.current;
+
+    if (!textarea) return;
+
+    textarea.style.height =
+      `${baseHeight}px`;
+
+    const nextHeight =
+      Math.min(
+        Math.max(
+          textarea.scrollHeight,
+          baseHeight
+        ),
+        maxHeight
+      );
+
+    textarea.style.height =
+      `${nextHeight}px`;
+    textarea.style.overflowY =
+      textarea.scrollHeight > maxHeight
+        ? "auto"
+        : "hidden";
+
+    setIsMultiline(
+      textarea.scrollHeight >
+        baseHeight + 4
+    );
+  }, [question, baseHeight, maxHeight]);
+
+  const handleSubmit = async () => {
 
     if (disabled) return;
 
@@ -54,16 +92,19 @@ export default function DailyChatBox({
       return;
     }
 
-    onSubmit?.({
-      mood_pre:
-        trimmedMood,
+    await Promise.resolve(
+      onSubmit?.({
+        mood_pre:
+          trimmedMood,
 
-      question:
-        trimmedQuestion,
-    });
+        question:
+          trimmedQuestion,
+      })
+    );
 
     setMood("");
     setQuestion("");
+    setIsMultiline(false);
 
     setShowMoodMenu(
       false
@@ -102,7 +143,10 @@ export default function DailyChatBox({
 
           display: "flex",
 
-          alignItems: "center",
+          alignItems:
+            isMultiline
+              ? "flex-end"
+              : "center",
 
           gap: "0px",
 
@@ -281,9 +325,9 @@ export default function DailyChatBox({
         />
 
         {/* question input */}
-        <input
-          type="text"
-
+        <textarea
+          ref={textareaRef}
+          rows={1}
           value={question}
 
           onChange={(e) =>
@@ -294,9 +338,13 @@ export default function DailyChatBox({
 
           placeholder="What should I focus on today?"
 
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              handleSubmit();
+          onKeyDown={async (e) => {
+            if (
+              e.key === "Enter" &&
+              !e.shiftKey
+            ) {
+              e.preventDefault();
+              await handleSubmit();
             }
           }}
 
@@ -319,7 +367,14 @@ export default function DailyChatBox({
             fontFamily:
               "inherit",
 
-            padding: "8px 4px",
+            padding: "0 12px",
+            minHeight: "28px",
+            maxHeight: "180px",
+            height: "28px",
+            resize: "none",
+            overflowY: "hidden",
+            whiteSpace: "pre-wrap",
+            lineHeight: "24px",
           }}
         />
 

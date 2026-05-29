@@ -57,6 +57,9 @@ def _duo_payload(row: DuoSession) -> dict[str, Any]:
             "id": item.id,
             "user_id": item.user_id,
             "slot_label": item.slot_label,
+            "username": (item.user.username if item.user else None),
+            "display_name": (item.user.display_name if item.user else None),
+            "email": (item.user.email if item.user else None),
             "joined_at": item.joined_at.isoformat() if item.joined_at else None,
         }
         for item in row.participants
@@ -98,6 +101,8 @@ def _load_duo_session(session_id: int) -> DuoSession | None:
         if row is None:
             return None
         row.participants
+        for participant in row.participants:
+            participant.user
         row.cards
         row.reading
         return row

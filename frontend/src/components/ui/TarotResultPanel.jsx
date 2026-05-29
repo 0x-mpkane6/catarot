@@ -79,6 +79,11 @@ export default function TarotResultPanel({
 
               justifyContent:
                 "center",
+
+              animation:
+                `floatingReveal ${
+                  3 + index
+                }s ease-in-out infinite`,
             }}
           >
 
@@ -112,11 +117,6 @@ export default function TarotResultPanel({
 
                 transition:
                   "0.35s ease",
-
-                animation:
-                  `floatingReveal ${
-                    3 + index
-                  }s ease-in-out infinite`,
 
                 boxShadow:
                   `

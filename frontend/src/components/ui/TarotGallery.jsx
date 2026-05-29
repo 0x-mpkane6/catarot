@@ -17,8 +17,8 @@ export default function TarotGallery({
     },
     {
       image: timeCapsule,
-      text: "Time Capsule",
-      mode: "coming-soon"
+      text: "Visions Vault",
+      mode: "visions"
     },
     {
       image: tarotReading,
@@ -28,13 +28,13 @@ export default function TarotGallery({
     {
       image: duoReading,
       text: "Duo Reading",
-      mode: "coming-soon"
+      mode: "duo"
 
     },
     {
       image: communityRoom,
       text: "Community Room",
-      mode: "coming-soon"
+      mode: "community"
     },
   ];
 

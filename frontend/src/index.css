@@ -80,6 +80,69 @@ html, body, #root {
   margin: 16px 0;
 }
 
+.markdown-overlay__content > * + * {
+  margin-top: 14px;
+}
+
+.markdown-overlay__content h1,
+.markdown-overlay__content h2,
+.markdown-overlay__content h3,
+.markdown-overlay__content h4 {
+  color: #f5f3ff;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.markdown-overlay__content h1 {
+  font-size: 1.9rem;
+}
+
+.markdown-overlay__content h2 {
+  font-size: 1.28rem;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(192, 132, 252, 0.18);
+}
+
+.markdown-overlay__content h3 {
+  font-size: 1.08rem;
+  color: #d8b4fe;
+}
+
+.markdown-overlay__content p,
+.markdown-overlay__content li {
+  color: #f3eaff;
+  line-height: 1.75;
+}
+
+.markdown-overlay__content strong {
+  color: #fde68a;
+  font-weight: 700;
+}
+
+.markdown-overlay__content em {
+  color: #c4b5fd;
+}
+
+.markdown-overlay__content ul,
+.markdown-overlay__content ol {
+  padding-left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.markdown-overlay__content li::marker {
+  color: #c4b5fd;
+}
+
+.markdown-overlay__content blockquote {
+  border-left: 3px solid #a855f7;
+  padding: 10px 14px;
+  background: rgba(168, 85, 247, 0.12);
+  border-radius: 10px;
+  color: #f5f3ff;
+}
+
 @keyframes floatingOrb {
 
   0% {

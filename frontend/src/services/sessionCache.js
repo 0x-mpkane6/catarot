@@ -13,6 +13,10 @@ export function getCachedSessions() {
 export function saveSessionMeta(
   session
 ) {
+  if (!session?.sessionId) {
+    return;
+  }
+
   const existing =
     getCachedSessions();
 

@@ -1,9 +1,15 @@
 import CardNav from "../components/layout/CardNav";
 import UserProfile from "../components/ui/UserProfile";
 import ReadingHistory from "../components/ui/ReadingHistory";
-import MagicCat from "../components/ui/MagicCat";
+import ReflectionHistory from "../components/ui/ReflectionHistory";
+import MascotHelper from "../components/ui/MascotHelper";
+import MarkdownOverlay from "../components/ui/MarkdownOverlay";
 import ContactPanel from "../components/ui/ContactPanel";
-import TarotGallery from "../components/ui/TarotGallery";
+// import TarotGallery from "../components/ui/TarotGallery";
+import TarotGallery from "../components/ui/StaticTarotGallery";
+import DuoReadingPanel from "../components/ui/DuoReadingPanel";
+import CommunityReadingPanel from "../components/ui/CommunityReadingPanel";
+import VisionsVaultPanel from "../components/ui/VisionsVaultPanel";
 import ChatBox from "../components/ui/ChatBox";
 import TarotSpreadGrid from "../components/ui/TarotSpreadGrid";
 
@@ -14,7 +20,11 @@ import DailyResultPanel
 from "../components/ui/DailyResultPanel";
 
 import {
-  getConversation,
+  getConversationSafe,
+  getReadingHistory,
+  getSessionDetail,
+  buildSessionMessages,
+  getApiErrorMessage,
 } from "../services/historyService";
 
 import {
@@ -30,14 +40,24 @@ from "../components/ui/TarotResultPanel";
 import ChatConversation
 from "../components/ui/ChatConversation";
 
-import { useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 
 import {
   askTarotQuestion,
 } from "../services/tarotService";
+import {
+  getCurrentUser,
+} from "../services/authService";
 
 import {
   askDailyQuestion,
+  cacheTodayDailyCard,
+  getDailyHistory,
+  getTodayDailyReadingState,
 } 
 
 from "../services/dailyService";
@@ -51,8 +71,59 @@ from "../services/dailyService";
 import toast from "react-hot-toast";
 
 import { Undo2 } from "lucide-react";
+import tarotReading from "../assets/images/homepage/the-magician.png";
+import whatIsTarotContent from "../assets/text/what_is_tarot.md?raw";
+import catarotContent from "../assets/text/catarot.md?raw";
+
+const READING_SESSION_CARD = {
+  image: tarotReading,
+  text: "Tarot Reading",
+  mode: "reading",
+};
 
 export default function HomePage() {
+  const getStoredUser =
+    () => {
+      try {
+        for (const storage of [
+          localStorage,
+          sessionStorage,
+        ]) {
+          const raw =
+            storage.getItem("user");
+          if (!raw) continue;
+          return JSON.parse(raw);
+        }
+      } catch (error) {
+        console.warn(
+          "Failed to parse stored user",
+          error
+        );
+      }
+
+      return null;
+    };
+
+  const persistUserProfile =
+    (profile) => {
+      const serialized =
+        JSON.stringify(profile);
+
+      localStorage.setItem(
+        "user",
+        serialized
+      );
+
+      sessionStorage.setItem(
+        "user",
+        serialized
+      );
+    };
+
+  const [userProfile, setUserProfile] =
+    useState(
+      getStoredUser()
+    );
 
   const [messages, setMessages] =
   useState([]);
@@ -67,16 +138,24 @@ export default function HomePage() {
 
   const [showProfile, setShowProfile] = useState(false);
 
-  // Username
-  const username = "0x-mpkane6";
-
-  // const [username, setUsername] = useState("");
+  const username =
+    userProfile?.display_name ||
+    userProfile?.username ||
+    "User";
 
   // Reading History
   const [showHistory, setShowHistory] = useState(false);
+  const [showReflectionHistory, setShowReflectionHistory] =
+    useState(false);
+  const [reflectionHistoryVersion, setReflectionHistoryVersion] =
+    useState(0);
+  const [readingHistoryVersion, setReadingHistoryVersion] =
+    useState(0);
 
   // Contact Panel
   const [showContact, setShowContact] = useState(false);
+  const [activeMarkdownDoc, setActiveMarkdownDoc] =
+    useState(null);
 
   // Selected Card
   const [selectedCard, setSelectedCard] = useState(null);
@@ -85,12 +164,147 @@ export default function HomePage() {
   const [showSpreadGrid, setShowSpreadGrid] = useState(false);
   const [pendingInput, setPendingInput] = useState(null);
   const [isBackendLoading, setIsBackendLoading] = useState(false);
+  const [hasTodayDailyReading, setHasTodayDailyReading] =
+    useState(false);
+  const [dailyInfoNote, setDailyInfoNote] =
+    useState("");
 
   // eslint-disable-next-line no-unused-vars -- TODO: hook up session reuse
   const [currentSession, setCurrentSession] = useState(null);
 
   const requiredCards =
     selectedCard?.mode === "daily" ? 1 : 3;
+
+  const openReadingSession = (
+    title = READING_SESSION_CARD.text
+  ) => {
+    setSelectedCard({
+      ...READING_SESSION_CARD,
+      text: title,
+    });
+    setHideGallery(true);
+    setShowChatUI(true);
+    setShowSpreadGrid(false);
+  };
+
+  const loadReadingHistory =
+    useCallback(async () => {
+      const sessions =
+        await getReadingHistory();
+
+      return sessions;
+    }, []);
+
+  useEffect(() => {
+    const loadUserProfile =
+      async () => {
+        try {
+          const profile =
+            await getCurrentUser();
+
+          console.log(
+            "current user profile:",
+            profile
+          );
+
+          setUserProfile(
+            profile
+          );
+          persistUserProfile(
+            profile
+          );
+          setReadingHistoryVersion(
+            (prev) => prev + 1
+          );
+          await loadReadingHistory();
+        } catch (error) {
+          console.error(
+            "Failed to load current user profile",
+            {
+              message:
+                error?.message,
+              detail:
+                error?.response?.data
+                  ?.detail,
+              status:
+                error?.response?.status,
+            }
+          );
+        }
+      };
+
+    loadUserProfile();
+  }, [loadReadingHistory]);
+
+  useEffect(() => {
+    if (
+      selectedCard?.mode !== "daily" ||
+      !userProfile
+    ) {
+      return;
+    }
+
+    const loadTodayDailyReading =
+      async () => {
+        try {
+          setIsBackendLoading(true);
+
+          const result =
+            await getTodayDailyReadingState(
+              userProfile
+            );
+
+          if (!result?.hasTodayReading || !result?.item) {
+            setHasTodayDailyReading(false);
+            setDailyInfoNote("");
+            return;
+          }
+
+          const dailyItem =
+            result.item;
+
+          setHasTodayDailyReading(true);
+          setDailyInfoNote(
+            "You have already received your daily reading today."
+          );
+
+          setMessages([
+            {
+              role: "user",
+              content:
+                dailyItem.question ||
+                dailyItem.mood_pre ||
+                "Daily Tarot",
+            },
+            {
+              role: "assistant",
+              content:
+                dailyItem.affirmation ||
+                "Your daily card has arrived.",
+            },
+          ]);
+
+          setRevealedCards([
+            dailyItem,
+          ]);
+
+          setShowResult(true);
+          setShowSpreadGrid(false);
+          setPendingInput(null);
+        } catch (error) {
+          console.error(
+            "Failed to load today's daily reading",
+            error
+          );
+          setHasTodayDailyReading(false);
+          setDailyInfoNote("");
+        } finally {
+          setIsBackendLoading(false);
+        }
+      };
+
+    loadTodayDailyReading();
+  }, [selectedCard?.mode, userProfile]);
 
     const handleReflectSubmit =
   async (
@@ -132,6 +346,10 @@ export default function HomePage() {
         "Reflection saved"
       );
 
+      setReflectionHistoryVersion(
+        (prev) => prev + 1
+      );
+
     } catch (error) {
 
       console.error(error);
@@ -148,6 +366,12 @@ export default function HomePage() {
     mood_pre,
     question,
   }) => {
+    if (hasTodayDailyReading) {
+      toast.error(
+        "You have already received your daily reading today."
+      );
+      return;
+    }
 
     try {
 
@@ -197,8 +421,19 @@ export default function HomePage() {
       setRevealedCards([
         dailyItem,
       ]);
+      cacheTodayDailyCard(
+        userProfile,
+        dailyItem
+      );
+      setHasTodayDailyReading(
+        true
+      );
+      setDailyInfoNote(
+        "You have already received your daily reading today."
+      );
 
       setShowSpreadGrid(false);
+      setCurrentSession(null);
 
       setShowResult(true);
 
@@ -227,7 +462,10 @@ export default function HomePage() {
     // feature chưa làm
    if (
       card.mode !== "daily" &&
-      card.mode !== "reading"
+      card.mode !== "reading" &&
+      card.mode !== "duo" &&
+      card.mode !== "community" &&
+      card.mode !== "visions"
     ) {
 
       if (!isToastVisible) {
@@ -253,14 +491,25 @@ export default function HomePage() {
     if (hideGallery) return;
 
     setHideGallery(true);
-
+    setMessages([]);
+    setRevealedCards([]);
+    setShowResult(false);
+    setHasTodayDailyReading(false);
+    setDailyInfoNote("");
+    setShowSpreadGrid(false);
+    setPendingInput(null);
     setShowChatUI(false);
+    setCurrentSession(null);
 
     setTimeout(() => {
 
       setSelectedCard(card);
 
-      setShowChatUI(true);
+      setShowChatUI(
+        card.mode !== "duo" &&
+        card.mode !== "community" &&
+        card.mode !== "visions"
+      );
       setShowSpreadGrid(false);
       setPendingInput(null);
 
@@ -335,6 +584,9 @@ const handleChatSubmitDraft =
         setCurrentSession(
           sessionMeta
         );
+        setReadingHistoryVersion(
+          (prev) => prev + 1
+        );
 
         toast.success(
           "Reading complete"
@@ -385,6 +637,16 @@ const handleChatSubmitDraft =
 
         console.log("daily response", response);
 
+        const dailyItem =
+          response?.item;
+
+        if (!dailyItem) {
+          toast.error(
+            "No daily card returned"
+          );
+          return;
+        }
+
         setMessages([
         {
           role: "user",
@@ -395,13 +657,26 @@ const handleChatSubmitDraft =
         {
           role: "assistant",
           content:
-            response.final_answer,
+            dailyItem.affirmation ||
+            "Your daily card has arrived.",
         },
       ]);
 
-      setRevealedCards(
-        response.cards || []
+      setRevealedCards([
+        dailyItem,
+      ]);
+      cacheTodayDailyCard(
+        userProfile,
+        dailyItem
       );
+      setHasTodayDailyReading(
+        true
+      );
+      setDailyInfoNote(
+        "You have already received your daily reading today."
+      );
+
+      setCurrentSession(null);
 
       setShowResult(true);
 
@@ -465,6 +740,9 @@ const handleChatSubmitDraft =
       setCurrentSession(
         sessionMeta
       );
+      setReadingHistoryVersion(
+        (prev) => prev + 1
+      );
 
       setShowSpreadGrid(false);
       setPendingInput(null);
@@ -485,31 +763,58 @@ const handleChatSubmitDraft =
 
     try {
 
+      setShowHistory(false);
       setIsBackendLoading(true);
+      setPendingInput(null);
+      setCurrentSession(session);
+      setMessages([]);
+      setRevealedCards([]);
+      openReadingSession(
+        session.title
+      );
+      setShowResult(true);
 
-      const data =
-        await getConversation(
-          session.sessionId
-        );
+      const [
+        sessionDetail,
+        conversation,
+      ] = await Promise.all([
+        getSessionDetail(
+          session
+        ),
+        getConversationSafe(
+          session
+        ),
+      ]);
 
       setCurrentSession(
-            session
-          );
+        {
+          ...session,
+          title:
+            sessionDetail.title,
+        }
+      );
 
-          setMessages(
-            data.messages || []
-          );
+      setMessages(
+        buildSessionMessages(
+          sessionDetail,
+          conversation
+        )
+      );
 
-          setShowResult(true);
+      setRevealedCards(
+        sessionDetail.cards || []
+      );
 
-          setShowHistory(false);
+      openReadingSession(
+        sessionDetail.title
+      );
 
         } catch (error) {
 
           console.error(error);
 
           toast.error(
-            "Failed to load session"
+            `Failed to load session: ${getApiErrorMessage(error)}`
           );
 
         } finally {
@@ -524,19 +829,43 @@ const handleChatSubmitDraft =
       bgColor: "rgba(25, 18, 40, 0.82)",
       textColor: "#ffffff",
       links: [
-        { label: "Reflection History" },
+        {
+          label: "Reflection History",
+          onClick: () =>
+            setShowReflectionHistory(
+              true
+            ),
+        },
         { label: "Reading History", 
           onClick: () => setShowHistory(true) },
       ],
     },
 
     {
-      label: "Arcana",
+      label: "Tarot",
       bgColor: "rgba(40, 22, 60, 0.82)",
       textColor: "#ffffff",
       links: [
-        { label: "Major Arcana" },
-        { label: "Minor Arcana" },
+        {
+          label: "What is Tarot?",
+          onClick: () =>
+            setActiveMarkdownDoc({
+              title:
+                "WHAT IS TAROT?",
+              content:
+                whatIsTarotContent,
+            }),
+        },
+        {
+          label: "Catarot",
+          onClick: () =>
+            setActiveMarkdownDoc({
+              title:
+                "CATAROT",
+              content:
+                catarotContent,
+            }),
+        },
       ],
     },
 
@@ -545,8 +874,6 @@ const handleChatSubmitDraft =
       bgColor: "rgba(30, 16, 50, 0.82)",
       textColor: "#ffffff",
       links: [
-        { label: "Github" },
-        { label: "Discord" },
         { label: "More Info",
           onClick: () => { setShowContact(true); 
 
@@ -597,7 +924,7 @@ const handleChatSubmitDraft =
       <UserProfile
         isOpen={showProfile}
         onClose={() => setShowProfile(false)}
-        username={username}
+        user={userProfile}
       />
 
       <ReadingHistory
@@ -605,17 +932,35 @@ const handleChatSubmitDraft =
         onClose={() =>
           setShowHistory(false)
         }
-
+        loadHistory={
+          loadReadingHistory
+        }
+        refreshKey={
+          readingHistoryVersion
+        }
         onSelectSession={
           handleSelectSession
         }
       />
 
-      <MagicCat
-        onClick={() => {
-          console.log("meow");
-        }}
+      <ReflectionHistory
+        isOpen={showReflectionHistory}
+        onClose={() =>
+          setShowReflectionHistory(
+            false
+          )
+        }
+        refreshKey={
+          reflectionHistoryVersion
+        }
+        loadHistory={() =>
+          getDailyHistory({
+            limit: 30,
+          })
+        }
       />
+
+      <MascotHelper />
 
       <ContactPanel
         isOpen={showContact}
@@ -623,6 +968,25 @@ const handleChatSubmitDraft =
         onClose={() => {
           setShowContact(false);
         }}
+      />
+
+      <MarkdownOverlay
+        isOpen={
+          Boolean(
+            activeMarkdownDoc
+          )
+        }
+        title={
+          activeMarkdownDoc?.title
+        }
+        content={
+          activeMarkdownDoc?.content
+        }
+        onClose={() =>
+          setActiveMarkdownDoc(
+            null
+          )
+        }
       />
 
     <div
@@ -650,9 +1014,12 @@ const handleChatSubmitDraft =
         setMessages([]);
         setRevealedCards([]);
         setShowResult(false);
+        setHasTodayDailyReading(false);
+        setDailyInfoNote("");
         setShowChatUI(false);
         setShowSpreadGrid(false);
         setPendingInput(null);
+        setCurrentSession(null);
         setIsBackendLoading(false);
 
         setTimeout(() => {
@@ -703,7 +1070,10 @@ const handleChatSubmitDraft =
     )}
   
 
-   {showChatUI && selectedCard && (
+   {(showChatUI ||
+      selectedCard?.mode === "duo" ||
+      selectedCard?.mode === "community" ||
+      selectedCard?.mode === "visions") && selectedCard && (
       <div
         style={{
           position: "absolute",
@@ -711,10 +1081,19 @@ const handleChatSubmitDraft =
           left: "70px",
           top: "110px",
 
-          opacity: showChatUI ? 1 : 0,
+          opacity:
+            showChatUI ||
+            selectedCard?.mode === "duo" ||
+            selectedCard?.mode === "community" ||
+            selectedCard?.mode === "visions"
+              ? 1
+              : 0,
 
           transform:
-            showChatUI
+            showChatUI ||
+            selectedCard?.mode === "duo" ||
+            selectedCard?.mode === "community" ||
+            selectedCard?.mode === "visions"
               ? "translateY(0px)"
               : "translateY(30px)",
 
@@ -753,6 +1132,57 @@ const handleChatSubmitDraft =
       </div>
     )}
 
+    {selectedCard?.mode === "duo" && (
+      <div
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: "50%",
+          transform:
+            "translate(-50%, -50%)",
+          width: "min(980px, calc(100vw - 180px))",
+          maxWidth: "100%",
+          zIndex: 20,
+        }}
+      >
+        <DuoReadingPanel />
+      </div>
+    )}
+
+    {selectedCard?.mode === "community" && (
+      <div
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: "50%",
+          transform:
+            "translate(-50%, -50%)",
+          width: "min(1180px, calc(100vw - 180px))",
+          maxWidth: "100%",
+          zIndex: 20,
+        }}
+      >
+        <CommunityReadingPanel />
+      </div>
+    )}
+
+    {selectedCard?.mode === "visions" && (
+      <div
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: "50%",
+          transform:
+            "translate(-50%, -50%)",
+          width: "min(1160px, calc(100vw - 180px))",
+          maxWidth: "100%",
+          zIndex: 20,
+        }}
+      >
+        <VisionsVaultPanel />
+      </div>
+    )}
+
     {showSpreadGrid && (
       <div
         style={{
@@ -780,6 +1210,7 @@ const handleChatSubmitDraft =
         <DailyResultPanel
           card={revealedCards?.[0]}
           isLoading={isBackendLoading}
+          infoNote={dailyInfoNote}
           onReflectSubmit={
             handleReflectSubmit
           }
@@ -841,16 +1272,17 @@ const handleChatSubmitDraft =
 {!showSpreadGrid && (
 
   selectedCard?.mode === "daily" ? (
+    !hasTodayDailyReading && (
+      <DailyChatBox
+        disabled={
+          isBackendLoading
+        }
 
-    <DailyChatBox
-      disabled={
-        isBackendLoading
-      }
-
-      onSubmit={
-        handleDailySubmit
-      }
-    />
+        onSubmit={
+          handleDailySubmit
+        }
+      />
+    )
 
   ) : (
 
