@@ -8,6 +8,8 @@
   overflow: visible;
   padding: 112px 32px 20px;
   box-sizing: border-box;
+  transform: scale(var(--gallery-scale, 1));
+  transform-origin: top center;
 }
 
 .static-tarot-gallery__aura {

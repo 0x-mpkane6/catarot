@@ -74,6 +74,7 @@ import { Undo2 } from "lucide-react";
 import tarotReading from "../assets/images/homepage/the-magician.png";
 import whatIsTarotContent from "../assets/text/what_is_tarot.md?raw";
 import catarotContent from "../assets/text/catarot.md?raw";
+import "./HomePage.css";
 
 const READING_SESSION_CARD = {
   image: tarotReading,
@@ -885,19 +886,13 @@ const handleChatSubmitDraft =
 
   return (
     <div
+      className="home-viewport"
       style={{
-        width: "100%",
-        height: "100vh",
-
-        overflow: "hidden",
-
         background: `
           radial-gradient(circle at top left, rgba(168,85,247,0.18), transparent 30%),
           radial-gradient(circle at top right, rgba(236,72,153,0.12), transparent 25%),
           linear-gradient(to bottom, #050510, #090114, #020205)
         `,
-
-        position: "relative",
       }}
     >
 

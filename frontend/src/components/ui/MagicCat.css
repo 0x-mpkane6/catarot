@@ -1,8 +1,7 @@
 .magic-cat-container {
   position: fixed;
-
-  bottom: 24px;
-  left: 24px;
+  bottom: var(--mascot-bottom, 24px);
+  left: var(--mascot-left, 24px);
 
   z-index: 20;
 
@@ -33,7 +32,7 @@
 }
 
 .magic-cat-image {
-  width: 230px;
+  width: var(--mascot-size, 230px);
 
   position: relative;
 

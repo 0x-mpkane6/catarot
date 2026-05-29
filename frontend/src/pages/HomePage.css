@@ -1,19 +1,44 @@
+/* Home page global scale
+   Giữ layout desktop 23.8 inch như cũ.
+   Khi màn thấp hơn (thường 15.6 inch), scale toàn bộ page giống browser zoom-out
+   để component nhỏ lại nhưng không phải chỉnh từng block riêng. */
+
 .home-viewport {
-  width: 100vw;
-  height: 100dvh;
+  --home-page-scale: 1;
+
+  position: fixed;
+  top: 0;
+  left: 0;
+
+  width: calc(100vw / var(--home-page-scale));
+  height: calc(100dvh / var(--home-page-scale));
+
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #000;
+  transform: scale(var(--home-page-scale));
+  transform-origin: top left;
+
+  background: #050510;
 }
 
-.home-stage {
-  width: 1875px;
-  height: 955px;
-  position: relative;
-  flex: 0 0 auto;
-  transform: scale(var(--home-scale, 1));
-  transform-origin: center center;
-  will-change: transform;
+/* Laptop 15.6 inch / viewport thấp: tương đương zoom page xuống khoảng 75%. */
+@media (max-height: 900px) {
+  .home-viewport {
+    --home-page-scale: 0.75;
+  }
+}
+
+/* Màn nhỏ hơn nữa thì giảm thêm một chút để tránh tràn layout. */
+@media (max-height: 760px) {
+  .home-viewport {
+    --home-page-scale: 0.8;
+  }
+}
+
+/* Tránh body tạo scroll do viewport đã được fixed + scale. */
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+  overflow: hidden;
 }

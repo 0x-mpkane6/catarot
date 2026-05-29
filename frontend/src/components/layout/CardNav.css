@@ -1,6 +1,6 @@
 .card-nav-container {
   position: absolute;
-  top: 2em;
+  top: var(--navbar-top, 2em);
   left: 50%;
   transform: translateX(-50%);
   width: 95%;
@@ -192,7 +192,7 @@
 @media (max-width: 768px) {
   .card-nav-container {
     width: 90%;
-    top: 1.2em;
+    top: min(var(--navbar-top, 1.2em), 1.2em);
   }
 
   .card-nav-top {

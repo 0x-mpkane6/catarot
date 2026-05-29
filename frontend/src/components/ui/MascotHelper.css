@@ -1,14 +1,20 @@
 .mascot-helper {
   position: fixed;
-  left: 0;
-  bottom: 0;
+  left: var(--mascot-left, 24px);
+  bottom: var(--mascot-bottom, 24px);
   z-index: 26;
 }
 
 .mascot-helper__menu {
   position: fixed;
-  left: 210px;
-  bottom: 190px;
+  left: calc(
+    var(--mascot-left, 24px) +
+    var(--mascot-size, 230px) - 44px
+  );
+  bottom: calc(
+    var(--mascot-bottom, 24px) +
+    var(--mascot-size, 230px) - 40px
+  );
   display: flex;
   flex-direction: column;
   gap: 12px;
