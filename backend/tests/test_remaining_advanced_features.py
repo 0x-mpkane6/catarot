@@ -24,6 +24,7 @@ def _bootstrap(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     monkeypatch.setenv("ORACLE_EMAIL_ENABLED", "false")
     monkeypatch.setenv("OLLAMA_ENABLED", "false")
     monkeypatch.setenv("OPENAI_API_KEY", "")
+    monkeypatch.setenv("GEMINI_API_KEY", "")
 
     reset_database_bootstrap_for_tests()
     reset_database_caches_for_tests()

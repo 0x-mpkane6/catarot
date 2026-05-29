@@ -8,5 +8,18 @@
   "baby": ["The Empress", "The Sun"],
   "house": ["The Emperor", "Four of Wands"],
   "death": ["Death", "Judgement"],
-  "road": ["The Chariot", "Wheel of Fortune"]
+  "road": ["The Chariot", "Wheel of Fortune"],
+  "rắn": ["The Devil", "Wheel of Fortune"],
+  "nước": ["The Moon", "Temperance"],
+  "bay": ["The Fool", "The World"],
+  "rơi": ["The Tower", "The Hanged Man"],
+  "ngã": ["The Tower", "The Hanged Man"],
+  "người lạ": ["The Moon", "The Hermit"],
+  "lửa": ["The Tower", "Judgement"],
+  "em bé": ["The Empress", "The Sun"],
+  "nhà": ["The Emperor", "Four of Wands"],
+  "cái chết": ["Death", "Judgement"],
+  "chết": ["Death", "Judgement"],
+  "con đường": ["The Chariot", "Wheel of Fortune"],
+  "đường": ["The Chariot", "Wheel of Fortune"]
 }

@@ -53,9 +53,16 @@ def _parse_choice(choice: str | None) -> dict | None:
     return {"name": name.strip(), "orientation": orientation}
 
 
+_POSITION_VI = {"past": "Quá khứ", "present": "Hiện tại", "future": "Tương lai", "single": "Tổng thể"}
+
+
+def _position_vi(position: str | None) -> str:
+    return _POSITION_VI.get(str(position or "").strip().lower(), "")
+
+
 def _warnings_text(warnings: list[str]) -> str:
     if not warnings:
-        return "No warnings."
+        return "Không có cảnh báo."
     return "\n".join(f"- {message}" for message in warnings)
 
 
@@ -74,7 +81,7 @@ def build_app() -> gr.Blocks:
         dropdown_updates = []
         for idx in range(3):
             if idx >= len(result["cards"]):
-                dropdown_updates.append(gr.update(visible=False, choices=[], value=None, label=f"Card {idx+1}"))
+                dropdown_updates.append(gr.update(visible=False, choices=[], value=None, label=f"Lá {idx+1}"))
                 continue
 
             card = result["cards"][idx]
@@ -82,7 +89,7 @@ def build_app() -> gr.Blocks:
             is_low_conf = float(card.get("confidence", 0.0)) < pipeline.confidence_threshold
             choices = [(_choice_label(c), _choice_value(c)) for c in candidates]
             default_value = choices[0][1] if choices else None
-            label = f"{card.get('position', f'Card {idx+1}')} selection"
+            label = f"Chọn lá — {_position_vi(card.get('position')) or f'Lá {idx+1}'}"
             dropdown_updates.append(
                 gr.update(
                     visible=is_low_conf and bool(choices),
@@ -127,7 +134,7 @@ def build_app() -> gr.Blocks:
         dropdown_updates = []
         for idx in range(3):
             if idx >= len(result["cards"]):
-                dropdown_updates.append(gr.update(visible=False, choices=[], value=None, label=f"Card {idx+1}"))
+                dropdown_updates.append(gr.update(visible=False, choices=[], value=None, label=f"Lá {idx+1}"))
                 continue
             card = result["cards"][idx]
             candidates = card.get("topk_candidates", [])
@@ -140,7 +147,7 @@ def build_app() -> gr.Blocks:
                 ):
                     selected_value = _choice_value(candidate)
                     break
-            label = f"{card.get('position', f'Card {idx+1}')} selection"
+            label = f"Chọn lá — {_position_vi(card.get('position')) or f'Lá {idx+1}'}"
             is_low_conf = float(card.get("confidence", 0.0)) < pipeline.confidence_threshold
             dropdown_updates.append(
                 gr.update(
@@ -159,29 +166,29 @@ def build_app() -> gr.Blocks:
             *dropdown_updates,
         )
 
-    with gr.Blocks(title="Tarot Multimodal MVP") as demo:
-        gr.Markdown("## Tarot Multimodal MVP")
+    with gr.Blocks(title="Tarot Đa Phương Thức (MVP)") as demo:
+        gr.Markdown("## Tarot Đa Phương Thức (MVP)")
 
         with gr.Row():
-            question = gr.Textbox(label="Question", lines=2, placeholder="Ask your tarot question...")
-            gr.Markdown("**Spread Type:** three (past / present / future)")
+            question = gr.Textbox(label="Câu hỏi", lines=2, placeholder="Đặt câu hỏi tarot của bạn...")
+            gr.Markdown("**Kiểu trải bài:** ba lá (quá khứ / hiện tại / tương lai)")
 
         with gr.Row():
-            audio_file = gr.Audio(label="Optional Audio", type="filepath")
-            image_files = gr.Files(label="Upload up to 3 images for three-card spread", file_types=["image"])
+            audio_file = gr.Audio(label="Âm thanh (tùy chọn)", type="filepath")
+            image_files = gr.Files(label="Tải lên tối đa 3 ảnh cho trải bài ba lá", file_types=["image"])
 
         with gr.Row():
-            run_btn = gr.Button("Run Demo", variant="primary")
-            apply_btn = gr.Button("Apply Selected Candidates")
+            run_btn = gr.Button("Chạy thử", variant="primary")
+            apply_btn = gr.Button("Áp dụng lá đã chọn")
 
         with gr.Row():
-            choice_1 = gr.Dropdown(label="Card 1 selection", visible=False)
-            choice_2 = gr.Dropdown(label="Card 2 selection", visible=False)
-            choice_3 = gr.Dropdown(label="Card 3 selection", visible=False)
+            choice_1 = gr.Dropdown(label="Chọn lá 1", visible=False)
+            choice_2 = gr.Dropdown(label="Chọn lá 2", visible=False)
+            choice_3 = gr.Dropdown(label="Chọn lá 3", visible=False)
 
-        warnings_box = gr.Markdown(label="Warnings")
-        final_answer = gr.Markdown(label="Final Answer")
-        json_output = gr.JSON(label="Output JSON")
+        warnings_box = gr.Markdown(label="Cảnh báo")
+        final_answer = gr.Markdown(label="Luận giải")
+        json_output = gr.JSON(label="JSON kết quả")
 
         state = gr.State()
 

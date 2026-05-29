@@ -7,6 +7,7 @@ import unicodedata
 from typing import Any
 
 import requests
+from src.llm.card_meanings_vi import card_meaning_phrase_vi
 from src.utils.config import resolve_path
 from src.utils.logging import get_logger
 
@@ -288,7 +289,7 @@ class ReadingGenerator:
             "temperature": self.gemini_temperature,
             "topP": 0.95,
             "topK": 40,
-            "maxOutputTokens": 1024,
+            "maxOutputTokens": 2048,
             "responseMimeType": "text/plain",
         }
 
@@ -463,15 +464,15 @@ class ReadingGenerator:
         if cards:
             for card in cards:
                 name = str(card.get("name", "Unknown Card"))
-                orientation = (
-                    "Xuôi"
-                    if str(card.get("orientation", "upright")).lower() != "reversed"
-                    else "Ngược"
+                raw_orientation = str(card.get("orientation", "upright"))
+                orientation_label = "Ngược" if raw_orientation.lower() == "reversed" else "Xuôi"
+                raw_position = str(card.get("position", "single"))
+                position = _position_label(raw_position)
+                meaning = card_meaning_phrase_vi(
+                    name, raw_orientation, raw_position, card.get("suit")
                 )
-                position = _position_label(str(card.get("position", "single")))
                 lines.append(
-                    f"- **{name}** *({position} — {orientation})*: "
-                    f"năng lượng định hướng phù hợp chủ đề {theme_label}."
+                    f"- **{name}** *({position} — {orientation_label})*: {meaning}"
                 )
         else:
             lines.append(
@@ -606,11 +607,11 @@ class ReadingGenerator:
 
         return "\n".join(
             [
-                "Cam on ban da dat cau hoi tiep theo.",
-                f"Cau hoi goc: {question}",
-                f"La bai noi bat: {primary_card}",
-                f"Follow-up cua ban: {user_message}",
-                "Goi y: chon mot hanh dong cu the trong 24h toi va theo doi cam nhan cua ban.",
+                "Cảm ơn bạn đã đặt câu hỏi tiếp theo.",
+                f"Câu hỏi gốc: {question}",
+                f"Lá bài nổi bật: {primary_card}",
+                f"Câu hỏi tiếp theo của bạn: {user_message}",
+                "Gợi ý: chọn một hành động cụ thể trong 24 giờ tới và theo dõi cảm nhận của bạn.",
             ]
         )
 
@@ -629,10 +630,10 @@ class ReadingGenerator:
         summary_text = summary or "(no older turns)"
         system_prompt = (
             f"{self.system_prompt}\n\n"
-            "You are continuing an existing tarot session. "
-            "Use the session context faithfully and keep answer concise, empathetic, and actionable.\n"
-            f"SESSION_CONTEXT_JSON:\n{context_json}\n"
-            f"OLDER_TURNS_SUMMARY:\n{summary_text}\n"
+            "Bạn đang tiếp nối một phiên đọc tarot đã có. Hãy bám sát ngữ cảnh phiên, trả lời "
+            "bằng tiếng Việt có dấu, ngắn gọn, đồng cảm và có thể hành động được.\n"
+            f"NGU_CANH_PHIEN_JSON:\n{context_json}\n"
+            f"TOM_TAT_LUOT_TRUOC:\n{summary_text}\n"
         )
 
         messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]

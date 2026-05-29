@@ -48,11 +48,20 @@ def _llm_extract_symbols(text: str) -> list[str]:
     if not text.strip():
         return []
     reader = ReadingGenerator()
-    system_prompt = "Extract 3-7 concise dream symbols from text. Return only a JSON array of lowercase strings."
-    user_prompt = f"DREAM_TEXT:\n{text}"
+    system_prompt = (
+        "Bạn trích các biểu tượng chính trong giấc mơ. Trả về DUY NHẤT một mảng JSON gồm "
+        '3-7 chuỗi chữ thường bằng tiếng Việt (ví dụ: ["rắn", "nước", "bay"]). '
+        "Không thêm bất kỳ chữ nào khác ngoài mảng JSON."
+    )
+    user_prompt = f"NOI_DUNG_GIAC_MO:\n{text}"
 
     content = ""
-    if reader.api_key:
+    if reader.gemini_api_key:
+        try:
+            content = reader._generate_gemini(system_prompt, user_prompt)  # type: ignore[attr-defined]
+        except Exception:
+            content = ""
+    if not content and reader.api_key:
         try:
             content = reader._generate_openai(system_prompt, user_prompt)  # type: ignore[attr-defined]
         except Exception:

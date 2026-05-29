@@ -13,20 +13,38 @@ KNOWN_NEW_MOON = datetime(2000, 1, 6, 18, 14, tzinfo=timezone.utc)
 LUNATION_DAYS = 29.53058867
 
 WEEKDAY_PROMPTS = {
-    0: "Tuan nay toi nen uu tien muc tieu nao de bat dau dung huong?",
-    1: "Buoc hanh dong nao toi nen lam ngay de day nhanh tien do?",
-    2: "Toi can giao tiep the nao de tranh hieu lam quan trong?",
-    3: "Toi can tap trung vao co hoi phat trien nao trong cong viec?",
-    4: "Toi nen can bang giua cam xuc va ly tri ra sao trong hom nay?",
-    5: "Dieu gi can duoc hoi phuc trong cuoi tuan nay?",
-    6: "Thong diep tong ket nao toi can mang sang tuan moi?",
+    0: "Tuần này tôi nên ưu tiên mục tiêu nào để bắt đầu đúng hướng?",
+    1: "Bước hành động nào tôi nên làm ngay để đẩy nhanh tiến độ?",
+    2: "Tôi cần giao tiếp thế nào để tránh hiểu lầm quan trọng?",
+    3: "Tôi nên tập trung vào cơ hội phát triển nào trong công việc?",
+    4: "Hôm nay tôi nên cân bằng giữa cảm xúc và lý trí ra sao?",
+    5: "Điều gì cần được hồi phục trong cuối tuần này?",
+    6: "Thông điệp tổng kết nào tôi cần mang sang tuần mới?",
 }
 
 MOON_PROMPTS = {
-    "New Moon": "Nang luong khoi dau dang manh, toi nen dat y dinh gi cho chu ky moi?",
-    "Waxing Moon": "Toi dang xay dung dieu gi va can bo sung nguon luc nao de tang toc?",
-    "Full Moon": "Dieu gi da den luc duoc nhin ro va hoan tat?",
-    "Waning Moon": "Toi can buong bo dieu gi de nhe hon trong giai doan tiep theo?",
+    "New Moon": "Năng lượng khởi đầu đang mạnh, tôi nên đặt ý định gì cho chu kỳ mới?",
+    "Waxing Moon": "Tôi đang xây dựng điều gì và cần bổ sung nguồn lực nào để tăng tốc?",
+    "Full Moon": "Điều gì đã đến lúc được nhìn rõ và hoàn tất?",
+    "Waning Moon": "Tôi cần buông bỏ điều gì để nhẹ nhõm hơn trong giai đoạn tiếp theo?",
+}
+
+# Nhãn hiển thị tiếng Việt cho pha trăng và thứ trong tuần (dùng trong phần lý do).
+MOON_PHASE_VI = {
+    "New Moon": "Trăng non",
+    "Waxing Moon": "Trăng tròn dần",
+    "Full Moon": "Trăng tròn",
+    "Waning Moon": "Trăng khuyết dần",
+}
+
+WEEKDAY_VI = {
+    0: "Thứ Hai",
+    1: "Thứ Ba",
+    2: "Thứ Tư",
+    3: "Thứ Năm",
+    4: "Thứ Sáu",
+    5: "Thứ Bảy",
+    6: "Chủ Nhật",
 }
 
 LOGGER = get_logger(__name__)
@@ -74,9 +92,10 @@ def _recent_card_for_user(user_id: int | None) -> str | None:
 
 
 def _build_reason(*, moon_phase: str, weekday_name: str, recent_card: str | None) -> str:
+    moon_vi = MOON_PHASE_VI.get(moon_phase, moon_phase)
     if recent_card:
-        return f"Signals: {moon_phase}, {weekday_name}, recent card {recent_card}."
-    return f"Signals: {moon_phase}, {weekday_name}, no recent card yet."
+        return f"Tín hiệu: {moon_vi}, {weekday_name}, lá gần đây {recent_card}."
+    return f"Tín hiệu: {moon_vi}, {weekday_name}, chưa có lá nào gần đây."
 
 
 def generate_question_suggestions(user_id: int | None, limit: int = 3) -> list[dict[str, object]]:
@@ -86,7 +105,7 @@ def generate_question_suggestions(user_id: int | None, limit: int = 3) -> list[d
     timezone_info = _app_timezone()
     local_now = datetime.now(timezone_info)
     weekday = local_now.weekday()
-    weekday_name = local_now.strftime("%A")
+    weekday_vi = WEEKDAY_VI.get(weekday, WEEKDAY_VI[0])
     moon_phase = moon_phase_name(local_now.astimezone(timezone.utc))
     recent_card = _recent_card_for_user(user_id)
 
@@ -96,17 +115,17 @@ def generate_question_suggestions(user_id: int | None, limit: int = 3) -> list[d
     ]
 
     if recent_card:
-        suggestions.append(f"Tu thong diep cua la {recent_card}, toi nen hanh dong cu the nao trong 7 ngay toi?")
+        suggestions.append(f"Từ thông điệp của lá {recent_card}, tôi nên hành động cụ thể nào trong 7 ngày tới?")
     else:
-        suggestions.append("Neu toi chi duoc tap trung vao mot dieu duy nhat, dieu do nen la gi?")
+        suggestions.append("Nếu chỉ được tập trung vào một điều duy nhất, điều đó nên là gì?")
 
     while len(suggestions) < limit:
-        suggestions.append("Toi can biet dieu gi de giu binh tam va ra quyet dinh sang suot hon?")
+        suggestions.append("Tôi cần biết điều gì để giữ bình tâm và ra quyết định sáng suốt hơn?")
 
-    reason = _build_reason(moon_phase=moon_phase, weekday_name=weekday_name, recent_card=recent_card)
+    reason = _build_reason(moon_phase=moon_phase, weekday_name=weekday_vi, recent_card=recent_card)
     signal_payload = {
         "moon_phase": moon_phase,
-        "weekday": weekday_name,
+        "weekday": weekday_vi,
         "recent_card": recent_card,
     }
 

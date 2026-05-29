@@ -76,17 +76,34 @@ def _aggregate_user_summary(user_id: int, period_start: datetime, period_end: da
     }
 
 
+_TOPIC_LABEL_VI: dict[str, str] = {
+    "love": "tình cảm",
+    "career": "sự nghiệp",
+    "finance": "tài chính",
+    "inner_work": "nội tâm",
+    "general": "chung",
+}
+
+
 def _generate_narrative(summary: dict) -> tuple[str, str]:
     if not summary:
-        return ("No monthly data available for this user.", "deterministic-fallback")
+        return ("Chưa có dữ liệu trong tháng cho người dùng này.", "deterministic-fallback")
 
     reader = ReadingGenerator()
     system_prompt = (
-        "You are a tarot oracle analyst. Write a concise monthly oracle letter (120-180 words), "
-        "empathetic and practical, based only on the JSON summary."
+        "Bạn là chuyên gia phân tích tarot. LUÔN viết bằng tiếng Việt có dấu, văn phong ấm áp "
+        "và thực tế. Hãy viết một lá thư oracle hằng tháng ngắn gọn (120-180 từ), chỉ dựa trên "
+        "dữ liệu JSON tóm tắt được cung cấp. Giữ nguyên tên lá bài tiếng Anh."
     )
-    user_prompt = f"MONTHLY_SUMMARY_JSON:\n{json.dumps(summary, ensure_ascii=False)}"
+    user_prompt = f"TOM_TAT_THANG_JSON:\n{json.dumps(summary, ensure_ascii=False)}"
 
+    if reader.gemini_api_key:
+        try:
+            text = reader._generate_gemini(system_prompt, user_prompt)  # type: ignore[attr-defined]
+            if text.strip():
+                return text.strip(), f"gemini:{reader.gemini_model}"
+        except Exception:
+            pass
     if reader.api_key:
         try:
             text = reader._generate_openai(system_prompt, user_prompt)  # type: ignore[attr-defined]
@@ -102,12 +119,15 @@ def _generate_narrative(summary: dict) -> tuple[str, str]:
         except Exception:
             pass
 
-    top_cards = ", ".join([name for name, _ in summary.get("top_cards", [])[:2]]) or "no dominant cards"
-    top_topics = ", ".join([name for name, _ in summary.get("top_topics", [])[:2]]) or "general concerns"
+    top_cards = ", ".join([name for name, _ in summary.get("top_cards", [])[:2]]) or "chưa có lá nổi bật"
+    top_topics = (
+        ", ".join([_TOPIC_LABEL_VI.get(name, name) for name, _ in summary.get("top_topics", [])[:2]])
+        or "các mối quan tâm chung"
+    )
     text = (
-        f"Trong thang qua, nang luong noi bat tap trung quanh {top_cards}. "
-        f"Chu de lap lai nhieu nhat la {top_topics}. "
-        "Hay uu tien mot hanh dong nho nhung deu dan moi tuan, va theo doi su chuyen bien cam xuc cua ban."
+        f"Trong tháng qua, năng lượng nổi bật tập trung quanh {top_cards}. "
+        f"Chủ đề lặp lại nhiều nhất là {top_topics}. "
+        "Hãy ưu tiên một hành động nhỏ nhưng đều đặn mỗi tuần, và theo dõi sự chuyển biến cảm xúc của bạn."
     )
     return text, "deterministic-fallback"
 
@@ -130,7 +150,7 @@ def _send_oracle_email(*, to_email: str, narrative: str, period_start: datetime,
         return
 
     msg = EmailMessage()
-    msg["Subject"] = f"Tarot Oracle Report ({period_start.date()} - {period_end.date()})"
+    msg["Subject"] = f"Báo cáo Oracle Tarot ({period_start.date()} - {period_end.date()})"
     msg["From"] = sender
     msg["To"] = to_email
     msg.set_content(narrative)

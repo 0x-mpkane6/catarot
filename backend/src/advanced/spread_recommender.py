@@ -7,23 +7,23 @@ TOKEN_RE = re.compile(r"[a-z0-9_]+", re.IGNORECASE)
 SPREAD_CATALOG: dict[str, dict[str, str]] = {
     "three": {
         "label": "three",
-        "rationale": "Three-card spread is concise and works well for broad guidance.",
+        "rationale": "Trải 3 lá ngắn gọn, hợp để xem định hướng tổng quát.",
     },
     "celtic_cross": {
         "label": "celtic_cross",
-        "rationale": "Celtic Cross gives deeper context for complex and layered situations.",
+        "rationale": "Celtic Cross cho bối cảnh sâu hơn với những tình huống phức tạp, nhiều tầng lớp.",
     },
     "decision_fork": {
         "label": "decision_fork",
-        "rationale": "Decision Fork helps compare options and near-term consequences.",
+        "rationale": "Decision Fork giúp so sánh các lựa chọn và hệ quả trong ngắn hạn.",
     },
     "inner_shadow": {
         "label": "inner_shadow",
-        "rationale": "Inner Shadow spread fits introspection and emotional processing.",
+        "rationale": "Trải Inner Shadow hợp cho việc nhìn vào nội tâm và xử lý cảm xúc.",
     },
     "relationship_bridge": {
         "label": "relationship_bridge",
-        "rationale": "Relationship Bridge focuses on dynamics and communication patterns.",
+        "rationale": "Relationship Bridge tập trung vào động lực và cách giao tiếp trong mối quan hệ.",
     },
 }
 
@@ -106,7 +106,7 @@ def recommend_spread(question: str) -> dict[str, str | bool]:
 
     rationale = spread_meta["rationale"]
     if not can_run_now:
-        rationale = f"{rationale} Current backend runtime still executes three-card reading."
+        rationale = f"{rationale} Hiện tại backend vẫn chạy bằng trải bài 3 lá."
 
     return {
         "recommended_spread": spread_meta["label"],

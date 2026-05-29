@@ -166,9 +166,24 @@ def join_duo_session(duo_session_id: int, user_id: int) -> dict[str, Any]:
 def _generate_duo_reading(cards: list[DuoCard]) -> tuple[str, str]:
     reader = ReadingGenerator()
     card_lines = [f"- {row.card_name} ({row.orientation})" for row in cards]
-    system_prompt = "You are a relationship tarot assistant. Combine two cards into one concise compatibility reading."
-    user_prompt = "DUO_CARDS:\n" + "\n".join(card_lines) + "\nExplain harmony and friction plus one practical advice."
+    system_prompt = (
+        "Bạn là trợ lý tarot về mối quan hệ. LUÔN trả lời bằng tiếng Việt có dấu, "
+        "văn phong ấm áp, gần gũi. Hãy gộp hai lá bài thành một luận giải tương hợp "
+        "ngắn gọn, súc tích. Giữ nguyên tên lá bài tiếng Anh."
+    )
+    user_prompt = (
+        "HAI_LA_BAI:\n"
+        + "\n".join(card_lines)
+        + "\nHãy nêu điểm hòa hợp, điểm dễ va chạm và một lời khuyên thực tế cho cả hai."
+    )
 
+    if reader.gemini_api_key:
+        try:
+            text = reader._generate_gemini(system_prompt, user_prompt)  # type: ignore[attr-defined]
+            if text.strip():
+                return text.strip(), f"gemini:{reader.gemini_model}"
+        except Exception:
+            pass
     if reader.api_key:
         try:
             text = reader._generate_openai(system_prompt, user_prompt)  # type: ignore[attr-defined]
@@ -185,8 +200,8 @@ def _generate_duo_reading(cards: list[DuoCard]) -> tuple[str, str]:
             pass
 
     fallback = (
-        f"The combination of {cards[0].card_name} and {cards[1].card_name} suggests a dynamic relationship. "
-        "Acknowledge differences directly and choose one shared action this week."
+        f"Sự kết hợp giữa {cards[0].card_name} và {cards[1].card_name} cho thấy một mối quan hệ "
+        "nhiều sắc thái. Hãy thẳng thắn nhìn nhận khác biệt và cùng chọn một hành động chung trong tuần này."
     )
     return fallback, "deterministic-fallback"
 

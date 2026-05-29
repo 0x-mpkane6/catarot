@@ -56,21 +56,21 @@ def _send_rating_email(*, to_email: str, question_text: str, session_id: int) ->
         raise RuntimeError("SMTP is not configured (SMTP_HOST/SMTP_FROM missing).")
 
     msg = EmailMessage()
-    msg["Subject"] = "Tarot reading follow-up: how accurate was your reading?"
+    msg["Subject"] = "Nhắc đánh giá: buổi đọc bài tarot vừa rồi chính xác đến đâu?"
     msg["From"] = sender
     msg["To"] = to_email
     msg.set_content(
         "\n".join(
             [
-                "Hello,",
+                "Xin chào,",
                 "",
-                "Please rate your tarot reading from 1 to 5 stars.",
-                f"Session ID: {session_id}",
-                f"Question: {question_text}",
+                "Hãy đánh giá buổi đọc bài tarot của bạn từ 1 đến 5 sao.",
+                f"Mã phiên: {session_id}",
+                f"Câu hỏi: {question_text}",
                 "",
-                "You can submit your rating from the app when this reminder appears.",
+                "Bạn có thể gửi đánh giá ngay trong ứng dụng khi lời nhắc này xuất hiện.",
                 "",
-                "Best regards,",
+                "Trân trọng,",
                 "Tarot AI",
             ]
         )

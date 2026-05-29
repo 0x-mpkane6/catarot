@@ -140,7 +140,7 @@ def _serialize_capsule(record: TimeCapsule, *, include_secret: bool) -> dict[str
         )
     else:
         payload["seal_message"] = (
-            f"Sealed until {reveal_at_aware.isoformat() if reveal_at_aware else 'unknown'}"
+            f"Niêm phong đến {reveal_at_aware.isoformat() if reveal_at_aware else 'chưa xác định'}"
         )
     return payload
 

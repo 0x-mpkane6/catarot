@@ -48,12 +48,25 @@ def _extract_top_keywords(questions: list[str], top_k: int = 3) -> list[str]:
     return [token for token, _ in counter.most_common(top_k)]
 
 
+_EMOTION_LABEL_VI: dict[str, str] = {
+    "calm": "bình thản",
+    "sad": "buồn",
+    "anxious": "lo âu",
+    "excited": "phấn khởi",
+    "uncertain": "băn khoăn",
+}
+
+
+def _emotion_label_vi(emotion: str) -> str:
+    return _EMOTION_LABEL_VI.get((emotion or "").strip().lower(), emotion)
+
+
 def _build_summary(*, soul_card: str, top_keywords: list[str], top_emotion: str | None) -> str:
-    parts = [f"Soul Card dominates as {soul_card}."]
+    parts = [f"Lá Linh hồn nổi bật của bạn là {soul_card}."]
     if top_keywords:
-        parts.append(f"Recurring themes: {', '.join(top_keywords)}.")
+        parts.append(f"Chủ đề lặp lại: {', '.join(top_keywords)}.")
     if top_emotion:
-        parts.append(f"Common emotional tone: {top_emotion}.")
+        parts.append(f"Sắc thái cảm xúc thường thấy: {_emotion_label_vi(top_emotion)}.")
     return " ".join(parts)
 
 
