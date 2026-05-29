@@ -1,11 +1,20 @@
-import ASCIIText from "../components/layout/ASCIIText";
 import CardNav from "../components/layout/CardNav";
+import ContactPanel from "../components/ui/ContactPanel";
+import MarkdownOverlay from "../components/ui/MarkdownOverlay";
+import Shuffle from "../components/ui/Shuffle";
 
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import whatIsTarotContent from "../assets/text/what_is_tarot.md?raw";
+import catarotContent from "../assets/text/catarot.md?raw";
 
 export default function LandingPage() {
 
   const navigate = useNavigate();
+  const [showContact, setShowContact] =
+    useState(false);
+  const [activeMarkdownDoc, setActiveMarkdownDoc] =
+    useState(null);
 
   const items = [
     {
@@ -13,18 +22,42 @@ export default function LandingPage() {
       bgColor: "rgba(25, 18, 40, 0.82)",
       textColor: "#ffffff",
       links: [
-        { label: "Daily Tarot" },
-        { label: "Love Reading" },
+        {
+          label: "Reflection History",
+          onClick: () => navigate("/login"),
+        },
+        {
+          label: "Reading History",
+          onClick: () => navigate("/login"),
+        },
       ],
     },
 
     {
-      label: "Arcana",
+      label: "Tarot",
       bgColor: "rgba(40, 22, 60, 0.82)",
       textColor: "#ffffff",
       links: [
-        { label: "Major Arcana" },
-        { label: "Minor Arcana" },
+        {
+          label: "What is Tarot?",
+          onClick: () =>
+            setActiveMarkdownDoc({
+              title:
+                "WHAT IS TAROT?",
+              content:
+                whatIsTarotContent,
+            }),
+        },
+        {
+          label: "Catarot",
+          onClick: () =>
+            setActiveMarkdownDoc({
+              title:
+                "CATAROT",
+              content:
+                catarotContent,
+            }),
+        },
       ],
     },
 
@@ -33,8 +66,11 @@ export default function LandingPage() {
       bgColor: "rgba(30, 16, 50, 0.82)",
       textColor: "#ffffff",
       links: [
-        { label: "Github" },
-        { label: "Discord" },
+        {
+          label: "More Info",
+          onClick: () =>
+            setShowContact(true),
+        },
       ],
     },
   ];
@@ -93,27 +129,79 @@ export default function LandingPage() {
         buttonTextColor="#fff"
       />
 
-      {/* ASCII TITLE */}
+      <ContactPanel
+        isOpen={showContact}
+        onClose={() =>
+          setShowContact(false)
+        }
+      />
+
+      <MarkdownOverlay
+        isOpen={Boolean(activeMarkdownDoc)}
+        title={activeMarkdownDoc?.title}
+        content={activeMarkdownDoc?.content}
+        onClose={() =>
+          setActiveMarkdownDoc(null)
+        }
+      />
+
+      {/* HERO TITLE */}
       <div
         style={{
           position: "relative",
           zIndex: 2,
 
           width: "1400px",
-          height: "500px",
+          minHeight: "500px",
 
           display: "flex",
+          flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
+          gap: "22px",
         }}
       >
-        <ASCIIText
+        <Shuffle
           text="CATAROT"
-          enableWaves={true}
-          asciiFontSize={8}
-          textFontSize={150}
-          planeBaseHeight={10}
+          tag="div"
+          duration={1600}
+          style={{
+            fontSize: "clamp(5.8rem, 10vw, 9.4rem)",
+            maxWidth: "100%",
+            color: "#f8f4ff",
+            letterSpacing: "0.08em",
+            textShadow:
+              "0 0 24px rgba(192,132,252,0.16), 0 0 60px rgba(217,70,239,0.14)",
+            filter:
+              "drop-shadow(0 0 28px rgba(168,85,247,0.18))",
+          }}
         />
+
+        <div
+          style={{
+            maxWidth: "920px",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+            marginTop: "-6px",
+          }}
+        >
+          <div
+            style={{
+              color: "rgba(255,255,255,0.72)",
+              fontSize: "clamp(0.98rem, 1.3vw, 1.12rem)",
+              lineHeight: 1.7,
+              maxWidth: "760px",
+              margin: "0 auto",
+            }}
+          >
+            Khám phá Tarot theo cách trực quan hơn với AI,
+            những phiên đọc bài cá nhân, trải nghiệm hằng
+            ngày và không gian lưu giữ những điều bạn chưa
+            kịp gọi tên.
+          </div>
+        </div>
       </div>
     </div>
   );

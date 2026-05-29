@@ -32,6 +32,13 @@ export default function LoginForm() {
         password.trim()
       );
 
+      localStorage.removeItem("token");
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("user");
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("access_token");
+      sessionStorage.removeItem("user");
+
       // remember me
       if (rememberMe) {
         localStorage.setItem("token", res.token);

@@ -2,6 +2,8 @@
  * File này là service module thuần (export hàm helper + 1 vài component nhỏ).
  * Fast-refresh chỉ áp dụng cho component file. Không refactor lúc này.
  */
+import api from "./api";
+
 /**
  * Daily Tarot Service
  * Provides full integration with backend daily-card API endpoints
@@ -11,9 +13,6 @@
 // ============================================================================
 // CONFIGURATION & CONSTANTS
 // ============================================================================
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 const DEFAULT_REQUEST_TIMEOUT = 10000; // 10 seconds
 const REQUEST_RETRY_COUNT = 2;
@@ -36,19 +35,12 @@ export const VALID_MOODS = new Set([
   "inspired",
 ]);
 
+const DAILY_CACHE_PREFIX =
+  "daily_tarot";
+
 // ============================================================================
 // UTILITY & VALIDATION FUNCTIONS
 // ============================================================================
-
-/**
- * Retrieves stored JWT token from localStorage or sessionStorage
- * @returns {string|null} JWT token or null if not found
- */
-const getStoredToken = () =>
-  localStorage.getItem("token") ||
-  sessionStorage.getItem("token") ||
-  localStorage.getItem("access_token") ||
-  sessionStorage.getItem("access_token");
 
 /**
  * Validates mood value against backend accepted moods
@@ -61,22 +53,127 @@ const validateMood = (mood) => {
   return VALID_MOODS.has(cleaned) ? cleaned : null;
 };
 
-/**
- * Creates authorization headers with Bearer token
- * @returns {Object} Headers object with Authorization
- * @throws {Error} If no token found
- */
-const authHeaders = () => {
-  const token = getStoredToken();
+export const getBrowserLocalDateKey = (
+  date = new Date()
+) => {
+  const year =
+    date.getFullYear();
+  const month = String(
+    date.getMonth() + 1
+  ).padStart(2, "0");
+  const day = String(
+    date.getDate()
+  ).padStart(2, "0");
 
-  if (!token) {
-    throw new Error("You need to log in before using daily tarot.");
-  }
-
-  return {
-    Authorization: `Bearer ${token}`,
-  };
+  return `${year}-${month}-${day}`;
 };
+
+const getDailyCacheKey = (
+  user,
+  dateKey = getBrowserLocalDateKey()
+) => {
+  const userKey =
+    user?.id ||
+    user?.username ||
+    user?.email ||
+    "anonymous";
+
+  return `${DAILY_CACHE_PREFIX}_${userKey}_${dateKey}`;
+};
+
+export const getCachedTodayDailyCard = (
+  user
+) => {
+  try {
+    const raw =
+      localStorage.getItem(
+        getDailyCacheKey(user)
+      );
+
+    if (!raw) {
+      return null;
+    }
+
+    return JSON.parse(raw);
+  } catch (error) {
+    logError(
+      "getCachedTodayDailyCard",
+      error
+    );
+    return null;
+  }
+};
+
+export const cacheTodayDailyCard = (
+  user,
+  card
+) => {
+  if (!user || !card) return;
+
+  try {
+    localStorage.setItem(
+      getDailyCacheKey(user),
+      JSON.stringify(card)
+    );
+  } catch (error) {
+    logError(
+      "cacheTodayDailyCard",
+      error
+    );
+  }
+};
+
+export const getTodayDailyReadingState =
+  async (user) => {
+    try {
+      const data =
+        await getTodayDailyCard();
+
+      if (data?.item) {
+        cacheTodayDailyCard(
+          user,
+          data.item
+        );
+
+        return {
+          item: data.item,
+          hasTodayReading: true,
+          source: "api",
+        };
+      }
+    } catch (error) {
+      const status =
+        error?.response?.status ??
+        error?.statusCode;
+
+      if (
+        status &&
+        status !== 404
+      ) {
+        logError(
+          "getTodayDailyReadingState",
+          error
+        );
+      }
+    }
+
+    const cached =
+      getCachedTodayDailyCard(user);
+
+    if (cached) {
+      return {
+        item: cached,
+        hasTodayReading: true,
+        source: "cache",
+      };
+    }
+
+    return {
+      item: null,
+      hasTodayReading: false,
+      source: "none",
+    };
+  };
 
 /**
  * Logs error with context
@@ -85,37 +182,6 @@ const authHeaders = () => {
  */
 const logError = (context, error) => {
   console.error(`[Daily Service] ${context}:`, error);
-};
-
-/**
- * Handles HTTP error responses with detailed messaging
- * @param {Response} response - Fetch response object
- * @throws {Error} With descriptive error message
- */
-const assertOk = async (response) => {
-  if (response.ok) return;
-
-  let message = `Daily API error (${response.status})`;
-
-  try {
-    const errorBody = await response.json();
-    message =
-      errorBody?.detail ||
-      errorBody?.message ||
-      (typeof errorBody === "object"
-        ? JSON.stringify(errorBody)
-        : String(errorBody));
-  } catch {
-    try {
-      message = await response.text();
-    } catch {
-      // use default message
-    }
-  }
-
-  const error = new Error(message);
-  error.statusCode = response.status;
-  throw error;
 };
 
 /**
@@ -196,26 +262,15 @@ const validateStreakResponse = (data) => {
  * @throws {Error} If request fails after retries
  */
 const request = async (endpoint, options = {}, retryCount = REQUEST_RETRY_COUNT) => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(
-    () => controller.abort(),
-    options.timeout || DEFAULT_REQUEST_TIMEOUT
-  );
-
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      signal: controller.signal,
-      headers: {
-        ...authHeaders(),
-        ...(options.body ? { "Content-Type": "application/json" } : {}),
-        ...options.headers,
-      },
+    const response = await api.request({
+      url: endpoint,
+      method: options.method || "GET",
+      data: options.body ? JSON.parse(options.body) : undefined,
+      headers: options.headers,
+      timeout: options.timeout || DEFAULT_REQUEST_TIMEOUT,
     });
-
-    await assertOk(response);
-    const data = await response.json();
-    return data;
+    return response.data;
   } catch (error) {
     // Retry on network errors but not on auth/validation errors
     if (retryCount > 0 && isRetryableError(error)) {
@@ -227,8 +282,6 @@ const request = async (endpoint, options = {}, retryCount = REQUEST_RETRY_COUNT)
 
     logError(`request(${endpoint})`, error);
     throw error;
-  } finally {
-    clearTimeout(timeoutId);
   }
 };
 
@@ -249,7 +302,8 @@ const isRetryableError = (error) => {
     message.includes("Failed to fetch") ||
     message.includes("timeout") ||
     message.includes("abort") ||
-    (error.statusCode && error.statusCode >= 500)
+    (error.statusCode && error.statusCode >= 500) ||
+    (error.response?.status && error.response.status >= 500)
   );
 };
 

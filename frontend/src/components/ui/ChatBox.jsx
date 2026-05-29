@@ -20,9 +20,13 @@ export default function ChatBox({
   disabled = false,
   onSubmitDraft,
 }) {
+  const baseHeight = 28;
+  const maxHeight = 180;
 
   const [question, setQuestion] =
     useState("");
+  const [isMultiline, setIsMultiline] =
+    useState(false);
 
   const [
     uploadedImages,
@@ -38,8 +42,39 @@ export default function ChatBox({
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const textareaRef = useRef(null);
 
   const supportsMedia = mode !== "daily";
+
+  useEffect(() => {
+    const textarea =
+      textareaRef.current;
+
+    if (!textarea) return;
+
+    textarea.style.height =
+      `${baseHeight}px`;
+
+    const nextHeight =
+      Math.min(
+        Math.max(
+          textarea.scrollHeight,
+          baseHeight
+        ),
+        maxHeight
+      );
+
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY =
+      textarea.scrollHeight > maxHeight
+        ? "auto"
+        : "hidden";
+
+    setIsMultiline(
+      textarea.scrollHeight >
+        baseHeight + 4
+    );
+  }, [question, baseHeight, maxHeight]);
 
   useEffect(() => {
     return () => {
@@ -177,12 +212,14 @@ export default function ChatBox({
       return;
     }
 
-    onSubmitDraft?.({
-      mode,
-      question: trimmedQuestion,
-      images: uploadedImages,
-      audio: audioBlob,
-    });
+    await Promise.resolve(
+      onSubmitDraft?.({
+        mode,
+        question: trimmedQuestion,
+        images: uploadedImages,
+        audio: audioBlob,
+      })
+    );
 
     setQuestion("");
     setUploadedImages([]);
@@ -380,7 +417,10 @@ export default function ChatBox({
 
           display: "flex",
 
-          alignItems: "center",
+          alignItems:
+            isMultiline
+              ? "flex-end"
+              : "center",
 
           gap: "14px",
 
@@ -429,9 +469,9 @@ export default function ChatBox({
         </button>
 
         {/* input */}
-        <input
-          type="text"
-
+        <textarea
+          ref={textareaRef}
+          rows={1}
           value={question}
 
           onChange={(e) =>
@@ -446,9 +486,13 @@ export default function ChatBox({
               : "Ask the cards something..."
           }
 
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              handleSubmit();
+          onKeyDown={async (e) => {
+            if (
+              e.key === "Enter" &&
+              !e.shiftKey
+            ) {
+              e.preventDefault();
+              await handleSubmit();
             }
           }}
 
@@ -471,7 +515,14 @@ export default function ChatBox({
             fontFamily:
               "inherit",
 
-            padding: "8px 4px",
+            padding: "0 4px",
+            minHeight: "28px",
+            maxHeight: "180px",
+            height: "28px",
+            resize: "none",
+            overflowY: "hidden",
+            whiteSpace: "pre-wrap",
+            lineHeight: "24px",
           }}
         />
 

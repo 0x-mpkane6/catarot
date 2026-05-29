@@ -159,7 +159,7 @@ export default function ContactPanel({
             </div>
 
             <div style={valueStyle}>
-              0x-mpkane6 - TrangTuanAnh
+              0x-mpkane6 - horiz_06
             </div>
           </div>
 

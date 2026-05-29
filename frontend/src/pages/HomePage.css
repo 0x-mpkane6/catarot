@@ -1,0 +1,19 @@
+.home-viewport {
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+
+.home-stage {
+  width: 1875px;
+  height: 955px;
+  position: relative;
+  flex: 0 0 auto;
+  transform: scale(var(--home-scale, 1));
+  transform-origin: center center;
+  will-change: transform;
+}

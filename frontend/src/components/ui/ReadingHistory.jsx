@@ -3,30 +3,43 @@ import { useEffect, useState } from "react";
 import { getReadingHistory } from "../../services/historyService";
 import AnimatedList from "./AnimatedList";
 
-import { LogIn } from "lucide-react";
-
 export default function ReadingHistory({
   isOpen,
   onClose,
   onSelectSession,
+  loadHistory,
+  refreshKey = 0,
 }) {
   const [sessions, setSessions] = useState([]);
+  const [isLoading, setIsLoading] =
+    useState(false);
 
   useEffect(() => {
 
     if (!isOpen) return;
 
-    const loadHistory = async () => {
+    const fetchHistory = async () => {
+      try {
+        setIsLoading(true);
 
-      const data =
-        await getReadingHistory();
+        const data =
+          await (loadHistory
+            ? loadHistory()
+            : getReadingHistory());
 
-      setSessions(data);
+        setSessions(data || []);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    loadHistory();
+    fetchHistory();
 
-  }, [isOpen]);
+  }, [
+    isOpen,
+    loadHistory,
+    refreshKey,
+  ]);
 
   return (
     <>
@@ -110,6 +123,17 @@ export default function ReadingHistory({
             height: "75vh",
         }}
         >
+        {isLoading && (
+          <div
+            style={{
+              color:
+                "rgba(255,255,255,0.56)",
+              marginBottom: "14px",
+            }}
+          >
+            Loading sessions...
+          </div>
+        )}
         <AnimatedList
             items={sessions.map(
             (s) => s.title

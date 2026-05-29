@@ -1,0 +1,185 @@
+.static-tarot-gallery {
+  position: relative;
+  width: 100%;
+  min-height: 580px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  padding: 112px 32px 20px;
+  box-sizing: border-box;
+}
+
+.static-tarot-gallery__aura {
+  position: absolute;
+  width: min(900px, 88vw);
+  height: 340px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at center, rgba(168, 85, 247, 0.18), rgba(168, 85, 247, 0.03) 48%, transparent 74%);
+  filter: blur(36px);
+  pointer-events: none;
+}
+
+.static-tarot-gallery__row {
+  position: relative;
+  z-index: 1;
+  width: min(1180px, 100%);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 18px;
+  perspective: 1200px;
+}
+
+.static-tarot-card {
+  position: relative;
+  width: clamp(148px, 12vw, 198px);
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition:
+    transform 0.32s ease,
+    filter 0.32s ease;
+}
+
+.static-tarot-card.is-left:nth-child(1) {
+  transform: translateY(16px) rotate(-8deg) scale(0.96);
+}
+
+.static-tarot-card.is-left:nth-child(2) {
+  transform: translateY(8px) rotate(-4deg) scale(0.99);
+}
+
+.static-tarot-card.is-center {
+  transform: translateY(0) scale(1);
+  z-index: 3;
+}
+
+.static-tarot-card.is-right:nth-child(4) {
+  transform: translateY(8px) rotate(4deg) scale(0.99);
+}
+
+.static-tarot-card.is-right:nth-child(5) {
+  transform: translateY(16px) rotate(8deg) scale(0.96);
+}
+
+.static-tarot-card:hover {
+  filter: drop-shadow(0 0 28px rgba(216, 180, 254, 0.24));
+}
+
+.static-tarot-card.is-left:nth-child(1):hover {
+  transform: translateY(6px) rotate(-7deg) scale(1);
+}
+
+.static-tarot-card.is-left:nth-child(2):hover {
+  transform: translateY(2px) rotate(-3deg) scale(1.01);
+}
+
+.static-tarot-card.is-center:hover {
+  transform: translateY(-8px) scale(1.04);
+}
+
+.static-tarot-card.is-right:nth-child(4):hover {
+  transform: translateY(2px) rotate(3deg) scale(1.01);
+}
+
+.static-tarot-card.is-right:nth-child(5):hover {
+  transform: translateY(6px) rotate(7deg) scale(1);
+}
+
+.static-tarot-card__image-shell {
+  width: 100%;
+  border-radius: 24px;
+  padding: 10px;
+  background:
+    linear-gradient(180deg, rgba(26, 14, 44, 0.98), rgba(14, 8, 26, 0.98));
+  border: 1px solid rgba(192, 132, 252, 0.18);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 20px 50px rgba(0, 0, 0, 0.35),
+    0 0 22px rgba(168, 85, 247, 0.12);
+  transition:
+    box-shadow 0.32s ease,
+    border-color 0.32s ease,
+    background 0.32s ease;
+}
+
+.static-tarot-card:hover .static-tarot-card__image-shell {
+  border-color: rgba(232, 121, 249, 0.34);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 24px 58px rgba(0, 0, 0, 0.42),
+    0 0 32px rgba(216, 180, 254, 0.18);
+  background:
+    linear-gradient(180deg, rgba(34, 18, 56, 0.98), rgba(14, 8, 26, 0.98));
+}
+
+.static-tarot-card__image {
+  width: 100%;
+  display: block;
+  border-radius: 18px;
+  object-fit: cover;
+  user-select: none;
+  pointer-events: none;
+}
+
+.static-tarot-card__title {
+  margin-top: 18px;
+  color: #f8f0ff;
+  font-size: 1.04rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 14px rgba(168, 85, 247, 0.18);
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .static-tarot-gallery {
+    min-height: auto;
+    padding: 96px 18px 28px;
+  }
+
+  .static-tarot-gallery__row {
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+
+  .static-tarot-card,
+  .static-tarot-card.is-left:nth-child(1),
+  .static-tarot-card.is-left:nth-child(2),
+  .static-tarot-card.is-center,
+  .static-tarot-card.is-right:nth-child(4),
+  .static-tarot-card.is-right:nth-child(5) {
+    transform: none;
+  }
+
+  .static-tarot-card:hover,
+  .static-tarot-card.is-left:nth-child(1):hover,
+  .static-tarot-card.is-left:nth-child(2):hover,
+  .static-tarot-card.is-center:hover,
+  .static-tarot-card.is-right:nth-child(4):hover,
+  .static-tarot-card.is-right:nth-child(5):hover {
+    transform: translateY(-10px) scale(1.02);
+  }
+}
+
+@media (max-width: 640px) {
+  .static-tarot-gallery__row {
+    gap: 16px;
+  }
+
+  .static-tarot-card {
+    width: min(44vw, 188px);
+  }
+
+  .static-tarot-card__title {
+    white-space: normal;
+    text-align: center;
+  }
+}

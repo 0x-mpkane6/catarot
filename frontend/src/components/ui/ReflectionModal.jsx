@@ -204,7 +204,7 @@ export default function ReflectionModal({
                 letterSpacing: "0.05em",
               }}
             >
-              💭 Your Reflection
+              Your Reflection
             </label>
             <textarea
               value={reflection}
@@ -273,7 +273,7 @@ export default function ReflectionModal({
                 letterSpacing: "0.05em",
               }}
             >
-              🎭 How Do You Feel Now?
+              How Do You Feel Now?
             </label>
             <div
               style={{
@@ -451,27 +451,8 @@ export default function ReflectionModal({
             </button>
           </div>
 
-          {/* INFO */}
-          <div
-            style={{
-              marginTop: "20px",
-              padding: "12px 16px",
-              borderRadius: "10px",
-              background:
-                "rgba(59,130,246,0.1)",
-              border:
-                "1px solid rgba(59,130,246,0.2)",
-              fontSize: "0.8rem",
-              color: "rgba(255,255,255,0.6)",
-              lineHeight: "1.4",
-            }}
-          >
-            ℹ️ Your reflection and mood will help personalize your tarot
-            experience over time.
           </div>
         </div>
-      </div>
-
       <style>{`
         @keyframes fadeIn {
           from {

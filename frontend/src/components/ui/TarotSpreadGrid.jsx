@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
-import tarotBack from "../../assets/images/homepage/tarot-back-des.png";
+import tarotBack from "../../assets/images/homepage/tarot-back-des-2.png";
 
 const TOTAL_CARDS = 36;
 const CARDS_PER_ROW = 12;

@@ -22,6 +22,11 @@ const getStoredToken = () => {
 api.interceptors.request.use((config) => {
   try {
     const token = getStoredToken();
+    console.log("[api] request", {
+      method: config.method,
+      url: config.url,
+      tokenExists: Boolean(token),
+    });
     if (token && !config.headers?.Authorization) {
       config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
@@ -31,5 +36,24 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error("[api] response error", {
+      method: error?.config?.method,
+      url: error?.config?.url,
+      status: error?.response?.status,
+      detail:
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
+        error?.message,
+      hasAuthorization: Boolean(
+        error?.config?.headers?.Authorization
+      ),
+    });
+    return Promise.reject(error);
+  }
+);
 
 export default api;

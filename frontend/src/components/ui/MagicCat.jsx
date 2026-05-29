@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import magicCat from "../../assets/images/homepage/magic-cat.png";
 import catSound from "../../assets/sounds/homepage/magic-cat.mp3";
@@ -7,47 +10,20 @@ import SpeechBubble from "./SpeechBubble";
 
 import "./MagicCat.css";
 
-const DIALOGUES = [
-  "The stars whisper tonight.",
-  "Your fate smells interesting.",
-  "Another reading awaits.",
-  "Do not ignore the moon.",
-  "The cards remember everything.",
-  "A strange energy surrounds you.",
-  "The arcana are restless.",
-  "Your destiny shifts slowly.",
-  "Even silence tells a story.",
-  "The universe is listening.",
-];
-
 export default function MagicCat({
   onClick,
 }) {
 
-  const [message, setMessage] =
+  const [message] =
     useState("Welcome back.");
 
   const [visible, setVisible] =
     useState(true);
 
-  const [currentIndex, setCurrentIndex] =
-    useState(0);
-
-  const randomizedDialogues = useMemo(() => {
-    // Fisher-Yates shuffle để tránh sort không ổn định + Math.random impure
-    // warning của react-hooks/purity.
-    const shuffled = [...DIALOGUES];
-    for (let i = shuffled.length - 1; i > 0; i -= 1) {
-      // eslint-disable-next-line react-hooks/purity -- shuffle 1 lần lúc mount
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  }, []);
-
   const [canMeow, setCanMeow] = useState(true);
 
   const handleCatClick = () => {
+    onClick?.();
 
     if (!canMeow) return;
 
@@ -59,14 +35,10 @@ export default function MagicCat({
 
     audio.play();
 
-    onClick?.();
-
     setTimeout(() => {
-
-        setCanMeow(true);
-
+      setCanMeow(true);
     }, 8000);
-    };
+  };
 
   useEffect(() => {
 
@@ -77,31 +49,6 @@ export default function MagicCat({
     return () => clearTimeout(hideTimer);
 
   }, []);
-
-  useEffect(() => {
-
-    const interval = setInterval(() => {
-
-      const nextMessage =
-        randomizedDialogues[
-          currentIndex % randomizedDialogues.length
-        ];
-
-      setMessage(nextMessage);
-
-      setVisible(true);
-
-      setTimeout(() => {
-        setVisible(false);
-      }, 10000);
-
-      setCurrentIndex((prev) => prev + 1);
-
-    }, 45000);
-
-    return () => clearInterval(interval);
-
-  }, [currentIndex, randomizedDialogues]);
 
   return (
     <div

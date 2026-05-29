@@ -721,9 +721,13 @@ async def get_session_detail(
     from src.db.models import ReadingSession, RecognizedCard, TarotCard, Reading
     from src.db.session import session_scope
 
+    _ensure_session_owner_or_admin(current_user, session_id)
+
     with session_scope() as session:
-        row = session.get(ReadingSession, session_id)
-        if row is None or row.user_id != current_user.id:
+        row = session.scalar(
+            sa.select(ReadingSession).where(ReadingSession.id == session_id)
+        )
+        if row is None:
             raise HTTPException(status_code=404, detail="session not found")
 
         card_rows = session.execute(
