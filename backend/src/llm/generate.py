@@ -536,7 +536,7 @@ class ReadingGenerator:
 
         if not self.gemini_api_key and not self.api_key and not self.ollama_enabled:
             extra_warnings.append(
-                "No LLM backend configured; using deterministic fallback response."
+                "Chưa cấu hình mô hình ngôn ngữ (LLM); dùng câu trả lời dự phòng tự động."
             )
             self.last_used_model = "deterministic-fallback"
             return (
@@ -551,7 +551,7 @@ class ReadingGenerator:
                 if answer.strip():
                     self.last_used_model = f"gemini:{self.gemini_model}"
                     return answer.strip(), extra_warnings
-                extra_warnings.append("Gemini returned empty content; trying next backend.")
+                extra_warnings.append("Gemini trả về nội dung rỗng; thử backend kế tiếp.")
             except Exception as exc:
                 LOGGER.warning(
                     "Gemini generation failed (key=%s, model=%s): %s",
@@ -559,7 +559,7 @@ class ReadingGenerator:
                     self.gemini_model,
                     exc,
                 )
-                extra_warnings.append("Gemini failed; trying next backend.")
+                extra_warnings.append("Gemini lỗi; thử backend kế tiếp.")
 
         # Tier 2: OpenAI
         if self.api_key:
@@ -570,7 +570,7 @@ class ReadingGenerator:
                     return answer.strip(), extra_warnings
             except Exception as exc:
                 LOGGER.warning("OpenAI generation failed: %s", exc)
-                extra_warnings.append("OpenAI failed; trying local Ollama.")
+                extra_warnings.append("OpenAI lỗi; đang thử Ollama cục bộ.")
 
         # Tier 3: Local Ollama
         if self.ollama_enabled:
@@ -579,10 +579,10 @@ class ReadingGenerator:
                 if answer.strip():
                     self.last_used_model = f"ollama:{self.ollama_model}"
                     return answer.strip(), extra_warnings
-                extra_warnings.append("Ollama returned empty content; using template fallback.")
+                extra_warnings.append("Ollama trả về nội dung rỗng; dùng mẫu trả lời dự phòng.")
             except Exception as exc:
                 LOGGER.warning("Ollama generation failed: %s", exc)
-                extra_warnings.append("Ollama unavailable; switched to deterministic fallback response.")
+                extra_warnings.append("Không kết nối được Ollama; chuyển sang câu trả lời dự phòng tự động.")
 
         self.last_used_model = "deterministic-fallback"
         return (
@@ -647,7 +647,7 @@ class ReadingGenerator:
             messages.append({"role": "user", "content": user_message})
 
         if not self.gemini_api_key and not self.api_key and not self.ollama_enabled:
-            extra_warnings.append("No LLM backend configured; using deterministic follow-up fallback response.")
+            extra_warnings.append("Chưa cấu hình mô hình ngôn ngữ (LLM); dùng câu trả lời tiếp nối dự phòng tự động.")
             self.last_used_model = "deterministic-fallback"
             return (
                 self._generate_followup_fallback(session_context=session_context, user_message=user_message),
@@ -661,14 +661,14 @@ class ReadingGenerator:
                 if answer.strip():
                     self.last_used_model = f"gemini:{self.gemini_model}"
                     return answer.strip(), extra_warnings
-                extra_warnings.append("Gemini returned empty follow-up content; trying next backend.")
+                extra_warnings.append("Gemini trả về nội dung tiếp nối rỗng; thử backend kế tiếp.")
             except Exception as exc:
                 LOGGER.warning(
                     "Gemini follow-up generation failed (key=%s): %s",
                     _mask_secret(self.gemini_api_key),
                     exc,
                 )
-                extra_warnings.append("Gemini follow-up failed; trying next backend.")
+                extra_warnings.append("Gemini (tiếp nối) lỗi; thử backend kế tiếp.")
 
         # Tier 2: OpenAI
         if self.api_key:
@@ -679,7 +679,7 @@ class ReadingGenerator:
                     return answer.strip(), extra_warnings
             except Exception as exc:
                 LOGGER.warning("OpenAI follow-up generation failed: %s", exc)
-                extra_warnings.append("OpenAI failed; trying local Ollama.")
+                extra_warnings.append("OpenAI lỗi; đang thử Ollama cục bộ.")
 
         # Tier 3: Local Ollama
         if self.ollama_enabled:
@@ -688,10 +688,10 @@ class ReadingGenerator:
                 if answer.strip():
                     self.last_used_model = f"ollama:{self.ollama_model}"
                     return answer.strip(), extra_warnings
-                extra_warnings.append("Ollama returned empty follow-up content; using fallback.")
+                extra_warnings.append("Ollama trả về nội dung tiếp nối rỗng; dùng dự phòng.")
             except Exception as exc:
                 LOGGER.warning("Ollama follow-up generation failed: %s", exc)
-                extra_warnings.append("Ollama unavailable; switched to deterministic follow-up response.")
+                extra_warnings.append("Không kết nối được Ollama; chuyển sang câu trả lời tiếp nối dự phòng tự động.")
 
         self.last_used_model = "deterministic-fallback"
         return (

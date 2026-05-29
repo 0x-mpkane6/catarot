@@ -96,3 +96,31 @@ def test_persist_reading_result_writes_session_cards_and_reading(
         assert row_reading is not None
         assert row_reading.generated_text == payload["final_answer"]
         assert row_reading.llm_model == payload["llm_model"]
+
+
+def test_persist_reading_result_coerces_guest_user_id_zero_to_null(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _use_temp_sqlite_db(monkeypatch, tmp_path)
+
+    payload = {
+        "transcript": None,
+        "cards": [{"name": "The Fool", "orientation": "upright", "position": "past", "confidence": 0.9}],
+        "final_answer": "Một bài đọc mẫu.",
+        "llm_model": "deterministic-fallback",
+    }
+
+    # Khách gửi user_id=0; không có user 0 nên phải lưu user_id = NULL,
+    # không được vi phạm khóa ngoại và bỏ qua việc lưu (regression).
+    session_id = persist_reading_result(
+        question="Câu hỏi của khách?",
+        result=payload,
+        user_id=0,
+    )
+
+    assert session_id is not None
+    with session_scope() as session:
+        row_session = session.get(ReadingSession, session_id)
+        assert row_session is not None
+        assert row_session.user_id is None

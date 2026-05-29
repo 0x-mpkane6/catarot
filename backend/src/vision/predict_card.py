@@ -116,7 +116,7 @@ class CardPredictor:
             "orientation": top["orientation"],
             "confidence": 0.0,
             "topk_candidates": candidates,
-            "_warning": "Vision index unavailable, using fallback card candidates.",
+            "_warning": "Chưa có chỉ mục nhận dạng ảnh; dùng danh sách lá bài dự phòng.",
         }
 
     def list_candidate_cards(self, limit: int = 78) -> list[str]:
@@ -166,5 +166,5 @@ class CardPredictor:
         except Exception as exc:
             LOGGER.warning("Prediction failed for %s: %s", image_path, exc)
             result = self._fallback_result()
-            result["_warning"] = f"Prediction failed for image {Path(image_path).name}; using fallback candidates."
+            result["_warning"] = f"Nhận dạng ảnh {Path(image_path).name} thất bại; dùng danh sách lá bài dự phòng."
             return result

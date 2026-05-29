@@ -65,8 +65,8 @@ def _convert_to_wav_if_needed(audio_path: Path, warnings: list[str]) -> tuple[Pa
     ffmpeg_bin = shutil.which("ffmpeg")
     if not ffmpeg_bin:
         warnings.append(
-            "Audio format is not WAV and ffmpeg is not installed. "
-            "Please upload WAV audio or install ffmpeg."
+            "Định dạng âm thanh không phải WAV và chưa cài ffmpeg. "
+            "Hãy tải lên file WAV hoặc cài ffmpeg."
         )
         return None, None
 
@@ -77,7 +77,7 @@ def _convert_to_wav_if_needed(audio_path: Path, warnings: list[str]) -> tuple[Pa
     process = subprocess.run(cmd, capture_output=True, text=True)
     if process.returncode != 0 or not wav_path.exists():
         LOGGER.warning("ffmpeg conversion failed: %s", process.stderr[-400:])
-        warnings.append("Could not decode audio file. Please upload WAV audio.")
+        warnings.append("Không giải mã được file âm thanh. Hãy tải lên file WAV.")
         shutil.rmtree(temp_dir, ignore_errors=True)
         return None, None
 
@@ -249,7 +249,7 @@ def transcribe_audio(audio_path: str | None) -> tuple[str | None, list[str]]:
 
     path = Path(audio_path)
     if not path.exists():
-        warnings.append(f"Audio file not found: {audio_path}")
+        warnings.append(f"Không tìm thấy file âm thanh: {audio_path}")
         return None, warnings
 
     working_path: Path | None = path
@@ -269,7 +269,7 @@ def transcribe_audio(audio_path: str | None) -> tuple[str | None, list[str]]:
                     return transcript, warnings
             except Exception as exc:
                 LOGGER.warning("faster_whisper ASR failed: %s", exc)
-                warnings.append("faster_whisper failed; falling back to transformers ASR.")
+                warnings.append("faster_whisper lỗi; chuyển sang ASR transformers.")
 
         # 2) Fallback ASR using transformers whisper (CPU).
         if _module_available("transformers"):
@@ -277,14 +277,14 @@ def transcribe_audio(audio_path: str | None) -> tuple[str | None, list[str]]:
                 transcript = _transcribe_with_transformers(working_path)
                 if transcript:
                     return transcript, warnings
-                warnings.append("Audio provided but no speech was detected.")
+                warnings.append("Có file âm thanh nhưng không phát hiện giọng nói.")
                 return None, warnings
             except Exception as exc:
                 LOGGER.warning("transformers ASR failed: %s", exc)
-                warnings.append("ASR failed; continuing without transcript.")
+                warnings.append("Nhận dạng giọng nói thất bại; tiếp tục mà không có lời thoại.")
                 return None, warnings
 
-        warnings.append("No ASR backend available. Install faster-whisper or transformers.")
+        warnings.append("Không có backend nhận dạng giọng nói. Hãy cài faster-whisper hoặc transformers.")
         return None, warnings
     finally:
         if temp_dir is not None:
