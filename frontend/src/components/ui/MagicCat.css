@@ -1,0 +1,90 @@
+.magic-cat-container {
+  position: fixed;
+
+  bottom: 24px;
+  left: 24px;
+
+  z-index: 20;
+
+  cursor: pointer;
+
+  user-select: none;
+}
+
+.magic-cat-glow {
+  position: absolute;
+
+  inset: 0;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(168,85,247,0.35),
+      transparent 70%
+    );
+
+  filter: blur(24px);
+
+  opacity: 0;
+
+  transition: 0.3s ease;
+
+  pointer-events: none;
+}
+
+.magic-cat-image {
+  width: 230px;
+
+  position: relative;
+
+  z-index: 2;
+
+  transition:
+    transform 0.25s ease,
+    filter 0.25s ease;
+
+  filter:
+    drop-shadow(
+      0 0 18px rgba(168,85,247,0.18)
+    );
+
+  animation:
+    floatingCat 3.5s ease-in-out infinite;
+}
+
+.magic-cat-container:hover
+.magic-cat-image {
+
+  transform:
+    translateY(-12px)
+    scale(1.04);
+
+  filter:
+    drop-shadow(
+      0 0 28px rgba(168,85,247,0.55)
+    );
+}
+
+.magic-cat-container:hover
+.magic-cat-glow {
+
+  opacity: 1;
+}
+
+@keyframes floatingCat {
+
+  0% {
+    transform:
+      translateY(0px);
+  }
+
+  50% {
+    transform:
+      translateY(-10px);
+  }
+
+  100% {
+    transform:
+      translateY(0px);
+  }
+}

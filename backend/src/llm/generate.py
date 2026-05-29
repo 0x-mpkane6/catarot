@@ -180,9 +180,10 @@ class ReadingGenerator:
         spread_type: str,
         cards: list[dict],
         rag_snippets: list[dict],
+        emotion_state: str | None,
         warnings: list[str],
     ) -> str:
-        return self.reading_template.format(
+        prompt = self.reading_template.format(
             question=question,
             transcript=transcript or "null",
             spread_type=spread_type,
@@ -190,6 +191,13 @@ class ReadingGenerator:
             snippets_json=json.dumps(rag_snippets, ensure_ascii=False),
             warnings_json=json.dumps(warnings, ensure_ascii=False),
         )
+        if emotion_state:
+            prompt += (
+                "\n\nAdditional Context:\n"
+                f"- emotion_state: {emotion_state}\n"
+                "- Please keep tone empathetic and non-judgmental for this emotional state."
+            )
+        return prompt
 
     def _generate_openai(self, system_prompt: str, user_prompt: str) -> str:
         from openai import OpenAI  # type: ignore
@@ -201,6 +209,17 @@ class ReadingGenerator:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
+            temperature=0.5,
+        )
+        return response.choices[0].message.content or ""
+
+    def _generate_openai_messages(self, messages: list[dict[str, str]]) -> str:
+        from openai import OpenAI  # type: ignore
+
+        client = OpenAI(api_key=self.api_key)
+        response = client.chat.completions.create(
+            model=self.model,
+            messages=messages,
             temperature=0.5,
         )
         return response.choices[0].message.content or ""
@@ -237,6 +256,36 @@ class ReadingGenerator:
                 "model": self.ollama_model,
                 "stream": False,
                 "prompt": f"{system_prompt}\n\n{user_prompt}",
+            }
+            generate_response = requests.post(generate_url, json=generate_body, timeout=self.ollama_timeout)
+            generate_response.raise_for_status()
+            return self._extract_ollama_text(generate_response.json())
+
+        chat_response.raise_for_status()
+        return ""
+
+    def _generate_ollama_messages(self, messages: list[dict[str, str]]) -> str:
+        chat_url = f"{self.ollama_base_url}/api/chat"
+        chat_body = {
+            "model": self.ollama_model,
+            "stream": False,
+            "messages": messages,
+        }
+        chat_response = requests.post(chat_url, json=chat_body, timeout=self.ollama_timeout)
+        if chat_response.ok:
+            return self._extract_ollama_text(chat_response.json())
+
+        if chat_response.status_code == 404:
+            prompt_lines = []
+            for row in messages:
+                role = row.get("role", "user")
+                content = row.get("content", "")
+                prompt_lines.append(f"{role.upper()}: {content}")
+            generate_url = f"{self.ollama_base_url}/api/generate"
+            generate_body = {
+                "model": self.ollama_model,
+                "stream": False,
+                "prompt": "\n\n".join(prompt_lines),
             }
             generate_response = requests.post(generate_url, json=generate_body, timeout=self.ollama_timeout)
             generate_response.raise_for_status()
@@ -308,6 +357,7 @@ class ReadingGenerator:
         spread_type: str,
         cards: list[dict],
         rag_snippets: list[dict],
+        emotion_state: str | None,
         warnings: list[str],
     ) -> tuple[str, list[str]]:
         self.last_used_model = None
@@ -318,6 +368,7 @@ class ReadingGenerator:
             spread_type=spread_type,
             cards=cards,
             rag_snippets=rag_snippets,
+            emotion_state=emotion_state,
             warnings=warnings,
         )
 
@@ -355,5 +406,96 @@ class ReadingGenerator:
         self.last_used_model = "deterministic-fallback"
         return (
             self._generate_fallback(question, transcript, cards, rag_snippets, warnings),
+            extra_warnings,
+        )
+
+    def _generate_followup_fallback(
+        self,
+        *,
+        session_context: dict[str, Any],
+        user_message: str,
+    ) -> str:
+        question = str(session_context.get("question") or "")
+        cards = session_context.get("cards") or []
+        primary_card = "Unknown Card"
+        if isinstance(cards, list) and cards:
+            first = cards[0]
+            if isinstance(first, dict):
+                primary_card = str(first.get("name") or "Unknown Card")
+
+        return "\n".join(
+            [
+                "Cam on ban da dat cau hoi tiep theo.",
+                f"Cau hoi goc: {question}",
+                f"La bai noi bat: {primary_card}",
+                f"Follow-up cua ban: {user_message}",
+                "Goi y: chon mot hanh dong cu the trong 24h toi va theo doi cam nhan cua ban.",
+            ]
+        )
+
+    def generate_followup(
+        self,
+        *,
+        session_context: dict[str, Any],
+        summary: str,
+        recent_messages: list[dict[str, Any]],
+        user_message: str,
+    ) -> tuple[str, list[str]]:
+        self.last_used_model = None
+        extra_warnings: list[str] = []
+
+        context_json = json.dumps(session_context, ensure_ascii=False)
+        summary_text = summary or "(no older turns)"
+        system_prompt = (
+            f"{self.system_prompt}\n\n"
+            "You are continuing an existing tarot session. "
+            "Use the session context faithfully and keep answer concise, empathetic, and actionable.\n"
+            f"SESSION_CONTEXT_JSON:\n{context_json}\n"
+            f"OLDER_TURNS_SUMMARY:\n{summary_text}\n"
+        )
+
+        messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
+        for row in recent_messages:
+            role = str(row.get("role") or "").strip().lower()
+            content = str(row.get("content") or "").strip()
+            if role not in {"user", "assistant", "system"} or not content:
+                continue
+            messages.append({"role": role, "content": content})
+
+        if not messages or messages[-1]["role"] != "user":
+            messages.append({"role": "user", "content": user_message})
+
+        if not self.api_key and not self.ollama_enabled:
+            extra_warnings.append("No LLM backend configured; using deterministic follow-up fallback response.")
+            self.last_used_model = "deterministic-fallback"
+            return (
+                self._generate_followup_fallback(session_context=session_context, user_message=user_message),
+                extra_warnings,
+            )
+
+        if self.api_key:
+            try:
+                answer = self._generate_openai_messages(messages)
+                if answer.strip():
+                    self.last_used_model = f"openai:{self.model}"
+                    return answer.strip(), extra_warnings
+            except Exception as exc:
+                LOGGER.warning("OpenAI follow-up generation failed: %s", exc)
+                extra_warnings.append("OpenAI failed; trying local Ollama.")
+
+        if self.ollama_enabled:
+            try:
+                answer = self._generate_ollama_messages(messages)
+                if answer.strip():
+                    self.last_used_model = f"ollama:{self.ollama_model}"
+                    return answer.strip(), extra_warnings
+                extra_warnings.append("Ollama returned empty follow-up content; using fallback.")
+            except Exception as exc:
+                LOGGER.warning("Ollama follow-up generation failed: %s", exc)
+                extra_warnings.append("Ollama unavailable; switched to deterministic follow-up response.")
+
+        self.last_used_model = "deterministic-fallback"
+        return (
+            self._generate_followup_fallback(session_context=session_context, user_message=user_message),
             extra_warnings,
         )

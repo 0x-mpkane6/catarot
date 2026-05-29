@@ -1,0 +1,12 @@
+{
+  "snake": ["The Devil", "Wheel of Fortune"],
+  "water": ["The Moon", "Temperance"],
+  "flying": ["The Fool", "The World"],
+  "falling": ["The Tower", "The Hanged Man"],
+  "stranger": ["The Moon", "The Hermit"],
+  "fire": ["The Tower", "Judgement"],
+  "baby": ["The Empress", "The Sun"],
+  "house": ["The Emperor", "Four of Wands"],
+  "death": ["Death", "Judgement"],
+  "road": ["The Chariot", "Wheel of Fortune"]
+}
