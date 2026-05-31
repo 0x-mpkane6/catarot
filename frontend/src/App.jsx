@@ -2,6 +2,8 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import SplashCursor from "./components/common/SplashCursor";
+import RouteTransition from "./components/transition/RouteTransition";
+import MysticLoader from "./components/ui/MysticLoader";
 
 import { Toaster } from "react-hot-toast";
 
@@ -11,25 +13,6 @@ const LoginPage = lazy(() => import("./pages/LoginPage"));
 const HomePage = lazy(() => import("./pages/HomePage"));
 const SigninPage = lazy(() => import("./pages/SigninPage"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
-
-function RouteFallback() {
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#0b0719",
-        color: "#c4b5fd",
-        fontSize: 14,
-        letterSpacing: 0.4,
-      }}
-    >
-      Đang tải...
-    </div>
-  );
-}
 
 function App() {
   return (
@@ -63,15 +46,17 @@ function App() {
       />
 
       <BrowserRouter>
-        <Suspense fallback={<RouteFallback />}>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signin" element={<SigninPage />} />
-            <Route path="/home" element={<HomePage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          </Routes>
-        </Suspense>
+        <RouteTransition>
+          <Suspense fallback={<MysticLoader label="Đang mở cánh cổng" />}>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/signin" element={<SigninPage />} />
+              <Route path="/home" element={<HomePage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            </Routes>
+          </Suspense>
+        </RouteTransition>
       </BrowserRouter>
     </>
   );
