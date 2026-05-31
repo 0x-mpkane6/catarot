@@ -26,6 +26,17 @@ function SplashCursor({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // Hiệu ứng theo CON TRỎ CHUỘT: vô nghĩa trên thiết bị cảm ứng (điện thoại/tablet),
+    // lại nặng và dễ làm crash WebGL trong webview (Zalo/Messenger) → trắng màn cả app.
+    // Bỏ qua trên máy không có chuột để web mở được bình thường trên điện thoại.
+    if (
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(hover: none), (pointer: coarse)").matches
+    ) {
+      return;
+    }
+
     // Track if the effect is still active for cleanup
     let isActive = true;
 
@@ -65,6 +76,7 @@ function SplashCursor({
     let pointers = [new pointerPrototype()];
 
     const { gl, ext } = getWebGLContext(canvas);
+    if (!gl) return; // WebGL không khả dụng → bỏ hiệu ứng, tránh crash trắng màn cả app
     if (!ext.supportLinearFiltering) {
       config.DYE_RESOLUTION = 256;
       config.SHADING = false;
@@ -81,6 +93,9 @@ function SplashCursor({
       let gl = canvas.getContext('webgl2', params);
       const isWebGL2 = !!gl;
       if (!isWebGL2) gl = canvas.getContext('webgl', params) || canvas.getContext('experimental-webgl', params);
+
+      // Không có WebGL (vd webview hạn chế) → trả null an toàn, KHÔNG gọi gl.* để tránh crash.
+      if (!gl) return { gl: null, ext: { supportLinearFiltering: false } };
 
       let halfFloat;
       let supportLinearFiltering;

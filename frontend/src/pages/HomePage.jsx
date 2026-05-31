@@ -175,7 +175,7 @@ export default function HomePage() {
     typeof window === "undefined"
       ? 1
       : Math.max(
-          0.45,
+          0.2,
           Math.min(window.innerWidth / 1500, window.innerHeight / 1024, 1)
         )
   );
@@ -250,7 +250,7 @@ export default function HomePage() {
     const onResize = () =>
       setPageScale(
         Math.max(
-          0.45,
+          0.2,
           Math.min(window.innerWidth / 1500, window.innerHeight / 1024, 1)
         )
       );
