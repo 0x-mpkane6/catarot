@@ -26,9 +26,9 @@ export default function RouteTransition({ children }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{
-          duration: reduce ? 0.2 : 0.55,
-          // Hé lộ trang khi tấm màn đang vén lên (canh với nửa sau của sweep 0.95s).
-          delay: reduce ? 0 : 0.22,
+          duration: reduce ? 0.2 : 0.5,
+          // Hé lộ trang đúng lúc cổng vũ trụ co rút lại (nửa sau của warp ~1.05s).
+          delay: reduce ? 0 : 0.5,
           ease: "easeOut",
         }}
         style={{ width: "100%", minHeight: "100vh" }}
