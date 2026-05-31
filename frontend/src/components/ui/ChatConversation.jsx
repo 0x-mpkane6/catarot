@@ -6,9 +6,13 @@ import {
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 
+import useIsMobile from "../../hooks/useIsMobile";
+
 export default function ChatConversation({
   messages = [],
 }) {
+
+  const isMobile = useIsMobile();
 
   const [copiedIndex,
     setCopiedIndex] =
@@ -41,7 +45,7 @@ export default function ChatConversation({
 
         gap: "22px",
 
-        paddingBottom: "180px",
+        paddingBottom: isMobile ? "120px" : "180px",
       }}
     >
 
@@ -70,7 +74,7 @@ export default function ChatConversation({
                 style={{
                   position: "relative",
 
-                  maxWidth: "720px",
+                  maxWidth: isMobile ? "88%" : "720px",
 
                   padding:
                     "18px 22px",
@@ -196,7 +200,8 @@ export default function ChatConversation({
 
                     color: "#fff",
 
-                    opacity: 0,
+                    // Mobile không hover được nên hiện mờ sẵn nút copy.
+                    opacity: isMobile ? 0.6 : 0,
 
                     cursor: "pointer",
 

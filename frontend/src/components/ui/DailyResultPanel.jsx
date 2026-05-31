@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { getCardImageByName } from "../../lib/cardImages";
+import useIsMobile from "../../hooks/useIsMobile";
 import ReflectionModal from "./ReflectionModal";
 
 const MOOD_LABELS = {
@@ -54,6 +55,7 @@ export default function DailyResultPanel({
     useState(false);
   const [isSubmittingReflection, setIsSubmittingReflection] =
     useState(false);
+  const isMobile = useIsMobile();
 
   /**
    * Handle reflection submit from modal
@@ -148,6 +150,18 @@ export default function DailyResultPanel({
           color: "rgba(255,255,255,0.5)",
           fontSize: "0.95rem",
           zIndex: 40,
+
+          // Mobile: đưa trạng thái rỗng về dòng chảy tĩnh, căn giữa.
+          ...(isMobile
+            ? {
+                position: "static",
+                right: "auto",
+                top: "auto",
+                transform: "none",
+                width: "100%",
+                margin: "76px 0 16px",
+              }
+            : null),
         }}
       >
         {isLoading ? "Đang tải lá bài..." : "Chưa rút lá bài nào"}
@@ -169,6 +183,18 @@ export default function DailyResultPanel({
           alignItems: "center",
           width: "160px",
           zIndex: 40,
+
+          // Mobile: thẻ lá bài hằng ngày về dòng chảy tĩnh, căn giữa.
+          ...(isMobile
+            ? {
+                position: "static",
+                right: "auto",
+                top: "auto",
+                transform: "none",
+                width: "100%",
+                margin: "76px 0 16px",
+              }
+            : null),
         }}
       >
         {/* MAIN CARD IMAGE */}
@@ -206,7 +232,7 @@ export default function DailyResultPanel({
             onClick={() => setPreviewExpanded(true)}
             style={{
               cursor: "pointer",
-              height: "340px",
+              height: isMobile ? "240px" : "340px",
               objectFit: "contain",
               borderRadius: "18px",
               transform:
@@ -286,7 +312,7 @@ export default function DailyResultPanel({
             position: "fixed",
             top: 0,
             right: 0,
-            width: "420px",
+            width: isMobile ? "100vw" : "420px",
             height: "100vh",
             zIndex: 999,
             background:

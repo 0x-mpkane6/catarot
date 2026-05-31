@@ -73,6 +73,7 @@ from "../services/dailyService";
 import toast from "react-hot-toast";
 
 import { Undo2 } from "lucide-react";
+import useIsMobile from "../hooks/useIsMobile";
 import tarotReading from "../assets/images/homepage/the-magician.png";
 import whatIsTarotContent from "../assets/text/what_is_tarot.md?raw";
 import catarotContent from "../assets/text/catarot.md?raw";
@@ -85,6 +86,9 @@ const READING_SESSION_CARD = {
 };
 
 export default function HomePage() {
+  // Cờ mobile (< 768px) — chỉ dùng để rẽ nhánh style, KHÔNG đổi giao diện desktop.
+  const isMobile = useIsMobile();
+
   const getStoredUser =
     () => {
       try {
@@ -171,14 +175,16 @@ export default function HomePage() {
   // Zoom-to-fit toàn bộ layout desktop theo CẢ chiều rộng lẫn chiều cao.
   // (CSS cũ chỉ scale theo chiều cao nên màn hẹp bị tràn/cắt lưới bài.)
   // Lấy hệ số nhỏ nhất giữa 2 trục, không phóng to quá 1, sàn 0.45.
-  const [pageScale, setPageScale] = useState(() =>
-    typeof window === "undefined"
-      ? 1
-      : Math.max(
-          0.2,
-          Math.min(window.innerWidth / 1500, window.innerHeight / 1024, 1)
-        )
-  );
+  // Trên mobile KHÔNG scale (pageScale = 1) để layout chảy tĩnh, dễ cuộn.
+  const computeScale = () => {
+    if (typeof window === "undefined") return 1;
+    if (isMobile) return 1;
+    return Math.max(
+      0.2,
+      Math.min(window.innerWidth / 1500, window.innerHeight / 1024, 1)
+    );
+  };
+  const [pageScale, setPageScale] = useState(computeScale);
   const [hasTodayDailyReading, setHasTodayDailyReading] =
     useState(false);
   const [dailyInfoNote, setDailyInfoNote] =
@@ -247,17 +253,20 @@ export default function HomePage() {
   }, [loadReadingHistory]);
 
   useEffect(() => {
+    // Tính lại scale theo kích thước cửa sổ; trên mobile luôn = 1.
     const onResize = () =>
       setPageScale(
-        Math.max(
-          0.2,
-          Math.min(window.innerWidth / 1500, window.innerHeight / 1024, 1)
-        )
+        isMobile
+          ? 1
+          : Math.max(
+              0.2,
+              Math.min(window.innerWidth / 1500, window.innerHeight / 1024, 1)
+            )
       );
     onResize();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, []);
+  }, [isMobile]);
 
   useEffect(() => {
     if (
@@ -900,7 +909,11 @@ const handleChatSubmitDraft =
 
   return (
     <div
-      className="home-viewport"
+      className={
+        isMobile
+          ? "home-viewport home-viewport--mobile"
+          : "home-viewport"
+      }
       style={{
         "--home-page-scale": pageScale,
         background: `
@@ -1041,25 +1054,40 @@ const handleChatSubmitDraft =
         }, 250);
       }}
 
-        size={34}
+        size={isMobile ? 28 : 34}
 
-        style={{
-          position: "absolute",
+        style={
+          isMobile
+            ? {
+                // Mobile: ghim cố định góc trên trái, không scale theo layout.
+                position: "fixed",
+                top: "10px",
+                left: "10px",
+                color: "#f3d0ff",
+                cursor: "pointer",
+                zIndex: 60,
+                transition: "0.25s ease",
+                filter:
+                  "drop-shadow(0 0 10px rgba(192,132,252,0.45))",
+              }
+            : {
+                position: "absolute",
 
-          top: "50px",
-          left: "50px",
+                top: "50px",
+                left: "50px",
 
-          color: "#f3d0ff",
+                color: "#f3d0ff",
 
-          cursor: "pointer",
+                cursor: "pointer",
 
-          zIndex: 30,
+                zIndex: 30,
 
-          transition: "0.25s ease",
+                transition: "0.25s ease",
 
-          filter:
-            "drop-shadow(0 0 10px rgba(192,132,252,0.45))",
-        }}
+                filter:
+                  "drop-shadow(0 0 10px rgba(192,132,252,0.45))",
+              }
+        }
 
         onMouseEnter={(e) => {
           e.currentTarget.style.transform =
@@ -1111,6 +1139,17 @@ const handleChatSubmitDraft =
             "all 0.5s ease",
 
           zIndex: 10,
+
+          // Mobile: bỏ absolute, đưa preview về dòng chảy tĩnh, căn giữa.
+          ...(isMobile
+            ? {
+                position: "static",
+                left: "auto",
+                top: "auto",
+                margin: "76px auto 8px",
+                textAlign: "center",
+              }
+            : null),
         }}
       >
         <img
@@ -1118,7 +1157,7 @@ const handleChatSubmitDraft =
           alt={selectedCard.text}
 
           style={{
-            width: "170px",
+            width: isMobile ? "115px" : "170px",
             borderRadius: "18px",
           }}
         />
@@ -1127,7 +1166,7 @@ const handleChatSubmitDraft =
           style={{
             marginTop: "12px",
 
-            width: "170px",
+            width: isMobile ? "100%" : "170px",
 
             textAlign: "center",
 
@@ -1153,6 +1192,20 @@ const handleChatSubmitDraft =
           width: "min(980px, calc(100vw - 180px))",
           maxWidth: "100%",
           zIndex: 20,
+
+          // Mobile: panel chảy tĩnh, full chiều ngang.
+          ...(isMobile
+            ? {
+                position: "static",
+                transform: "none",
+                left: "auto",
+                top: "auto",
+                width: "100%",
+                maxWidth: "100%",
+                padding: "80px 10px 24px",
+                boxSizing: "border-box",
+              }
+            : null),
         }}
       >
         <DuoReadingPanel />
@@ -1170,6 +1223,20 @@ const handleChatSubmitDraft =
           width: "min(1180px, calc(100vw - 180px))",
           maxWidth: "100%",
           zIndex: 20,
+
+          // Mobile: panel chảy tĩnh, full chiều ngang.
+          ...(isMobile
+            ? {
+                position: "static",
+                transform: "none",
+                left: "auto",
+                top: "auto",
+                width: "100%",
+                maxWidth: "100%",
+                padding: "80px 10px 24px",
+                boxSizing: "border-box",
+              }
+            : null),
         }}
       >
         <CommunityReadingPanel />
@@ -1187,6 +1254,20 @@ const handleChatSubmitDraft =
           width: "min(1160px, calc(100vw - 180px))",
           maxWidth: "100%",
           zIndex: 20,
+
+          // Mobile: panel chảy tĩnh, full chiều ngang.
+          ...(isMobile
+            ? {
+                position: "static",
+                transform: "none",
+                left: "auto",
+                top: "auto",
+                width: "100%",
+                maxWidth: "100%",
+                padding: "80px 10px 24px",
+                boxSizing: "border-box",
+              }
+            : null),
         }}
       >
         <VisionsVaultPanel />
@@ -1202,6 +1283,14 @@ const handleChatSubmitDraft =
           background:
             "rgba(5, 5, 16, 0.68)",
           backdropFilter: "blur(12px)",
+
+          // Mobile: phủ kín nhưng cho cuộn dọc để xem hết lưới bài.
+          ...(isMobile
+            ? {
+                position: "fixed",
+                overflowY: "auto",
+              }
+            : null),
         }}
       >
         <TarotSpreadGrid
@@ -1252,6 +1341,20 @@ const handleChatSubmitDraft =
       width: "900px",
 
       zIndex: 20,
+
+      // Mobile: ô nhập dính đáy, full chiều ngang.
+      ...(isMobile
+        ? {
+            position: "sticky",
+            bottom: 0,
+            left: "auto",
+            transform: "none",
+            width: "100%",
+            maxWidth: "100%",
+            padding: "0 10px 12px",
+            boxSizing: "border-box",
+          }
+        : null),
     }}
   >
 
@@ -1269,6 +1372,14 @@ const handleChatSubmitDraft =
           overflowY: "auto",
 
           paddingRight: "10px",
+
+          // Mobile: bỏ giới hạn chiều cao + dịch chuyển để hội thoại chảy tự nhiên.
+          ...(isMobile
+            ? {
+                maxHeight: "none",
+                transform: "none",
+              }
+            : null),
         }}
       >
         <ChatConversation
@@ -1321,7 +1432,7 @@ const handleChatSubmitDraft =
       {/* stars */}
       <div
         style={{
-          position: "absolute",
+          position: isMobile ? "fixed" : "absolute",
           inset: 0,
 
           backgroundImage:

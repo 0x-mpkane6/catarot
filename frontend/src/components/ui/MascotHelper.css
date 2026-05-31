@@ -5,6 +5,13 @@
   z-index: 26;
 }
 
+/* Mobile: ẩn mascot để khỏi che ô chat + nút gửi. */
+@media (max-width: 767.98px) {
+  .mascot-helper {
+    display: none !important;
+  }
+}
+
 .mascot-helper__menu {
   position: fixed;
   left: calc(

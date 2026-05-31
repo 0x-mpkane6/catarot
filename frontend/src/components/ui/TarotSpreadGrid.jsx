@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
+import useIsMobile from "../../hooks/useIsMobile";
 import tarotBack from "../../assets/images/homepage/tarot-back-des-2.png";
 
 const TOTAL_CARDS = 36;
@@ -20,6 +21,8 @@ export default function TarotSpreadGrid({
   onSelectCard,
   onConfirm,
 }) {
+
+  const isMobile = useIsMobile();
 
   const [
     selectedCardIds,
@@ -145,7 +148,7 @@ export default function TarotSpreadGrid({
           justifyContent: "center",
 
           padding:
-            "120px 40px 90px",
+            isMobile ? "86px 10px 96px" : "120px 40px 90px",
 
           boxSizing: "border-box",
 
@@ -212,15 +215,17 @@ export default function TarotSpreadGrid({
             display: "grid",
 
             gridTemplateColumns:
-              `repeat(${CARDS_PER_ROW}, 108px)`,
+              isMobile
+                ? "repeat(4, 1fr)"
+                : `repeat(${CARDS_PER_ROW}, 108px)`,
 
-            gap: "14px",
+            gap: isMobile ? "8px" : "14px",
 
             justifyContent: "center",
 
             width: "100%",
 
-            maxWidth: "1220px",
+            maxWidth: isMobile ? "100%" : "1220px",
 
             marginBottom: "52px",
           }}
@@ -255,9 +260,14 @@ export default function TarotSpreadGrid({
                 style={{
                   position: "relative",
 
-                  width: "108px",
+                  // Mobile: lá co theo cột (width 100%) + giữ tỉ lệ 108:182.
+                  width: isMobile ? "100%" : "108px",
 
-                  height: "182px",
+                  height: isMobile ? "auto" : "182px",
+
+                  ...(isMobile
+                    ? { aspectRatio: "108 / 182" }
+                    : null),
 
                   padding: 0,
 
@@ -279,7 +289,9 @@ export default function TarotSpreadGrid({
                       : 1,
 
                   transform: isSelected
-                    ? "translateY(-26px) scale(1.12)"
+                    ? isMobile
+                      ? "translateY(-14px) scale(1.12)"
+                      : "translateY(-26px) scale(1.12)"
                     : anySelected
                       ? "translateY(0px) scale(0.92)"
                       : "translateY(0px) scale(1)",
@@ -468,6 +480,16 @@ export default function TarotSpreadGrid({
             padding: "0 30px",
 
             borderRadius: "999px",
+
+            // Mobile: nút Xác nhận dính đáy để luôn thấy được khi cuộn lưới.
+            ...(isMobile
+              ? {
+                  position: "sticky",
+                  bottom: "10px",
+                  width: "100%",
+                  maxWidth: "360px",
+                }
+              : null),
 
             border:
               "1px solid rgba(255,255,255,0.14)",

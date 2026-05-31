@@ -15,11 +15,14 @@ import {
 
 import toast from "react-hot-toast";
 
+import useIsMobile from "../../hooks/useIsMobile";
+
 export default function ChatBox({
   mode = "reading",
   disabled = false,
   onSubmitDraft,
 }) {
+  const isMobile = useIsMobile();
   const baseHeight = 28;
   const maxHeight = 180;
 
@@ -230,7 +233,7 @@ export default function ChatBox({
     <div
       style={{
         width: "100%",
-        maxWidth: "900px",
+        maxWidth: isMobile ? "100%" : "900px",
       }}
     >
 

@@ -30,3 +30,25 @@ body,
   min-height: 100%;
   overflow: hidden;
 }
+
+/* MOBILE (< 768px): bỏ fixed + scale, cho viewport chảy tĩnh và cuộn được.
+   Chỉ áp dụng cho biến thể --mobile, KHÔNG đụng .home-viewport gốc (desktop). */
+.home-viewport--mobile {
+  position: static;
+  width: 100%;
+  height: auto;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  transform: none;
+}
+
+@media (max-width: 767.98px) {
+  html,
+  body,
+  #root {
+    overflow: visible;
+    height: auto;
+    min-height: 100%;
+  }
+}

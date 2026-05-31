@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import useIsMobile from "../../hooks/useIsMobile";
 import tarotBack from "../../assets/images/homepage/tarot-back-des-2.png";
 import { getCardImageByName } from "../../lib/cardImages";
 
@@ -10,9 +11,17 @@ import { getCardImageByName } from "../../lib/cardImages";
  */
 export default function TarotResultPanel({ cards = [] }) {
   const [previewCard, setPreviewCard] = useState(null);
+  const isMobile = useIsMobile();
 
   const count = cards.length;
-  const cardHeight = count <= 1 ? 300 : count <= 3 ? 212 : 158;
+  // Mobile: lá nhỏ lại (~120px cao) để 3 lá nằm ngang vừa màn hình.
+  const cardHeight = isMobile
+    ? 120
+    : count <= 1
+      ? 300
+      : count <= 3
+        ? 212
+        : 158;
   const cardWidth = Math.round(cardHeight * 0.6);
   const panelWidth = cardWidth + 54;
 
@@ -113,6 +122,25 @@ export default function TarotResultPanel({ cards = [] }) {
           height: "82vh",
           width: `${panelWidth}px`,
           zIndex: 40,
+
+          // Mobile: rail nằm ngang trên đầu, cuộn ngang nếu tràn.
+          ...(isMobile
+            ? {
+                position: "sticky",
+                top: "60px",
+                right: "auto",
+                left: 0,
+                transform: "none",
+                width: "100%",
+                height: "auto",
+                flexDirection: "row",
+                justifyContent: "center",
+                gap: "8px",
+                overflowX: "auto",
+                padding: "6px",
+                boxSizing: "border-box",
+              }
+            : null),
         }}
       >
         {cards.map((card, index) => {
@@ -186,7 +214,7 @@ export default function TarotResultPanel({ cards = [] }) {
             position: "fixed",
             top: 0,
             right: 0,
-            width: "380px",
+            width: isMobile ? "100vw" : "380px",
             height: "100vh",
             zIndex: 999,
             background:

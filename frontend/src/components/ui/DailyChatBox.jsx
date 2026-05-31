@@ -14,6 +14,8 @@ import {
 
 import toast from "react-hot-toast";
 
+import useIsMobile from "../../hooks/useIsMobile";
+
 const moodOptions =
   Array.from(
     VALID_MOODS
@@ -39,6 +41,7 @@ export default function DailyChatBox({
   disabled = false,
   onSubmit,
 }) {
+  const isMobile = useIsMobile();
   const baseHeight = 28;
   const maxHeight = 180;
 
@@ -131,7 +134,7 @@ export default function DailyChatBox({
     <div
       style={{
         width: "100%",
-        maxWidth: "950px",
+        maxWidth: isMobile ? "100%" : "950px",
       }}
     >
 
@@ -176,9 +179,9 @@ export default function DailyChatBox({
           style={{
             position: "relative",
 
-            width: "230px",
+            width: isMobile ? "150px" : "230px",
 
-            minWidth: "230px",
+            minWidth: isMobile ? "130px" : "230px",
           }}
         >
 
@@ -193,7 +196,7 @@ export default function DailyChatBox({
             }
 
             style={{
-              width: "80%",
+              width: isMobile ? "100%" : "80%",
 
               padding:
                 "10px 12px",
