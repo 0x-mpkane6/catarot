@@ -1,0 +1,12 @@
+{
+  // Cấu hình deploy frontend (static assets) lên Cloudflare Workers.
+  // Tên PHẢI trùng Worker đang chạy để cập nhật đúng chỗ (không tạo Worker mới).
+  "name": "throbbing-bar-16f0",
+  "compatibility_date": "2024-11-01",
+  "assets": {
+    // Thư mục build của Vite (npm run build sinh ra ./dist).
+    "directory": "./dist",
+    // SPA: mọi route không khớp file → trả index.html (200) để React Router xử lý.
+    "not_found_handling": "single-page-application"
+  }
+}

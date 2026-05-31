@@ -1,4 +1,0 @@
-# SPA fallback: mọi đường dẫn đều trả về index.html (status 200) để React Router
-# xử lý route phía client. Áp dụng cho Cloudflare Pages/Workers và Netlify.
-# Vite tự copy thư mục public/ vào dist/ khi build.
-/*    /index.html    200
