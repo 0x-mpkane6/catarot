@@ -44,6 +44,10 @@ def _resolve_sqlite_url(database_url: str) -> str:
 @lru_cache(maxsize=1)
 def get_engine() -> Engine:
     database_url = os.getenv("DATABASE_URL", _default_database_url()).strip() or _default_database_url()
+    # Một số nơi (Neon/Heroku...) đưa scheme "postgres://"; SQLAlchemy 2.0 chỉ nhận
+    # "postgresql://". Chuẩn hoá để dán connection string nào cũng chạy.
+    if database_url.startswith("postgres://"):
+        database_url = "postgresql://" + database_url[len("postgres://") :]
     database_url = _resolve_sqlite_url(database_url)
 
     connect_args: dict[str, object] = {}
