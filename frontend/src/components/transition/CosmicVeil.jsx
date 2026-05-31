@@ -6,15 +6,17 @@ import { useLocation } from "react-router-dom";
 import { subscribeScene } from "./sceneTransition";
 
 /**
- * "Smoke Swirl" — chuyển cảnh dạng KHÓI XOÁY (ảo).
+ * "Dream Mist" — chuyển cảnh KHÓI TÍM MỀM ẢO, lấy đúng chất fluid của con trỏ
+ * (SplashCursor): không có cạnh sắc, không clip-path, không lóa chói.
  *
- * Lấy cảm hứng từ hiệu ứng con trỏ (SplashCursor): những cụm khói tím lỏng tỏa ra
- * từ tâm, cuộn xoáy DẦN RA theo 2 luồng quay ngược chiều, mờ ảo (blur + blend screen),
- * giữ một nhịp rồi tan để lộ cảnh mới. Phát cho CẢ đổi route VÀ bấm danh mục trong trang
- * (qua playScene({onCover})). onCover() chạy đúng lúc khói che kín → đổi nội dung khi
- * đang bị che. GPU-only; overlay pointer-events:none.
+ * Cơ chế: tấm màn FADE mờ mượt (opacity), nền frosted-blur dày làm trang phía sau
+ * nhoè mộng mị; bên trên là những cụm khói tím blur rất to (mix-blend: screen) tan
+ * toả nhẹ theo 2 luồng quay ngược chiều + một lõi lavender dịu. Giữ một nhịp giữa
+ * lúc mờ kín để swap nội dung, rồi tan ra lộ cảnh mới.
  *
- * prefers-reduced-motion: KHÔNG vẽ khói nhưng vẫn gọi onCover ngay để cảnh vẫn đổi.
+ * Phát cho CẢ đổi route VÀ bấm danh mục trong trang (qua playScene({onCover})).
+ * onCover() chạy đúng lúc màn mờ kín. GPU-only (transform/opacity/filter); overlay
+ * pointer-events:none. prefers-reduced-motion: không vẽ, chỉ swap ngay.
  */
 export default function CosmicVeil() {
   const location = useLocation();
@@ -28,8 +30,8 @@ export default function CosmicVeil() {
   const seq = useRef(0);
   const [active, setActive] = useState(null); // { token, onCover }
 
-  const DUR = 1.5;
-  const COVER_PEAK_MS = 560; // thời điểm khói che kín → swap nội dung
+  const DUR = 1.6;
+  const COVER_PEAK_MS = 600; // thời điểm màn mờ kín → swap nội dung
 
   const trigger = (onCover) => {
     if (reduceRef.current) {
@@ -60,11 +62,11 @@ export default function CosmicVeil() {
 
   if (reduce) return null;
 
-  // Một luồng khói = nhiều cụm puff lệch tâm, quay + nở dần ra.
+  // Một luồng khói = nhiều cụm puff lệch tâm, trôi + nở RẤT NHẸ (không xoáy gắt).
   const swarm = (dir) => ({
-    initial: { rotate: 0, scale: 0.28, opacity: 0 },
-    animate: { rotate: dir * 240, scale: [0.28, 1.15, 1.95], opacity: [0, 0.95, 0] },
-    transition: { duration: DUR, times: [0, 0.5, 1], ease: [0.33, 0, 0.2, 1] },
+    initial: { rotate: dir * -24, scale: 0.55, opacity: 0 },
+    animate: { rotate: dir * 96, scale: [0.55, 1.2, 1.65], opacity: [0, 0.8, 0] },
+    transition: { duration: DUR, times: [0, 0.5, 1], ease: "easeInOut" },
   });
 
   return (
@@ -74,16 +76,10 @@ export default function CosmicVeil() {
           key={active.token}
           aria-hidden="true"
           className="smk"
-          initial={{ clipPath: "circle(0% at 50% 50%)" }}
-          animate={{
-            clipPath: [
-              "circle(0% at 50% 50%)",
-              "circle(160% at 50% 50%)",
-              "circle(160% at 50% 50%)",
-              "circle(0% at 50% 50%)",
-            ],
-          }}
-          transition={{ duration: DUR, times: [0, 0.32, 0.62, 1], ease: [0.6, 0, 0.4, 1] }}
+          // Mềm/ảo: chỉ FADE opacity (không clip-path cạnh sắc), nền frosted nhoè dần.
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 1, 1, 0] }}
+          transition={{ duration: DUR, times: [0, 0.24, 0.6, 1], ease: "easeInOut" }}
           onAnimationComplete={() => setActive(null)}
         >
           <motion.div className="smk-swarm" {...swarm(1)}>
@@ -98,19 +94,12 @@ export default function CosmicVeil() {
             <span className="smk-puff p6" />
           </motion.div>
 
-          {/* Lõi sáng mềm như nguồn khói */}
+          {/* Lõi sáng MỀM (lavender dịu, không trắng chói) như nguồn khói tan ra */}
           <motion.div
             className="smk-core"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: [0, 1.1, 2.2], opacity: [0, 0.95, 0] }}
-            transition={{ duration: DUR, times: [0, 0.46, 1], ease: "easeOut" }}
-          />
-          {/* Lóa nhẹ (ảo, không chói) */}
-          <motion.div
-            className="smk-flash"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0, 0.45, 0] }}
-            transition={{ duration: DUR, times: [0, 0.38, 0.48, 0.66], ease: "easeOut" }}
+            initial={{ scale: 0.25, opacity: 0 }}
+            animate={{ scale: [0.25, 1.4, 2.6], opacity: [0, 0.5, 0] }}
+            transition={{ duration: DUR, times: [0, 0.5, 1], ease: "easeInOut" }}
           />
 
           <style>{`
@@ -124,59 +113,51 @@ export default function CosmicVeil() {
               align-items: center;
               justify-content: center;
               background: radial-gradient(circle at 50% 50%,
-                rgba(120, 60, 220, 0.78),
-                rgba(40, 14, 78, 0.92) 50%,
-                #07041a 82%);
-              -webkit-backdrop-filter: blur(7px);
-              backdrop-filter: blur(7px);
-              will-change: clip-path;
+                rgba(124, 58, 237, 0.55),
+                rgba(46, 16, 84, 0.68) 54%,
+                rgba(8, 5, 26, 0.82) 90%);
+              -webkit-backdrop-filter: blur(26px) saturate(1.15);
+              backdrop-filter: blur(26px) saturate(1.15);
+              will-change: opacity;
             }
             .smk-swarm {
               position: absolute;
               left: 50%;
               top: 50%;
-              width: 90vmax;
-              height: 90vmax;
-              margin: -45vmax 0 0 -45vmax;
+              width: 98vmax;
+              height: 98vmax;
+              margin: -49vmax 0 0 -49vmax;
               will-change: transform, opacity;
             }
             .smk-puff {
               position: absolute;
               border-radius: 50%;
-              filter: blur(52px);
+              filter: blur(88px);
               mix-blend-mode: screen;
+              opacity: 0.9;
             }
-            /* các cụm khói lệch tâm, kích thước/màu khác nhau → cuộn tự nhiên */
-            .p1 { left: 26%; top: 22%; width: 40vmax; height: 40vmax;
-              background: radial-gradient(circle, rgba(168,85,247,0.85), rgba(168,85,247,0) 62%); }
-            .p2 { left: 58%; top: 40%; width: 32vmax; height: 32vmax;
-              background: radial-gradient(circle, rgba(217,70,239,0.7), rgba(217,70,239,0) 62%); }
-            .p3 { left: 40%; top: 64%; width: 36vmax; height: 36vmax;
-              background: radial-gradient(circle, rgba(236,201,255,0.62), rgba(236,201,255,0) 62%); }
-            .p4 { left: 60%; top: 60%; width: 38vmax; height: 38vmax;
-              background: radial-gradient(circle, rgba(124,58,237,0.8), rgba(124,58,237,0) 62%); }
-            .p5 { left: 30%; top: 50%; width: 30vmax; height: 30vmax;
-              background: radial-gradient(circle, rgba(99,102,241,0.62), rgba(99,102,241,0) 62%); }
-            .p6 { left: 50%; top: 30%; width: 34vmax; height: 34vmax;
-              background: radial-gradient(circle, rgba(192,132,252,0.7), rgba(192,132,252,0) 62%); }
+            /* cụm khói lệch tâm, blur to + falloff mềm → tan loãng như fluid */
+            .p1 { left: 24%; top: 22%; width: 48vmax; height: 48vmax;
+              background: radial-gradient(circle, rgba(168,85,247,0.58), rgba(168,85,247,0) 70%); }
+            .p2 { left: 58%; top: 38%; width: 42vmax; height: 42vmax;
+              background: radial-gradient(circle, rgba(217,70,239,0.48), rgba(217,70,239,0) 70%); }
+            .p3 { left: 40%; top: 66%; width: 46vmax; height: 46vmax;
+              background: radial-gradient(circle, rgba(236,201,255,0.42), rgba(236,201,255,0) 70%); }
+            .p4 { left: 62%; top: 60%; width: 46vmax; height: 46vmax;
+              background: radial-gradient(circle, rgba(124,58,237,0.54), rgba(124,58,237,0) 70%); }
+            .p5 { left: 28%; top: 52%; width: 40vmax; height: 40vmax;
+              background: radial-gradient(circle, rgba(129,140,248,0.42), rgba(129,140,248,0) 70%); }
+            .p6 { left: 50%; top: 30%; width: 44vmax; height: 44vmax;
+              background: radial-gradient(circle, rgba(192,132,252,0.48), rgba(192,132,252,0) 70%); }
             .smk-core {
               position: absolute;
-              width: 120px;
-              height: 120px;
+              width: 150px;
+              height: 150px;
               border-radius: 50%;
-              background: radial-gradient(circle, rgba(255,255,255,0.95), rgba(236,201,255,0.7) 34%, rgba(168,85,247,0) 72%);
-              filter: blur(6px);
+              background: radial-gradient(circle, rgba(236,201,255,0.6), rgba(192,132,252,0.32) 42%, rgba(168,85,247,0) 76%);
+              filter: blur(30px);
               mix-blend-mode: screen;
               will-change: transform, opacity;
-            }
-            .smk-flash {
-              position: absolute;
-              inset: 0;
-              background: radial-gradient(circle at 50% 50%,
-                rgba(236,201,255,0.7),
-                rgba(168,85,247,0.25) 40%,
-                rgba(124,58,237,0) 72%);
-              will-change: opacity;
             }
             @media (prefers-reduced-motion: reduce) {
               .smk { display: none; }
