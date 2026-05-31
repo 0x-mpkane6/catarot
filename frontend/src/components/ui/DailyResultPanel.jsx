@@ -174,10 +174,32 @@ export default function DailyResultPanel({
         {/* MAIN CARD IMAGE */}
         <div
           style={{
+            position: "relative",
             animation:
               "floatingReveal 3s ease-in-out infinite",
           }}
         >
+          {card.orientation === "reversed" && (
+            <span
+              style={{
+                position: "absolute",
+                top: "8px",
+                right: "8px",
+                zIndex: 4,
+                padding: "2px 8px",
+                borderRadius: "999px",
+                fontSize: "0.6rem",
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+                color: "#fde68a",
+                background: "rgba(20,10,30,0.72)",
+                border: "1px solid rgba(253,230,138,0.4)",
+                backdropFilter: "blur(4px)",
+              }}
+            >
+              NGƯỢC
+            </span>
+          )}
           <img
             src={getImagePath(card.card_name)}
             alt={card.card_name}
