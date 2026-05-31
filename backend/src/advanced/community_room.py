@@ -14,6 +14,27 @@ from src.db.models import (
 from src.db.session import session_scope
 
 
+def _sanitize_card_summary(card_summary: list[dict] | None) -> list[dict]:
+    """Chỉ giữ khoá đã biết + cắt độ dài, tránh nhồi dữ liệu/tiêm nhiễm qua trường thẻ bài."""
+    if not isinstance(card_summary, list):
+        return []
+    cleaned: list[dict] = []
+    for card in card_summary[:24]:
+        if not isinstance(card, dict):
+            continue
+        name = str(card.get("name") or card.get("card") or "").strip()[:80]
+        orientation = str(card.get("orientation") or "").strip()[:20]
+        if not name and not orientation:
+            continue
+        item: dict[str, str] = {}
+        if name:
+            item["name"] = name
+        if orientation:
+            item["orientation"] = orientation
+        cleaned.append(item)
+    return cleaned
+
+
 def _post_payload(row: CommunityPost) -> dict:
     try:
         cards = json.loads(row.card_summary_json or "[]")
@@ -30,10 +51,10 @@ def _post_payload(row: CommunityPost) -> dict:
 
 
 def create_community_post(*, user_id: int, question_text: str, card_summary: list[dict] | None = None) -> dict:
-    clean_question = (question_text or "").strip()
+    clean_question = (question_text or "").strip()[:4000]
     if not clean_question:
         raise ValueError("question_text is required")
-    summary = card_summary or []
+    summary = _sanitize_card_summary(card_summary)
 
     with session_scope() as session:
         row = CommunityPost(
@@ -192,7 +213,7 @@ def moderation_queue(limit: int = 50) -> list[dict]:
     return [_post_payload(row) for row in rows]
 
 
-def moderate_post(*, admin_user_id: int, post_id: int, action: str, reason: str | None = None) -> dict:
+def moderate_post(*, admin_user_id: int | None, post_id: int, action: str, reason: str | None = None) -> dict:
     clean_action = (action or "").strip().lower()
     if clean_action not in {"approve", "reject"}:
         raise ValueError("action must be approve or reject")
