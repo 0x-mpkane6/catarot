@@ -166,6 +166,18 @@ export default function HomePage() {
   const [showSpreadGrid, setShowSpreadGrid] = useState(false);
   const [pendingInput, setPendingInput] = useState(null);
   const [isBackendLoading, setIsBackendLoading] = useState(false);
+
+  // Zoom-to-fit toàn bộ layout desktop theo CẢ chiều rộng lẫn chiều cao.
+  // (CSS cũ chỉ scale theo chiều cao nên màn hẹp bị tràn/cắt lưới bài.)
+  // Lấy hệ số nhỏ nhất giữa 2 trục, không phóng to quá 1, sàn 0.45.
+  const [pageScale, setPageScale] = useState(() =>
+    typeof window === "undefined"
+      ? 1
+      : Math.max(
+          0.45,
+          Math.min(window.innerWidth / 1500, window.innerHeight / 1024, 1)
+        )
+  );
   const [hasTodayDailyReading, setHasTodayDailyReading] =
     useState(false);
   const [dailyInfoNote, setDailyInfoNote] =
@@ -232,6 +244,19 @@ export default function HomePage() {
 
     loadUserProfile();
   }, [loadReadingHistory]);
+
+  useEffect(() => {
+    const onResize = () =>
+      setPageScale(
+        Math.max(
+          0.45,
+          Math.min(window.innerWidth / 1500, window.innerHeight / 1024, 1)
+        )
+      );
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useEffect(() => {
     if (
@@ -875,6 +900,7 @@ const handleChatSubmitDraft =
     <div
       className="home-viewport"
       style={{
+        "--home-page-scale": pageScale,
         background: `
           radial-gradient(circle at top left, rgba(168,85,247,0.18), transparent 30%),
           radial-gradient(circle at top right, rgba(236,72,153,0.12), transparent 25%),

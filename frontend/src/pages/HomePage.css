@@ -1,7 +1,9 @@
 /* Home page global scale
-   Giữ layout desktop 23.8 inch như cũ.
-   Khi màn thấp hơn (thường 15.6 inch), scale toàn bộ page giống browser zoom-out
-   để component nhỏ lại nhưng không phải chỉnh từng block riêng. */
+   Giữ nguyên layout desktop, rồi zoom-to-fit toàn page theo trục bị giới hạn
+   (CẢ chiều rộng LẪN chiều cao) để vừa mọi tỉ lệ màn hình mà không phải chỉnh
+   từng block. Hệ số --home-page-scale do HomePage tính bằng JS theo kích thước
+   cửa sổ (xem computeHomeScale / pageScale trong HomePage.jsx) và truyền vào
+   qua inline style; giá trị 1 dưới đây chỉ là fallback. */
 
 .home-viewport {
   --home-page-scale: 1;
@@ -18,20 +20,6 @@
   transform-origin: top left;
 
   background: #050510;
-}
-
-/* Laptop 15.6 inch / viewport thấp: tương đương zoom page xuống khoảng 75%. */
-@media (max-height: 900px) {
-  .home-viewport {
-    --home-page-scale: 0.75;
-  }
-}
-
-/* Màn nhỏ hơn nữa thì giảm thêm một chút để tránh tràn layout. */
-@media (max-height: 760px) {
-  .home-viewport {
-    --home-page-scale: 0.8;
-  }
 }
 
 /* Tránh body tạo scroll do viewport đã được fixed + scale. */
