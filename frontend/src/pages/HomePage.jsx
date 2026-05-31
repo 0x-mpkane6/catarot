@@ -1,4 +1,5 @@
 import CardNav from "../components/layout/CardNav";
+import { playScene } from "../components/transition/sceneTransition";
 import UserProfile from "../components/ui/UserProfile";
 import ReadingHistory from "../components/ui/ReadingHistory";
 import ReflectionHistory from "../components/ui/ReflectionHistory";
@@ -518,19 +519,20 @@ export default function HomePage() {
     setShowChatUI(false);
     setCurrentSession(null);
 
-    setTimeout(() => {
+    // Phát hiệu ứng xoáy; đổi nội dung đúng lúc xoáy che kín màn hình.
+    playScene({
+      onCover: () => {
+        setSelectedCard(card);
 
-      setSelectedCard(card);
-
-      setShowChatUI(
-        card.mode !== "duo" &&
-        card.mode !== "community" &&
-        card.mode !== "visions"
-      );
-      setShowSpreadGrid(false);
-      setPendingInput(null);
-
-    }, 500);
+        setShowChatUI(
+          card.mode !== "duo" &&
+          card.mode !== "community" &&
+          card.mode !== "visions"
+        );
+        setShowSpreadGrid(false);
+        setPendingInput(null);
+      },
+    });
   };
 
 const handleChatSubmitDraft =
@@ -845,12 +847,12 @@ const handleChatSubmitDraft =
         {
           label: "Lịch sử chiêm nghiệm",
           onClick: () =>
-            setShowReflectionHistory(
-              true
-            ),
+            playScene({
+              onCover: () => setShowReflectionHistory(true),
+            }),
         },
         { label: "Lịch sử trải bài",
-          onClick: () => setShowHistory(true) },
+          onClick: () => playScene({ onCover: () => setShowHistory(true) }) },
       ],
     },
 
@@ -862,21 +864,23 @@ const handleChatSubmitDraft =
         {
           label: "Tarot là gì?",
           onClick: () =>
-            setActiveMarkdownDoc({
-              title:
-                "TAROT LÀ GÌ?",
-              content:
-                whatIsTarotContent,
+            playScene({
+              onCover: () =>
+                setActiveMarkdownDoc({
+                  title: "TAROT LÀ GÌ?",
+                  content: whatIsTarotContent,
+                }),
             }),
         },
         {
           label: "Catarot",
           onClick: () =>
-            setActiveMarkdownDoc({
-              title:
-                "CATAROT",
-              content:
-                catarotContent,
+            playScene({
+              onCover: () =>
+                setActiveMarkdownDoc({
+                  title: "CATAROT",
+                  content: catarotContent,
+                }),
             }),
         },
       ],
@@ -888,9 +892,7 @@ const handleChatSubmitDraft =
       textColor: "#ffffff",
       links: [
         { label: "Thông tin thêm",
-          onClick: () => { setShowContact(true);
-
-          } 
+          onClick: () => playScene({ onCover: () => setShowContact(true) }),
         },
       ],
     },
@@ -916,9 +918,9 @@ const handleChatSubmitDraft =
 
         buttonLabel={username || "Bạn"}
 
-        onButtonClick={() => {
-          setShowProfile(true);
-        }}
+        onButtonClick={() =>
+          playScene({ onCover: () => setShowProfile(true) })
+        }
 
         baseColor="rgba(10,10,25,0.55)"
         menuColor="#fff"
