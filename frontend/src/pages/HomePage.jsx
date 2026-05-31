@@ -36,6 +36,7 @@ from "../components/common/Scroll";
 
 import TarotResultPanel
 from "../components/ui/TarotResultPanel";
+import MysticLoader from "../components/ui/MysticLoader";
 
 import ChatConversation
 from "../components/ui/ChatConversation";
@@ -1287,46 +1288,7 @@ const handleChatSubmitDraft =
 
     )}
 
-    {isBackendLoading && (
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 50,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background:
-            "rgba(2, 2, 8, 0.38)",
-          pointerEvents: "none",
-        }}
-      >
-        <div
-          style={{
-            width: "74px",
-            height: "74px",
-            borderRadius: "50%",
-            border:
-              "4px solid rgba(255,255,255,0.16)",
-            borderTopColor: "#e879f9",
-            boxShadow:
-              "0 0 32px rgba(232,121,249,0.35)",
-            animation:
-              "tarot-loading-spin 0.9s linear infinite",
-          }}
-        />
-
-        <style>
-          {`
-            @keyframes tarot-loading-spin {
-              to {
-                transform: rotate(360deg);
-              }
-            }
-          `}
-        </style>
-      </div>
-    )}
+    {isBackendLoading && <MysticLoader />}
 
       {/* stars */}
       <div

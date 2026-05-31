@@ -12,16 +12,14 @@ import {
 import toast from "react-hot-toast";
 
 import tarotImages from "../../assets/tarot/tarot_json/tarot-images.json";
+import { getCardImageByFile } from "../../lib/cardImages";
 import guidelineContent from "../../assets/text/guideline.md?raw";
 import MagicCat from "./MagicCat";
 import MarkdownOverlay from "./MarkdownOverlay";
 
 import "./MascotHelper.css";
 
-const getCardImageSrc = (
-  img
-) =>
-  `/src/assets/tarot/tarot_json/cards/${img}`;
+const getCardImageSrc = (img) => getCardImageByFile(img);
 
 const buildDeck = () =>
   (tarotImages.cards || []).map(

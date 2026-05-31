@@ -1,5 +1,5 @@
 import { useState } from "react";
-import tarotImages from "../../assets/tarot/tarot_json/tarot-images.json";
+import { getCardImageByName } from "../../lib/cardImages";
 import ReflectionModal from "./ReflectionModal";
 
 const MOOD_LABELS = {
@@ -99,17 +99,7 @@ export default function DailyResultPanel({
   /**
    * Get image path from tarot images library
    */
-  const getImagePath = (cardName) => {
-    if (!cardName) return "";
-
-    const matchedCard = tarotImages.cards.find(
-      (item) => item.name === cardName
-    );
-
-    return matchedCard
-      ? `/src/assets/tarot/tarot_json/cards/${matchedCard.img}`
-      : "";
-  };
+  const getImagePath = (cardName) => getCardImageByName(cardName);
 
   /**
    * Format date to readable format
