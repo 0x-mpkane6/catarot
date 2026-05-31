@@ -202,6 +202,15 @@ class ReadingGenerator:
             self.gemini_timeout = float(os.getenv("GEMINI_TIMEOUT_SECONDS", "60"))
         except ValueError:
             self.gemini_timeout = 60.0
+        # Giới hạn token đầu ra. 2048 (cũ) quá thấp: bài 3 lá luận giải chi tiết
+        # bằng tiếng Việt vượt mức này nên bị cắt giữa câu ("lúc đủ lúc thiếu").
+        # 8192 đủ rộng cho bài nhiều lá, vẫn nằm trong giới hạn mọi model Gemini flash.
+        try:
+            self.gemini_max_output_tokens = int(
+                os.getenv("GEMINI_MAX_OUTPUT_TOKENS", "8192")
+            )
+        except ValueError:
+            self.gemini_max_output_tokens = 8192
 
         self.ollama_enabled = os.getenv("OLLAMA_ENABLED", "true").strip().lower() in {
             "1",
@@ -289,7 +298,7 @@ class ReadingGenerator:
             "temperature": self.gemini_temperature,
             "topP": 0.95,
             "topK": 40,
-            "maxOutputTokens": 2048,
+            "maxOutputTokens": self.gemini_max_output_tokens,
             "responseMimeType": "text/plain",
         }
 
