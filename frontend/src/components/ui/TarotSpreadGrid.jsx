@@ -233,6 +233,12 @@ export default function TarotSpreadGrid({
                 card.id
               );
 
+            // thứ tự chọn (1,2,3) + có lá nào đang được chọn (để làm mờ các lá còn lại)
+            const selectionOrder =
+              selectedCardIds.indexOf(card.id) + 1;
+            const anySelected =
+              selectedCardIds.length > 0;
+
             return (
 
               <button
@@ -265,15 +271,18 @@ export default function TarotSpreadGrid({
                       ? "not-allowed"
                       : "pointer",
 
+                  zIndex: isSelected ? 3 : 1,
+
+                  opacity:
+                    anySelected && !isSelected
+                      ? 0.45
+                      : 1,
+
                   transform: isSelected
-                    ? `
-                      translateY(-18px)
-                      scale(1.05)
-                    `
-                    : `
-                      translateY(0px)
-                      scale(1)
-                    `,
+                    ? "translateY(-26px) scale(1.12)"
+                    : anySelected
+                      ? "translateY(0px) scale(0.92)"
+                      : "translateY(0px) scale(1)",
 
                   transition:
                     "all 240ms ease",
@@ -292,18 +301,10 @@ export default function TarotSpreadGrid({
                 `,
 
                   filter: isSelected
-                    ? `
-                      drop-shadow(
-                        0 0 34px
-                        rgba(217,70,239,0.58)
-                      )
-                    `
-                    : `
-                      drop-shadow(
-                        0 12px 24px
-                        rgba(0,0,0,0.42)
-                      )
-                    `,
+                    ? "drop-shadow(0 0 22px rgba(217,70,239,0.95)) drop-shadow(0 0 52px rgba(168,85,247,0.6))"
+                    : anySelected
+                      ? "drop-shadow(0 10px 20px rgba(0,0,0,0.42)) brightness(0.58) saturate(0.85)"
+                      : "drop-shadow(0 12px 24px rgba(0,0,0,0.42))",
                 }}
 
                 onMouseEnter={(e) => {
@@ -313,19 +314,11 @@ export default function TarotSpreadGrid({
                     disabled
                   ) return;
 
+                  e.currentTarget.style.opacity = "1";
                   e.currentTarget.style.transform =
-                    `
-                    translateY(-10px)
-                    scale(1.03)
-                  `;
-
+                    "translateY(-10px) scale(1.04)";
                   e.currentTarget.style.filter =
-                    `
-                    drop-shadow(
-                      0 0 28px
-                      rgba(192,132,252,0.45)
-                    )
-                  `;
+                    "drop-shadow(0 0 30px rgba(192,132,252,0.65))";
                 }}
 
                 onMouseLeave={(e) => {
@@ -335,21 +328,47 @@ export default function TarotSpreadGrid({
                     disabled
                   ) return;
 
+                  e.currentTarget.style.opacity =
+                    anySelected ? "0.45" : "1";
                   e.currentTarget.style.transform =
-                    `
-                    translateY(0px)
-                    scale(1)
-                  `;
-
+                    anySelected
+                      ? "translateY(0px) scale(0.92)"
+                      : "translateY(0px) scale(1)";
                   e.currentTarget.style.filter =
-                    `
-                    drop-shadow(
-                      0 12px 24px
-                      rgba(0,0,0,0.42)
-                    )
-                  `;
+                    anySelected
+                      ? "drop-shadow(0 10px 20px rgba(0,0,0,0.42)) brightness(0.58) saturate(0.85)"
+                      : "drop-shadow(0 12px 24px rgba(0,0,0,0.42))";
                 }}
               >
+
+                {/* huy hiệu số thứ tự lá đã chọn (1/2/3) — nổi bật, dễ nhận biết */}
+                {isSelected && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: "-14px",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      zIndex: 6,
+                      width: "30px",
+                      height: "30px",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "0.95rem",
+                      fontWeight: 800,
+                      color: "#fff",
+                      background:
+                        "linear-gradient(135deg, #d946ef, #8b5cf6)",
+                      border: "2px solid rgba(255,255,255,0.92)",
+                      boxShadow:
+                        "0 0 18px rgba(217,70,239,0.95), 0 4px 10px rgba(0,0,0,0.45)",
+                    }}
+                  >
+                    {selectionOrder}
+                  </span>
+                )}
 
                 {/* card */}
                 <div
@@ -365,30 +384,15 @@ export default function TarotSpreadGrid({
                     borderRadius: "16px",
 
                     border: isSelected
-                      ? `
-                        1.5px solid
-                        rgba(255,255,255,0.88)
-                      `
-                      : `
-                        1px solid
-                        rgba(255,255,255,0.14)
-                      `,
+                      ? "2px solid rgba(245,208,254,0.95)"
+                      : "1px solid rgba(255,255,255,0.14)",
 
                     background:
                       "#12091d",
 
                     boxShadow: isSelected
-                      ? `
-                        0 0 34px
-                        rgba(217,70,239,0.28),
-
-                        inset 0 0 24px
-                        rgba(255,255,255,0.08)
-                      `
-                      : `
-                        0 18px 38px
-                        rgba(0,0,0,0.45)
-                      `,
+                      ? "0 0 30px rgba(217,70,239,0.55), inset 0 0 26px rgba(217,70,239,0.22)"
+                      : "0 18px 38px rgba(0,0,0,0.45)",
                   }}
                 >
 
