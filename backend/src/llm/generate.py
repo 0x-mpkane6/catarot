@@ -239,15 +239,31 @@ class ReadingGenerator:
         rag_snippets: list[dict],
         emotion_state: str | None,
         warnings: list[str],
+        image_low_confidence: bool = False,
     ) -> str:
+        # Bỏ các cảnh báo KHÔNG liên quan nhận diện ảnh khỏi prompt (rút ngẫu nhiên, chưa có
+        # ảnh, kiểu trải bài...) để LLM không tự nhắc "chụp lại ảnh" hay tiết lộ lá bài là ngẫu nhiên.
+        _skip = ("ngẫu nhiên", "Chưa có ảnh", "đã bị bỏ qua", "trải bài three")
+        prompt_warnings = [w for w in warnings if not any(k in w for k in _skip)]
         prompt = self.reading_template.format(
             question=question,
             transcript=transcript or "null",
             spread_type=spread_type,
             cards_json=json.dumps(cards, ensure_ascii=False),
             snippets_json=json.dumps(rag_snippets, ensure_ascii=False),
-            warnings_json=json.dumps(warnings, ensure_ascii=False),
+            warnings_json=json.dumps(prompt_warnings, ensure_ascii=False),
         )
+        # Cờ xác định việc có thêm mục "### Lưu ý" hay không (thay vì để LLM tự đoán).
+        if image_low_confidence:
+            prompt += (
+                "\n\nGHI CHÚ HỆ THỐNG: độ nhận diện lá bài từ ẢNH thấp. Hãy thêm một mục "
+                "`### Lưu ý` ngắn gọn nhắc người dùng thử chụp lại ảnh rõ nét hơn."
+            )
+        else:
+            prompt += (
+                "\n\nGHI CHÚ HỆ THỐNG: KHÔNG thêm mục `### Lưu ý`; KHÔNG nhắc tới độ tin cậy "
+                "nhận diện, lá bài ngẫu nhiên, hay việc chụp lại ảnh."
+            )
         if emotion_state:
             prompt += (
                 "\n\nAdditional Context:\n"
@@ -534,6 +550,7 @@ class ReadingGenerator:
         rag_snippets: list[dict],
         emotion_state: str | None,
         warnings: list[str],
+        image_low_confidence: bool = False,
     ) -> tuple[str, list[str]]:
         self.last_used_model = None
         extra_warnings: list[str] = []
@@ -545,6 +562,7 @@ class ReadingGenerator:
             rag_snippets=rag_snippets,
             emotion_state=emotion_state,
             warnings=warnings,
+            image_low_confidence=image_low_confidence,
         )
 
         if not self.gemini_api_key and not self.api_key and not self.ollama_enabled:

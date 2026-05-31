@@ -340,6 +340,17 @@ class TarotPipeline:
 
         rag_snippets = self._collect_snippets(query, cards)
 
+        # Chỉ gợi ý chụp lại ảnh khi NGƯỜI DÙNG CÓ GỬI ẢNH (không phải rút ngẫu nhiên) và
+        # độ nhận diện thật sự thấp (dưới ngưỡng). Tránh spam lưu ý ở các lượt rút ngẫu nhiên.
+        image_low_confidence = (
+            not random_draw
+            and bool(normalized_images)
+            and any(
+                float(card.get("confidence", 1.0)) < self.confidence_threshold
+                for card in cards
+            )
+        )
+
         generation_started = time.monotonic()
         final_answer, generation_warnings = self.reader.generate(
             question=clean_question or "(No question provided)",
@@ -349,6 +360,7 @@ class TarotPipeline:
             rag_snippets=rag_snippets,
             emotion_state=emotion_state,
             warnings=warnings,
+            image_low_confidence=image_low_confidence,
         )
         generation_duration = time.monotonic() - generation_started
         slow_threshold = _slow_generation_threshold_seconds()
