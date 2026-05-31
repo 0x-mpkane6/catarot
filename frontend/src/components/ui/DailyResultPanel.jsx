@@ -2,6 +2,27 @@ import { useState } from "react";
 import tarotImages from "../../assets/tarot/tarot_json/tarot-images.json";
 import ReflectionModal from "./ReflectionModal";
 
+const MOOD_LABELS = {
+  calm: "Bình thản",
+  anxious: "Lo âu",
+  hopeful: "Hy vọng",
+  tired: "Mệt mỏi",
+  grateful: "Biết ơn",
+  uncertain: "Bất định",
+  joyful: "Vui vẻ",
+  lonely: "Cô đơn",
+  focused: "Tập trung",
+  sad: "Buồn",
+  neutral: "Trung tính",
+  angry: "Giận dữ",
+  inspired: "Cảm hứng",
+};
+
+const ORIENTATION_LABELS = {
+  upright: "Xuôi",
+  reversed: "Ngược",
+};
+
 /**
  * DailyResultPanel
  * Displays today's daily tarot card with affirmation, mood tracking, and streak info
@@ -54,7 +75,7 @@ export default function DailyResultPanel({
       console.error("Failed to submit reflection:", error);
       alert(
         error.message ||
-          "Failed to save reflection. Please try again."
+          "Không thể lưu chiêm nghiệm. Vui lòng thử lại."
       );
     } finally {
       setIsSubmittingReflection(false);
@@ -96,7 +117,7 @@ export default function DailyResultPanel({
   const formatDate = (dateString) => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString("en-US", {
+      return date.toLocaleDateString("vi-VN", {
         weekday: "short",
         month: "short",
         day: "numeric",
@@ -139,7 +160,7 @@ export default function DailyResultPanel({
           zIndex: 40,
         }}
       >
-        {isLoading ? "Loading card..." : "No card drawn yet"}
+        {isLoading ? "Đang tải lá bài..." : "Chưa rút lá bài nào"}
       </div>
     );
   }
@@ -209,8 +230,8 @@ export default function DailyResultPanel({
             letterSpacing: "0.05em",
           }}
         >
-          🔥 {card.streak_at_draw} day{" "}
-          {card.streak_at_draw !== 1 ? "streak" : "start"}
+          🔥 {card.streak_at_draw} ngày{" "}
+          {card.streak_at_draw !== 1 ? "chuỗi ngày" : "khởi đầu"}
         </div>
 
         {/* DRAW DATE */}
@@ -381,7 +402,7 @@ export default function DailyResultPanel({
                 fontWeight: 600,
               }}
             >
-              {card.orientation}
+              {ORIENTATION_LABELS[card.orientation] || card.orientation}
             </div>
 
             {/* DIVIDER */}
@@ -410,7 +431,7 @@ export default function DailyResultPanel({
                   fontWeight: 600,
                 }}
               >
-                Affirmation
+                Lời khẳng định
               </div>
               <div
                 style={{
@@ -447,7 +468,7 @@ export default function DailyResultPanel({
                       fontWeight: 600,
                     }}
                   >
-                    Keywords
+                    Từ khóa
                   </div>
                   <div
                     style={{
@@ -500,7 +521,7 @@ export default function DailyResultPanel({
                   fontWeight: 600,
                 }}
               >
-                Moods
+                Tâm trạng
               </div>
 
               {/* PRE-MOOD */}
@@ -517,7 +538,7 @@ export default function DailyResultPanel({
                     marginBottom: "6px",
                   }}
                 >
-                  Before Reading
+                  Trước khi trải bài
                 </div>
                 {card.mood_pre ? (
                   <span
@@ -525,7 +546,7 @@ export default function DailyResultPanel({
                       card.mood_pre
                     )}
                   >
-                    {card.mood_pre}
+                    {MOOD_LABELS[card.mood_pre] || card.mood_pre}
                   </span>
                 ) : (
                   <span
@@ -536,7 +557,7 @@ export default function DailyResultPanel({
                       fontStyle: "italic",
                     }}
                   >
-                    Not recorded
+                    Chưa ghi nhận
                   </span>
                 )}
               </div>
@@ -551,7 +572,7 @@ export default function DailyResultPanel({
                     marginBottom: "6px",
                   }}
                 >
-                  After Reading
+                  Sau khi trải bài
                 </div>
                 {card.mood_post ? (
                   <span
@@ -559,7 +580,7 @@ export default function DailyResultPanel({
                       card.mood_post
                     )}
                   >
-                    {card.mood_post}
+                    {MOOD_LABELS[card.mood_post] || card.mood_post}
                   </span>
                 ) : (
                   <span
@@ -570,7 +591,7 @@ export default function DailyResultPanel({
                       fontStyle: "italic",
                     }}
                   >
-                    Not recorded
+                    Chưa ghi nhận
                   </span>
                 )}
               </div>
@@ -595,7 +616,7 @@ export default function DailyResultPanel({
                     fontWeight: 600,
                   }}
                 >
-                  Your Reflection
+                  Chiêm nghiệm của bạn
                 </div>
                 <div
                   style={{
@@ -629,7 +650,7 @@ export default function DailyResultPanel({
                   fontWeight: 600,
                 }}
               >
-                Streak
+                Chuỗi ngày
               </div>
               <div
                 style={{
@@ -638,11 +659,11 @@ export default function DailyResultPanel({
                   color: "#86efac",
                 }}
               >
-                {card.streak_at_draw} day
+                {card.streak_at_draw} ngày
                 {card.streak_at_draw !== 1
-                  ? "s"
+                  ? ""
                   : ""}{" "}
-                consecutive
+                liên tiếp
               </div>
             </div>
 
@@ -688,8 +709,8 @@ export default function DailyResultPanel({
                     "none";
                 }}
               >
-                {card.reflection ? "Update" : "Add"}{" "}
-                Reflection
+                {card.reflection ? "Cập nhật" : "Thêm"}{" "}
+                chiêm nghiệm
               </button>
 
               {/* CLOSE BUTTON */}
@@ -721,7 +742,7 @@ export default function DailyResultPanel({
                     "transparent";
                 }}
               >
-                Close
+                Đóng
               </button>
             </div>
           </div>

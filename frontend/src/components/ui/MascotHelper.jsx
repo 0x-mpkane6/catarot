@@ -66,7 +66,7 @@ export default function MascotHelper() {
 
     if (!card) {
       toast.error(
-        "No tarot cards available."
+        "Không có lá bài tarot nào khả dụng."
       );
       return;
     }
@@ -82,7 +82,7 @@ export default function MascotHelper() {
 
     if (!nextCard) {
       toast.error(
-        "No tarot cards available."
+        "Không có lá bài tarot nào khả dụng."
       );
       return;
     }
@@ -124,7 +124,7 @@ export default function MascotHelper() {
                 setShowGuide(true);
                 setMenuOpen(false);
               }}
-              title="Helper tools"
+              title="Công cụ hỗ trợ"
             >
               <CircleHelp size={18} />
             </button>
@@ -136,7 +136,7 @@ export default function MascotHelper() {
                 event.stopPropagation();
                 openDrawOverlay();
               }}
-              title="Draw a helper card"
+              title="Rút một lá bài hỗ trợ"
             >
               <Sparkles size={18} />
             </button>
@@ -198,7 +198,7 @@ export default function MascotHelper() {
               >
                 <RotateCcw size={16} />
                 <span>
-                  Draw Again
+                  Rút lại
                 </span>
               </button>
 
@@ -209,7 +209,7 @@ export default function MascotHelper() {
               >
                 <Download size={16} />
                 <span>
-                  Download
+                  Tải xuống
                 </span>
               </button>
             </div>
@@ -219,7 +219,7 @@ export default function MascotHelper() {
 
       <MarkdownOverlay
         isOpen={showGuide}
-        title="CATAROT USER GUIDE"
+        title="HƯỚNG DẪN SỬ DỤNG CATAROT"
         content={guidelineContent}
         onClose={() =>
           setShowGuide(false)

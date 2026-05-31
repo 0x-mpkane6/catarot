@@ -10,8 +10,8 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      # Override để CORS chấp nhận frontend container.
-      API_ALLOWED_ORIGINS: "http://localhost:5173,http://localhost,http://frontend"
+      # Override để CORS chấp nhận frontend container; cho phép inject origin thật khi deploy.
+      API_ALLOWED_ORIGINS: "${API_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost,http://frontend}"
       DATABASE_URL: "sqlite:///./data/app.db"
       WEB_CONCURRENCY: 2
       # Trong container, 127.0.0.1 là chính container → trỏ Ollama (nếu dùng) về host.

@@ -25,7 +25,7 @@ const getErrorMessage = (error) =>
   error?.response?.data?.detail ||
   error?.response?.data?.message ||
   error?.message ||
-  "Something went wrong";
+  "Đã có lỗi xảy ra";
 
 const normalizePost = (post = {}) => ({
   id: post.id ?? null,

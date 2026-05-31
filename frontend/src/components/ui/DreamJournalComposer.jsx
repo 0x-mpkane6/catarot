@@ -177,7 +177,7 @@ export default function DreamJournalComposer({
       } catch (error) {
         console.error(error);
         toast.error(
-          "Microphone permission denied"
+          "Quyền truy cập micro bị từ chối"
         );
       }
     };
@@ -199,7 +199,7 @@ export default function DreamJournalComposer({
   return (
     <div className="visions-card">
       <div className="visions-panel__eyebrow">
-        Dream Journal
+        Nhật Ký Giấc Mơ
       </div>
       <div
         style={{
@@ -208,12 +208,12 @@ export default function DreamJournalComposer({
           fontWeight: 800,
         }}
       >
-        Translate subconscious symbols
+        Giải nghĩa các biểu tượng tiềm thức
       </div>
       <div className="visions-field__hint">
-        Write the dream, or attach an audio note. The
-        backend will extract symbols and cross-reference
-        them with recent readings.
+        Viết lại giấc mơ, hoặc đính kèm một ghi chú âm thanh.
+        Hệ thống sẽ trích xuất các biểu tượng và đối chiếu
+        chúng với các trải bài gần đây.
       </div>
 
       <form
@@ -223,7 +223,7 @@ export default function DreamJournalComposer({
       >
         <div>
           <label className="visions-field__label">
-            Dream Text
+            Nội dung giấc mơ
           </label>
           <AutoResizeTextarea
             value={rawText}
@@ -232,13 +232,13 @@ export default function DreamJournalComposer({
                 event.target.value
               )
             }
-            placeholder="I dreamt of stairs, rain, and a room full of mirrors..."
+            placeholder="Tôi mơ thấy những bậc thang, cơn mưa, và một căn phòng đầy gương..."
           />
         </div>
 
         <div>
           <label className="visions-field__label">
-            Audio Note
+            Ghi chú giọng nói
           </label>
 
           <div className="visions-actions">
@@ -270,8 +270,8 @@ export default function DreamJournalComposer({
               </span>
               <span>
                 {isRecording
-                  ? "Stop Recording"
-                  : "Voice Note"}
+                  ? "Dừng ghi âm"
+                  : "Ghi chú giọng nói"}
               </span>
             </button>
 
@@ -286,8 +286,8 @@ export default function DreamJournalComposer({
                   <div>
                     <div className="visions-audio-preview__title">
                       {isRecording
-                        ? "Recording..."
-                        : "Voice note ready"}
+                        ? "Đang ghi âm..."
+                        : "Ghi chú giọng nói đã sẵn sàng"}
                     </div>
                     {!isRecording &&
                       audioFile && (
@@ -313,8 +313,8 @@ export default function DreamJournalComposer({
                   className="visions-audio-trigger visions-audio-trigger--ghost"
                   title={
                     isRecording
-                      ? "Cancel recording"
-                      : "Remove audio"
+                      ? "Hủy ghi âm"
+                      : "Xóa âm thanh"
                   }
                 >
                   <X size={14} />
@@ -325,8 +325,8 @@ export default function DreamJournalComposer({
 
           {!audioFile && !isRecording && (
             <div className="visions-field__hint">
-              Tap voice note to record right here, then
-              listen back before saving.
+              Nhấn ghi chú giọng nói để thu âm ngay tại đây,
+              rồi nghe lại trước khi lưu.
             </div>
           )}
         </div>
@@ -342,8 +342,8 @@ export default function DreamJournalComposer({
             }
           >
             {isSubmitting
-              ? "Saving..."
-              : "Save Dream Entry"}
+              ? "Đang lưu..."
+              : "Lưu bản ghi giấc mơ"}
           </button>
         </div>
       </form>

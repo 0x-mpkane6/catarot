@@ -58,7 +58,7 @@ def _apply_lightweight_migrations() -> None:
     _add_column_if_missing(
         table_name="readings",
         column_name="rated_at",
-        ddl_fragment="DATETIME",
+        ddl_fragment="TIMESTAMP",  # tương thích cả SQLite lẫn Postgres (DATETIME chỉ đúng trên SQLite)
     )
 
 

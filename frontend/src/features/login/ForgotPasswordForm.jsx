@@ -1,8 +1,36 @@
 import styles from "./LoginForm.module.css";
 import { useNavigate } from "react-router-dom";
 
+import { useState } from "react";
+import { requestPasswordReset } from "../../services/authService";
+
+import toast from "react-hot-toast";
+
 export default function ForgotPasswordForm() {
   const navigate = useNavigate();
+
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSend = async () => {
+    try {
+      setLoading(true);
+
+      if (!email.trim()) {
+        toast.error("Vui lòng nhập email của bạn");
+        return;
+      }
+
+      await requestPasswordReset(email.trim());
+
+      // Phản hồi giống nhau dù email tồn tại hay không (chống dò email).
+      toast.success("Nếu email tồn tại, hướng dẫn đặt lại đã được gửi.");
+    } catch {
+      toast.error("Đã có lỗi xảy ra. Vui lòng thử lại.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className={styles.container}>
@@ -11,20 +39,37 @@ export default function ForgotPasswordForm() {
 
       {/* RIGHT */}
       <div className={styles.right}>
-        <h2 className={styles.title}>Forgot password</h2>
+        <h2 className={styles.title}>Quên mật khẩu</h2>
 
         <p style={{ fontSize: "12px", opacity: 0.7, textAlign: "center" }}>
-        No worries, we’ll send you reset instruction
+          Đừng lo, chúng tôi sẽ gửi hướng dẫn đặt lại mật khẩu cho bạn
         </p>
 
         {/* INPUT */}
         <input
           className={styles.input}
-          placeholder="Enter email"
+          placeholder="Nhập email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              handleSend();
+            }
+          }}
         />
 
         {/* BUTTON */}
-        <button className={styles.loginBtn}>Send</button>
+        <button
+          className={styles.loginBtn}
+          onClick={handleSend}
+          disabled={loading}
+          style={{
+            opacity: loading ? 0.7 : 1,
+            cursor: loading ? "not-allowed" : "pointer",
+          }}
+        >
+          {loading ? "Đang gửi..." : "Gửi"}
+        </button>
 
         {/* BACK */}
         <span
@@ -32,7 +77,7 @@ export default function ForgotPasswordForm() {
           onClick={() => navigate("/login")}
           style={{ marginTop: "20px" }}
         >
-          Back
+          Quay lại
         </span>
       </div>
     </div>

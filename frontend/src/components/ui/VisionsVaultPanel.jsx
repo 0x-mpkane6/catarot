@@ -31,26 +31,26 @@ import {
 const TABS = [
   {
     key: "capsules",
-    label: "Time Capsules",
-    hint: "Browse sealed, revealed, and verified readings.",
+    label: "Hộp Thời Gian",
+    hint: "Xem lại các trải bài đã niêm phong, đã hé lộ và đã xác minh.",
     icon: Clock3,
   },
   {
     key: "seal",
-    label: "Seal Capsule",
-    hint: "Lock a prediction until the future catches up.",
+    label: "Niêm phong hộp",
+    hint: "Khóa một dự đoán cho đến khi tương lai gọi tên.",
     icon: Eye,
   },
   {
     key: "dreams",
-    label: "Dream Journal",
-    hint: "Review dream symbols and arcana mapping.",
+    label: "Nhật Ký Giấc Mơ",
+    hint: "Xem lại các biểu tượng giấc mơ và bản đồ ẩn tinh.",
     icon: MoonStar,
   },
   {
     key: "record",
-    label: "Record Dream",
-    hint: "Write or upload a dream for decoding.",
+    label: "Ghi lại giấc mơ",
+    hint: "Viết hoặc tải lên một giấc mơ để giải mã.",
     icon: Sparkles,
   },
 ];
@@ -158,7 +158,7 @@ export default function VisionsVaultPanel() {
           "capsules"
         );
         toast.success(
-          "Time capsule sealed"
+          "Đã niêm phong hộp thời gian"
         );
       } catch (error) {
         console.error(error);
@@ -194,7 +194,7 @@ export default function VisionsVaultPanel() {
           )
         );
         toast.success(
-          "Capsule opened"
+          "Đã mở hộp"
         );
       } catch (error) {
         console.error(error);
@@ -232,7 +232,7 @@ export default function VisionsVaultPanel() {
           )
         );
         toast.success(
-          "Verdict saved"
+          "Đã lưu đánh giá"
         );
       } catch (error) {
         console.error(error);
@@ -262,7 +262,7 @@ export default function VisionsVaultPanel() {
         ]);
         setActiveTab("dreams");
         toast.success(
-          "Dream saved"
+          "Đã lưu giấc mơ"
         );
       } catch (error) {
         console.error(error);
@@ -289,9 +289,8 @@ export default function VisionsVaultPanel() {
       return (
         <>
           <div className="visions-banner">
-            Seal a reading for your future self. You will
-            only see the full prediction after the reveal
-            date.
+            Niêm phong một trải bài cho chính bạn trong tương lai.
+            Bạn sẽ chỉ thấy được dự đoán đầy đủ sau ngày hé lộ.
           </div>
           <TimeCapsuleComposer
             onSubmit={
@@ -309,9 +308,9 @@ export default function VisionsVaultPanel() {
       return (
         <>
           <div className="visions-banner">
-            Dreams can be typed or recorded. The backend
-            extracts symbols and checks recent reading
-            overlap.
+            Giấc mơ có thể được gõ hoặc ghi âm. Hệ thống sẽ
+            trích xuất các biểu tượng và kiểm tra sự trùng khớp
+            với các trải bài gần đây.
           </div>
           <DreamJournalComposer
             onSubmit={
@@ -330,10 +329,10 @@ export default function VisionsVaultPanel() {
         return (
           <div className="visions-card">
             <div className="visions-empty">
-              No dream entries yet.
+              Chưa có bản ghi giấc mơ nào.
               <br />
-              Record your first dream to start building the
-              archive.
+              Ghi lại giấc mơ đầu tiên để bắt đầu xây dựng
+              kho lưu trữ.
             </div>
           </div>
         );
@@ -351,10 +350,10 @@ export default function VisionsVaultPanel() {
       return (
         <div className="visions-card">
           <div className="visions-empty">
-            No capsules yet.
+            Chưa có hộp nào.
             <br />
-            Seal your first future reading to begin the
-            vault.
+            Niêm phong trải bài tương lai đầu tiên để khởi tạo
+            kho.
           </div>
         </div>
       );
@@ -382,10 +381,10 @@ export default function VisionsVaultPanel() {
       <aside className="visions-panel__sidebar">
         <div className="visions-panel__brand">
           <div className="visions-panel__eyebrow">
-            Visions Vault
+            Kho Tầm Nhìn
           </div>
           <div className="visions-panel__title">
-            Futures sealed, dreams decoded
+            Tương lai niêm phong, giấc mơ giải mã
           </div>
         </div>
 
@@ -448,7 +447,7 @@ export default function VisionsVaultPanel() {
             type="button"
             className="visions-panel__refresh"
             onClick={handleRefresh}
-            title="Refresh visions"
+            title="Làm mới tầm nhìn"
           >
             <RefreshCw
               size={18}

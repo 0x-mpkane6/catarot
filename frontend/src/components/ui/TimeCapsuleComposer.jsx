@@ -145,7 +145,7 @@ export default function TimeCapsuleComposer({
   return (
     <div className="visions-card">
       <div className="visions-panel__eyebrow">
-        Time Capsule
+        Hộp Thời Gian
       </div>
       <div
         style={{
@@ -154,11 +154,11 @@ export default function TimeCapsuleComposer({
           fontWeight: 800,
         }}
       >
-        Seal a prediction for later
+        Niêm phong một dự đoán để xem sau
       </div>
       <div className="visions-field__hint">
-        Create a reading you can only revisit after the
-        reveal date. Later, rate how accurate it was.
+        Tạo một trải bài mà bạn chỉ có thể xem lại sau ngày
+        hé lộ. Về sau, hãy đánh giá độ chính xác của nó.
       </div>
 
       <form
@@ -168,7 +168,7 @@ export default function TimeCapsuleComposer({
       >
         <div>
           <label className="visions-field__label">
-            Capsule Title
+            Tiêu đề hộp
           </label>
           <input
             className="visions-field__input"
@@ -178,13 +178,13 @@ export default function TimeCapsuleComposer({
                 event.target.value
               )
             }
-            placeholder="Career reading for July"
+            placeholder="Trải bài sự nghiệp cho tháng Bảy"
           />
         </div>
 
         <div>
           <label className="visions-field__label">
-            Question
+            Câu hỏi
           </label>
           <AutoResizeTextarea
             value={questionText}
@@ -193,13 +193,13 @@ export default function TimeCapsuleComposer({
                 event.target.value
               )
             }
-            placeholder="What will become clear for me in the next season?"
+            placeholder="Điều gì sẽ trở nên sáng tỏ với tôi trong mùa tới?"
           />
         </div>
 
         <div>
           <label className="visions-field__label">
-            Prediction
+            Dự đoán
           </label>
           <AutoResizeTextarea
             value={predictionText}
@@ -208,13 +208,13 @@ export default function TimeCapsuleComposer({
                 event.target.value
               )
             }
-            placeholder="Write the reading or prediction text you want to seal."
+            placeholder="Viết nội dung trải bài hoặc dự đoán mà bạn muốn niêm phong."
           />
         </div>
 
         <div>
           <label className="visions-field__label">
-            Reveal At
+            Ngày hé lộ
           </label>
           <input
             type="datetime-local"
@@ -227,14 +227,14 @@ export default function TimeCapsuleComposer({
             }
           />
           <div className="visions-field__hint">
-            Backend requires at least 6 hours in the
-            future.
+            Hệ thống yêu cầu thời điểm cách hiện tại ít nhất
+            6 giờ.
           </div>
         </div>
 
         <div>
           <label className="visions-field__label">
-            Card Summary
+            Tóm tắt lá bài
           </label>
           <AutoResizeTextarea
             value={cardsText}
@@ -243,7 +243,7 @@ export default function TimeCapsuleComposer({
                 event.target.value
               )
             }
-            placeholder="Optional. One card per line."
+            placeholder="Tùy chọn. Mỗi lá bài một dòng."
             minHeight={96}
             style={{
               minHeight: "96px",
@@ -264,8 +264,8 @@ export default function TimeCapsuleComposer({
             }
           >
             {isSubmitting
-              ? "Sealing..."
-              : "Seal Capsule"}
+              ? "Đang niêm phong..."
+              : "Niêm phong hộp"}
           </button>
         </div>
       </form>

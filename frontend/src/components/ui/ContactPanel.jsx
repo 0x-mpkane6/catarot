@@ -86,7 +86,7 @@ export default function ContactPanel({
             marginBottom: "24px",
           }}
         >
-          Contact
+          Liên Hệ
         </div>
 
         {/* SCROLL VELOCITY */}

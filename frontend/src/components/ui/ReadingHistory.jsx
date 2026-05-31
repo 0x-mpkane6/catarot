@@ -114,7 +114,7 @@ export default function ReadingHistory({
             marginBottom: "26px",
           }}
         >
-          Reading History
+          Lịch Sử Xem Bài
         </div>
 
         {/* SESSION LIST */}
@@ -131,7 +131,7 @@ export default function ReadingHistory({
               marginBottom: "14px",
             }}
           >
-            Loading sessions...
+            Đang tải các phiên...
           </div>
         )}
         <AnimatedList

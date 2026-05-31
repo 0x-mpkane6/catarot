@@ -175,7 +175,7 @@ export default function ChatBox({
     } catch (error) {
       console.error(error);
       toast.error(
-        "Microphone permission denied"
+        "Quyền truy cập micro bị từ chối"
       );
     }
   };
@@ -206,7 +206,7 @@ export default function ChatBox({
     ) {
 
       toast.error(
-        "Invalid input"
+        "Dữ liệu nhập không hợp lệ"
       );
 
       return;
@@ -263,7 +263,7 @@ export default function ChatBox({
               <img
                 src={URL.createObjectURL(file)}
 
-                alt="preview"
+                alt="xem trước"
 
                 style={{
                   width: "82px",
@@ -364,12 +364,12 @@ export default function ChatBox({
             {isRecording ? (
               <>
                 <Mic size={18} />
-                Recording...
+                Đang ghi âm...
               </>
             ) : (
               <>
                 <AudioLines size={18} />
-                Voice attached
+                Đã đính kèm ghi chú giọng nói
               </>
             )}
 
@@ -482,8 +482,8 @@ export default function ChatBox({
 
           placeholder={
             mode === "daily"
-              ? "How are you feeling today?"
-              : "Ask the cards something..."
+              ? "Hôm nay bạn cảm thấy thế nào?"
+              : "Hỏi những lá bài điều gì đó..."
           }
 
           onKeyDown={async (e) => {

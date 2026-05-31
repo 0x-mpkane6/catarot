@@ -18,16 +18,16 @@ export default function LandingPage() {
 
   const items = [
     {
-      label: "Readings",
+      label: "Xem Bài",
       bgColor: "rgba(25, 18, 40, 0.82)",
       textColor: "#ffffff",
       links: [
         {
-          label: "Reflection History",
+          label: "Lịch sử chiêm nghiệm",
           onClick: () => navigate("/login"),
         },
         {
-          label: "Reading History",
+          label: "Lịch sử trải bài",
           onClick: () => navigate("/login"),
         },
       ],
@@ -39,11 +39,11 @@ export default function LandingPage() {
       textColor: "#ffffff",
       links: [
         {
-          label: "What is Tarot?",
+          label: "Tarot là gì?",
           onClick: () =>
             setActiveMarkdownDoc({
               title:
-                "WHAT IS TAROT?",
+                "TAROT LÀ GÌ?",
               content:
                 whatIsTarotContent,
             }),
@@ -62,12 +62,12 @@ export default function LandingPage() {
     },
 
     {
-      label: "Contact",
+      label: "Liên hệ",
       bgColor: "rgba(30, 16, 50, 0.82)",
       textColor: "#ffffff",
       links: [
         {
-          label: "More Info",
+          label: "Thông tin thêm",
           onClick: () =>
             setShowContact(true),
         },
@@ -118,7 +118,7 @@ export default function LandingPage() {
         logo=""
         items={items}
 
-        buttonLabel="Get Started"
+        buttonLabel="Bắt đầu"
 
         onButtonClick={() => navigate("/login")}
 

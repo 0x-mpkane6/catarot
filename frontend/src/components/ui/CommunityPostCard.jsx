@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 
 const formatDateTime = (value) => {
-  if (!value) return "Unknown time";
+  if (!value) return "Không rõ thời gian";
 
   try {
     return new Date(value).toLocaleString();
@@ -68,7 +68,7 @@ export default function CommunityPostCard({
         <div>
           <div className="community-card__alias">
             {post.anonymous_alias ||
-              `Seeker #${post.id}`}
+              `Người tìm kiếm #${post.id}`}
           </div>
 
           <div className="community-card__meta">
@@ -108,7 +108,7 @@ export default function CommunityPostCard({
       )}
 
       <div className="community-card__section-title">
-        Community Interpretations
+        Lời luận giải từ cộng đồng
       </div>
 
       {post.interpretations?.length >
@@ -177,15 +177,15 @@ export default function CommunityPostCard({
                         `resonate-${interpretation.id}`
                       ]
                     }
-                    title="Post owner only"
+                    title="Chỉ dành cho chủ bài viết"
                   >
                     <HeartHandshake
                       size={16}
                     />
                     <span>
                       {interpretation.resonated_by_post_owner
-                        ? "Resonated"
-                        : "Resonate"}
+                        ? "Đã đồng cảm"
+                        : "Đồng cảm"}
                     </span>
                   </button>
                 </div>
@@ -195,9 +195,9 @@ export default function CommunityPostCard({
         )
       ) : (
         <div className="community-empty">
-          No interpretations yet.
+          Chưa có lời luận giải nào.
           <br />
-          Be the first to offer insight.
+          Hãy là người đầu tiên chia sẻ góc nhìn.
         </div>
       )}
 
@@ -210,12 +210,12 @@ export default function CommunityPostCard({
         }
       >
         <label className="community-field__label">
-          Add Interpretation
+          Thêm lời luận giải
         </label>
 
         <textarea
           className="community-field__textarea"
-          placeholder="Offer your tarot perspective with empathy and clarity..."
+          placeholder="Chia sẻ góc nhìn tarot của bạn với sự đồng cảm và rõ ràng..."
           value={draft}
           onChange={(event) =>
             setDraft(
@@ -238,7 +238,7 @@ export default function CommunityPostCard({
           }}
         >
           <div className="community-field__hint">
-            Votes surface the strongest interpretations.
+            Bình chọn giúp những lời luận giải hay nhất nổi bật.
           </div>
 
           <button
@@ -256,8 +256,8 @@ export default function CommunityPostCard({
               {busyMap[
                 `interpret-${post.id}`
               ]
-                ? "Posting..."
-                : "Share Insight"}
+                ? "Đang đăng..."
+                : "Chia sẻ góc nhìn"}
             </span>
           </button>
         </div>

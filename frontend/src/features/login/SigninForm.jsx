@@ -1,9 +1,9 @@
 import styles from "./LoginForm.module.css";
 import { useNavigate } from "react-router-dom";
-import googleIcon from "../../assets/images/auth/google.webp";
 
 import { useState } from "react";
 import { register } from "../../services/authService";
+import GoogleLoginButton from "./GoogleLoginButton";
 
 import toast from "react-hot-toast";
 
@@ -23,58 +23,49 @@ export default function SigninForm() {
 
       // validate
       if (!email || !password || !confirmPassword) {
-        toast.error("Please fill all fields");
+        toast.error("Vui lòng nhập đầy đủ thông tin");
         return;
       }
 
       if (password.length < 6) {
-        toast.error("Password must be at least 6 characters");
+        toast.error("Mật khẩu phải có ít nhất 6 ký tự");
         return;
       }
 
       if (password !== confirmPassword) {
-        toast.error("Password does not match");
+        toast.error("Mật khẩu xác nhận không khớp");
         return;
       }
 
-<<<<<<< Updated upstream
       if (username.trim() && username.trim().length < 3) {
-        toast.error("Username must be at least 3 characters");
+        toast.error("Tên đăng nhập phải có ít nhất 3 ký tự");
         return;
       }
-=======
-      // API
-      const res = await register(
-        email.trim(),
-        password.trim(),
-        username.trim() || null
-      );
->>>>>>> Stashed changes
 
       // API — gửi cả username (tùy chọn) lên backend
-      await register(
-        email.trim(),
-        password.trim(),
-        username.trim()
-      );
+      await register(email.trim(), password.trim(), username.trim());
 
-      toast.success("Account created!");
+      toast.success("Tạo tài khoản thành công!");
 
       // redirect
       setTimeout(() => {
         navigate("/login");
       }, 1200);
-
     } catch (err) {
       console.error(err);
 
-      toast.error(
-        err.response?.data?.detail ||
-        "Signup failed"
-      );
+      toast.error(err.response?.data?.detail || "Đăng ký thất bại");
     } finally {
       setLoading(false);
     }
+  };
+
+  // Đăng ký/đăng nhập bằng Google → đã có phiên đăng nhập, vào thẳng trang chính.
+  const handleGoogleSuccess = (res) => {
+    sessionStorage.setItem("token", res.token);
+    sessionStorage.setItem("user", JSON.stringify(res.user));
+    toast.success("Chào mừng bạn!");
+    navigate("/home");
   };
 
   return (
@@ -84,22 +75,22 @@ export default function SigninForm() {
 
       {/* RIGHT */}
       <div className={styles.right}>
-        <h2 className={styles.title}>
-          Let's get started
-        </h2>
+        <h2 className={styles.title}>Bắt đầu nào</h2>
 
         {/* GOOGLE */}
-        <button className={styles.googleBtn}>
-          <img src={googleIcon} alt="google" />
-          Google
-        </button>
+        <GoogleLoginButton
+          text="signup_with"
+          fallbackClassName={styles.googleBtn}
+          fallbackLabel="Đăng ký với Google"
+          onSuccess={handleGoogleSuccess}
+        />
 
-        <div className={styles.divider}>Or</div>
+        <div className={styles.divider}>Hoặc</div>
 
         {/* EMAIL */}
         <input
           className={styles.input}
-          placeholder="Example@gmail.com"
+          placeholder="Email của bạn"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -107,7 +98,7 @@ export default function SigninForm() {
         {/* USERNAME */}
         <input
           className={styles.input}
-          placeholder="Username"
+          placeholder="Tên đăng nhập"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
         />
@@ -116,7 +107,7 @@ export default function SigninForm() {
         <input
           type="password"
           className={styles.input}
-          placeholder="Password"
+          placeholder="Mật khẩu"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -125,7 +116,7 @@ export default function SigninForm() {
         <input
           type="password"
           className={styles.input}
-          placeholder="Confirm password"
+          placeholder="Xác nhận mật khẩu"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           onKeyDown={(e) => {
@@ -145,7 +136,7 @@ export default function SigninForm() {
             cursor: loading ? "not-allowed" : "pointer",
           }}
         >
-          {loading ? "Creating..." : "Sign up"}
+          {loading ? "Đang tạo..." : "Đăng ký"}
         </button>
 
         {/* BACK */}
@@ -157,10 +148,9 @@ export default function SigninForm() {
             textAlign: "center",
           }}
         >
-          Back
+          Quay lại
         </span>
       </div>
     </div>
   );
 }
-

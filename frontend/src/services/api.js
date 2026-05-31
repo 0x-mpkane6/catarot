@@ -22,11 +22,13 @@ const getStoredToken = () => {
 api.interceptors.request.use((config) => {
   try {
     const token = getStoredToken();
-    console.log("[api] request", {
-      method: config.method,
-      url: config.url,
-      tokenExists: Boolean(token),
-    });
+    if (import.meta.env?.DEV) {
+      console.log("[api] request", {
+        method: config.method,
+        url: config.url,
+        tokenExists: Boolean(token),
+      });
+    }
     if (token && !config.headers?.Authorization) {
       config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;

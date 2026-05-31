@@ -65,7 +65,7 @@ export default function TarotSpreadGrid({
       ) {
 
         toast.error(
-          `Please select only ${requiredCards} cards.`
+          `Chỉ được chọn ${requiredCards} lá bài.`
         );
 
         return current;
@@ -96,7 +96,7 @@ export default function TarotSpreadGrid({
     ) {
 
       toast.error(
-        `Please select ${requiredCards} cards before continuing.`
+        `Vui lòng chọn ${requiredCards} lá bài trước khi tiếp tục.`
       );
 
       return;
@@ -186,7 +186,7 @@ export default function TarotSpreadGrid({
                 "0 0 24px rgba(192,132,252,0.18)",
             }}
           >
-            Draw Your Cards
+            Rút bài của bạn
           </div>
 
           <div
@@ -197,7 +197,7 @@ export default function TarotSpreadGrid({
               fontSize: "1rem",
             }}
           >
-            Selected
+            Đã chọn
             {" "}
             {selectedCardIds.length}
             /
@@ -518,7 +518,7 @@ export default function TarotSpreadGrid({
               "translateY(0px) scale(1)";
           }}
         >
-          Confirm
+          Xác nhận
           {" "}
           {selectedCardIds.length}
           /

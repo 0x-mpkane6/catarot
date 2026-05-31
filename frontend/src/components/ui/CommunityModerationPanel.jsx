@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 
 const formatDateTime = (value) => {
-  if (!value) return "Unknown time";
+  if (!value) return "Không rõ thời gian";
 
   try {
     return new Date(value).toLocaleString();
@@ -48,7 +48,7 @@ function ModerationCard({
         <div>
           <div className="community-card__alias">
             {post.anonymous_alias ||
-              `Seeker #${post.id}`}
+              `Người tìm kiếm #${post.id}`}
           </div>
 
           <div className="community-card__meta">
@@ -59,7 +59,7 @@ function ModerationCard({
         </div>
 
         <div className="community-card__status is-pending">
-          pending
+          đang chờ
         </div>
       </div>
 
@@ -87,11 +87,11 @@ function ModerationCard({
 
       <div className="community-inline-form">
         <label className="community-field__label">
-          Moderation Note
+          Ghi chú kiểm duyệt
         </label>
         <textarea
           className="community-field__textarea"
-          placeholder="Optional reason for approve/reject..."
+          placeholder="Lý do tùy chọn cho việc duyệt/từ chối..."
           value={reason}
           onChange={(event) =>
             setReason(
@@ -117,7 +117,7 @@ function ModerationCard({
           >
             <Check size={16} />
             <span>
-              Approve
+              Duyệt
             </span>
           </button>
 
@@ -134,7 +134,7 @@ function ModerationCard({
           >
             <X size={16} />
             <span>
-              Reject
+              Từ chối
             </span>
           </button>
         </div>
@@ -160,7 +160,7 @@ export default function CommunityModerationPanel({
             }}
           />
           <br />
-          No posts are waiting for moderation.
+          Không có bài viết nào đang chờ kiểm duyệt.
         </div>
       </div>
     );

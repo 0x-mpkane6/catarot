@@ -24,7 +24,11 @@ WORKDIR ${APP_HOME}
 
 # Cài deps trước để Docker cache hoạt động khi code thay đổi.
 COPY requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
+# torch/torchvision bản CPU-only từ PyTorch index (nhẹ hơn ~3-5GB so với bản CUDA mặc định).
+# Container không cấu hình GPU nên CPU build chạy y hệt mà không kéo theo thư viện CUDA.
+RUN pip install --upgrade pip \
+    && pip install --retries 5 --timeout 300 torch torchvision --index-url https://download.pytorch.org/whl/cpu \
+    && pip install --retries 5 --timeout 300 -r requirements.txt
 
 # Copy source code.
 COPY . .

@@ -6,13 +6,13 @@ const getDisplayName = (
 ) =>
   user?.display_name?.trim() ||
   user?.username?.trim() ||
-  "User";
+  "Người dùng";
 
 const getUsername = (
   user
 ) =>
   user?.username?.trim() ||
-  "Not set";
+  "Chưa thiết lập";
 
 const getAvatarUrl = (
   user
@@ -33,24 +33,24 @@ const getInfoRows = (
   user
 ) => [
   {
-    label: "Username",
+    label: "Tên đăng nhập",
     value:
       getUsername(user),
   },
   {
-    label: "Display Name",
+    label: "Tên hiển thị",
     value:
       getDisplayName(user),
   },
   {
     label: "Email",
     value:
-      user?.email || "Not set",
+      user?.email || "Chưa thiết lập",
   },
   {
     label:
-      "Daily Tarot Streak",
-    value: `${Number(user?.daily_tarot_streak ?? 0) || 0} days`,
+      "Chuỗi ngày Tarot Hằng Ngày",
+    value: `${Number(user?.daily_tarot_streak ?? 0) || 0} ngày`,
   },
 ];
 
@@ -323,7 +323,7 @@ export default function UserProfile({
                 "blur(12px)",
             }}
           >
-            Log Out
+            Đăng xuất
           </button>
         </div>
       </div>

@@ -19,6 +19,22 @@ const moodOptions =
     VALID_MOODS
   );
 
+const MOOD_LABELS = {
+  calm: "Bình thản",
+  anxious: "Lo âu",
+  hopeful: "Hy vọng",
+  tired: "Mệt mỏi",
+  grateful: "Biết ơn",
+  uncertain: "Bất định",
+  joyful: "Vui vẻ",
+  lonely: "Cô đơn",
+  focused: "Tập trung",
+  sad: "Buồn",
+  neutral: "Trung tính",
+  angry: "Giận dữ",
+  inspired: "Cảm hứng",
+};
+
 export default function DailyChatBox({
   disabled = false,
   onSubmit,
@@ -86,7 +102,7 @@ export default function DailyChatBox({
     ) {
 
       toast.error(
-        "Please enter a mood or question"
+        "Vui lòng nhập tâm trạng hoặc câu hỏi"
       );
 
       return;
@@ -211,7 +227,7 @@ export default function DailyChatBox({
                 "0.25s ease",
             }}
           >
-            {mood || "Select mood"}
+            {(mood && (MOOD_LABELS[mood] || mood)) || "Chọn tâm trạng"}
           </button>
 
           {/* dropdown */}
@@ -301,7 +317,7 @@ export default function DailyChatBox({
                         "transparent";
                     }}
                   >
-                    {item}
+                    {MOOD_LABELS[item] || item}
                   </div>
 
                 )
@@ -336,7 +352,7 @@ export default function DailyChatBox({
             )
           }
 
-          placeholder="What should I focus on today?"
+          placeholder="Hôm nay tôi nên tập trung vào điều gì?"
 
           onKeyDown={async (e) => {
             if (

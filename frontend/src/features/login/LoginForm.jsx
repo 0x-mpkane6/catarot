@@ -1,9 +1,9 @@
 import styles from "./LoginForm.module.css";
-import googleIcon from "../../assets/images/auth/google.webp";
 
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { login } from "../../services/authService";
+import GoogleLoginButton from "./GoogleLoginButton";
 
 import toast from "react-hot-toast";
 
@@ -17,54 +17,49 @@ export default function LoginForm() {
 
   const [loading, setLoading] = useState(false);
 
+  // Lưu phiên đăng nhập (dùng chung cho đăng nhập thường và đăng nhập Google).
+  const persistSession = (res) => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("user");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("access_token");
+    sessionStorage.removeItem("user");
+
+    const store = rememberMe ? localStorage : sessionStorage;
+    store.setItem("token", res.token);
+    store.setItem("user", JSON.stringify(res.user));
+  };
+
   const handleLogin = async () => {
     try {
       setLoading(true);
 
       // validate empty fields
       if (!email || !password) {
-        toast.error("Please fill all fields");
+        toast.error("Vui lòng nhập đầy đủ thông tin");
         return;
       }
 
-      const res = await login(
-        email.trim(),
-        password.trim()
-      );
+      const res = await login(email.trim(), password.trim());
 
-      localStorage.removeItem("token");
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("user");
-      sessionStorage.removeItem("token");
-      sessionStorage.removeItem("access_token");
-      sessionStorage.removeItem("user");
+      persistSession(res);
 
-      // remember me
-      if (rememberMe) {
-        localStorage.setItem("token", res.token);
-
-        localStorage.setItem(
-          "user",
-          JSON.stringify(res.user)
-        );
-      } else {
-        sessionStorage.setItem("token", res.token);
-
-        sessionStorage.setItem(
-          "user",
-          JSON.stringify(res.user)
-        );
-      }
-
-      toast.success("Welcome back!");
+      toast.success("Chào mừng trở lại!");
 
       navigate("/home");
-
     } catch {
-      toast.error("Invalid email or password");
+      toast.error("Email hoặc mật khẩu không đúng");
     } finally {
       setLoading(false);
     }
+  };
+
+  // Đăng nhập Google thành công → lưu phiên rồi chuyển vào trang chính.
+  const handleGoogleSuccess = (res) => {
+    persistSession(res);
+    toast.success("Chào mừng trở lại!");
+    navigate("/home");
   };
 
   return (
@@ -74,37 +69,33 @@ export default function LoginForm() {
 
       {/* RIGHT */}
       <div className={styles.right}>
-        <h2 className={styles.title}>
-          Welcome back!
-        </h2>
+        <h2 className={styles.title}>Chào mừng trở lại!</h2>
 
         {/* GOOGLE */}
-        <button className={styles.googleBtn}>
-          <img src={googleIcon} alt="google" />
-          Google
-        </button>
+        <GoogleLoginButton
+          text="signin_with"
+          fallbackClassName={styles.googleBtn}
+          fallbackLabel="Đăng nhập với Google"
+          onSuccess={handleGoogleSuccess}
+        />
 
-        <div className={styles.divider}>Or</div>
+        <div className={styles.divider}>Hoặc</div>
 
         {/* EMAIL */}
         <input
           className={styles.input}
-          placeholder="Example@gmail.com"
+          placeholder="Email của bạn"
           value={email}
-          onChange={(e) =>
-            setEmail(e.target.value)
-          }
+          onChange={(e) => setEmail(e.target.value)}
         />
 
         {/* PASSWORD */}
         <input
           type="password"
           className={styles.input}
-          placeholder="Password"
+          placeholder="Mật khẩu"
           value={password}
-          onChange={(e) =>
-            setPassword(e.target.value)
-          }
+          onChange={(e) => setPassword(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               handleLogin();
@@ -118,23 +109,16 @@ export default function LoginForm() {
             <input
               type="checkbox"
               checked={rememberMe}
-              onChange={(e) =>
-                setRememberMe(
-                  e.target.checked
-                )
-              }
+              onChange={(e) => setRememberMe(e.target.checked)}
             />
-
-            Remember me
+            Ghi nhớ đăng nhập
           </label>
 
           <span
             className={styles.link}
-            onClick={() =>
-              navigate("/forgot-password")
-            }
+            onClick={() => navigate("/forgot-password")}
           >
-            Forgot Password?
+            Quên mật khẩu?
           </span>
         </div>
 
@@ -145,29 +129,20 @@ export default function LoginForm() {
           disabled={loading}
           style={{
             opacity: loading ? 0.7 : 1,
-            cursor: loading
-              ? "not-allowed"
-              : "pointer",
+            cursor: loading ? "not-allowed" : "pointer",
           }}
         >
-          {loading ? "Logging in..." : "Log in"}
+          {loading ? "Đang đăng nhập..." : "Đăng nhập"}
         </button>
 
         {/* SIGN UP */}
         <p className={styles.signup}>
-          Don’t have an account?{" "}
-
-          <span
-            className={styles.link}
-            onClick={() =>
-              navigate("/signin")
-            }
-          >
-            Sign up
+          Chưa có tài khoản?{" "}
+          <span className={styles.link} onClick={() => navigate("/signin")}>
+            Đăng ký
           </span>
         </p>
       </div>
     </div>
   );
 }
-

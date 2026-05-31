@@ -60,12 +60,28 @@ export default function ReflectionModal({
     inspired: "✨",
   };
 
+  const MOOD_LABELS = {
+    calm: "Bình thản",
+    anxious: "Lo âu",
+    hopeful: "Hy vọng",
+    tired: "Mệt mỏi",
+    grateful: "Biết ơn",
+    uncertain: "Bất định",
+    joyful: "Vui vẻ",
+    lonely: "Cô đơn",
+    focused: "Tập trung",
+    sad: "Buồn",
+    neutral: "Trung tính",
+    angry: "Giận dữ",
+    inspired: "Cảm hứng",
+  };
+
   const handleSubmit = () => {
     const cleanReflection = reflection.trim();
 
     if (!cleanReflection && !moodPost) {
       alert(
-        "Please enter a reflection or select a mood."
+        "Vui lòng nhập chiêm nghiệm hoặc chọn một tâm trạng."
       );
       return;
     }
@@ -164,7 +180,7 @@ export default function ReflectionModal({
                 margin: "0 0 8px 0",
               }}
             >
-              Reflect on Today
+              Chiêm nghiệm hôm nay
             </h2>
             <p
               style={{
@@ -173,7 +189,7 @@ export default function ReflectionModal({
                 margin: 0,
               }}
             >
-              {card?.card_name || "Your Card"} ✨
+              {card?.card_name || "Lá bài của bạn"} ✨
             </p>
           </div>
 
@@ -204,14 +220,14 @@ export default function ReflectionModal({
                 letterSpacing: "0.05em",
               }}
             >
-              Your Reflection
+              Chiêm nghiệm của bạn
             </label>
             <textarea
               value={reflection}
               onChange={(e) =>
                 setReflection(e.target.value)
               }
-              placeholder="What did this card mean to you today? How did it resonate with your life?"
+              placeholder="Lá bài này có ý nghĩa gì với bạn hôm nay? Nó đồng cảm với cuộc sống của bạn ra sao?"
               style={{
                 width: "100%",
                 minHeight: "140px",
@@ -273,7 +289,7 @@ export default function ReflectionModal({
                 letterSpacing: "0.05em",
               }}
             >
-              How Do You Feel Now?
+              Bây giờ bạn cảm thấy thế nào?
             </label>
             <div
               style={{
@@ -343,7 +359,7 @@ export default function ReflectionModal({
                         "capitalize",
                     }}
                   >
-                    {mood}
+                    {MOOD_LABELS[mood] || mood}
                   </span>
                 </button>
               ))}
@@ -406,8 +422,8 @@ export default function ReflectionModal({
               }}
             >
               {isSubmitting
-                ? "Saving..."
-                : "Save Reflection"}
+                ? "Đang lưu..."
+                : "Lưu chiêm nghiệm"}
             </button>
 
             {/* CANCEL */}
@@ -447,7 +463,7 @@ export default function ReflectionModal({
                 }
               }}
             >
-              Cancel
+              Hủy
             </button>
           </div>
 

@@ -11,10 +11,10 @@ export default function CommunityFeed({
     return (
       <div className="community-card">
         <div className="community-empty">
-          The community feed is quiet right now.
+          Phòng Cộng Đồng hiện đang yên ắng.
           <br />
-          Come back after moderation approves the first
-          shared readings.
+          Hãy quay lại sau khi kiểm duyệt phê duyệt những
+          trải bài được chia sẻ đầu tiên.
         </div>
       </div>
     );

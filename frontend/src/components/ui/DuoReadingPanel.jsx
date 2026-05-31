@@ -27,7 +27,7 @@ const ACTIVE_DUO_SESSION_KEY = "active_duo_session_id";
 const getErrorMessage = (error) =>
   error?.response?.data?.detail ||
   error?.message ||
-  "Something went wrong";
+  "Đã có lỗi xảy ra";
 
 const getStoredUser = () => {
   try {
@@ -52,38 +52,38 @@ const getStatusMessage = (session) => {
     session?.cards?.length || 0;
 
   if (status === "waiting_partner") {
-    return "Waiting for partner to join...";
+    return "Đang chờ bạn đồng hành tham gia...";
   }
 
   if (status === "waiting_cards") {
     if (cardsCount === 0) {
-      return "Both users need to upload their cards.";
+      return "Cả hai người cần tải lên lá bài của mình.";
     }
 
     if (cardsCount === 1) {
-      return "Waiting for the other card...";
+      return "Đang chờ lá bài còn lại...";
     }
 
-    return "Both users need to upload their cards.";
+    return "Cả hai người cần tải lên lá bài của mình.";
   }
 
   if (status === "generating") {
-    return "Generating shared reading...";
+    return "Đang tạo trải bài chung...";
   }
 
   if (status === "completed") {
-    return "Shared reading completed.";
+    return "Đã hoàn tất trải bài chung.";
   }
 
   if (status === "failed") {
-    return "Duo reading failed. Please try again.";
+    return "Trải Bài Đôi thất bại. Vui lòng thử lại.";
   }
 
-  return "Room created.";
+  return "Đã tạo phòng.";
 };
 
 const formatJoinedAt = (value) => {
-  if (!value) return "Joined";
+  if (!value) return "Đã tham gia";
 
   try {
     return new Date(value).toLocaleString();
@@ -96,7 +96,7 @@ const getParticipantName = (
   participant,
   storedUser
 ) => {
-  if (!participant) return "Partner";
+  if (!participant) return "Bạn đồng hành";
 
   const directName =
     participant.display_name ||
@@ -119,13 +119,13 @@ const getParticipantName = (
       storedUser.displayName ||
       storedUser.username ||
       storedUser.email ||
-      "You"
+      "Bạn"
     );
   }
 
   return participant.slot_label
-    ? `Participant ${participant.slot_label}`
-    : "Partner";
+    ? `Người tham gia ${participant.slot_label}`
+    : "Bạn đồng hành";
 };
 
 export default function DuoReadingPanel() {
@@ -392,17 +392,17 @@ export default function DuoReadingPanel() {
   const handleUploadMyCard =
     async () => {
     if (participants.length < 2) {
-      toast.error("Waiting for partner to join.");
+      toast.error("Đang chờ bạn đồng hành tham gia.");
       return;
     }
 
     if (currentUserCard) {
-      toast.error("You already uploaded a card.");
+      toast.error("Bạn đã tải lên một lá bài rồi.");
       return;
     }
 
     if (!selectedImage) {
-      toast.error("Please choose a card image first.");
+      toast.error("Vui lòng chọn ảnh lá bài trước.");
       return;
     }
 
@@ -416,9 +416,9 @@ export default function DuoReadingPanel() {
 
     try {
       await navigator.clipboard.writeText(code);
-      toast.success("Invite code copied");
+      toast.success("Đã sao chép mã mời");
     } catch {
-      toast.error("Failed to copy invite code");
+      toast.error("Sao chép mã mời thất bại");
     }
   };
 
@@ -440,7 +440,7 @@ export default function DuoReadingPanel() {
         onClick={handleCreateRoom}
         disabled={loading}
       >
-        {loading ? "Creating..." : "Create Duo Room"}
+        {loading ? "Đang tạo..." : "Tạo Phòng Đôi"}
       </button>
 
       <button
@@ -452,7 +452,7 @@ export default function DuoReadingPanel() {
         }}
         disabled={loading}
       >
-        Join With Invite Code
+        Tham Gia Bằng Mã Mời
       </button>
     </div>
   );
@@ -460,7 +460,7 @@ export default function DuoReadingPanel() {
   const renderJoining = () => (
     <div className="duo-reading-panel__join-box">
       <label className="duo-reading-panel__field-label">
-        Invite Code
+        Mã mời
       </label>
 
       <input
@@ -480,7 +480,7 @@ export default function DuoReadingPanel() {
           onClick={handleJoinByInvite}
           disabled={loading || !inviteCode.trim()}
         >
-          {loading ? "Joining..." : "Join"}
+          {loading ? "Đang tham gia..." : "Tham gia"}
         </button>
 
         <button
@@ -493,7 +493,7 @@ export default function DuoReadingPanel() {
           }}
           disabled={loading}
         >
-          Back
+          Quay lại
         </button>
       </div>
     </div>
@@ -505,7 +505,7 @@ export default function DuoReadingPanel() {
         <div className="duo-reading-panel__invite-card">
           <div>
             <div className="duo-reading-panel__meta-title">
-              Invite Code
+              Mã mời
             </div>
 
             <div className="duo-reading-panel__meta-value">
@@ -517,7 +517,7 @@ export default function DuoReadingPanel() {
             type="button"
             className="duo-reading-panel__copy-button"
             onClick={handleCopyInviteCode}
-            title="Copy invite code"
+            title="Sao chép mã mời"
           >
             <Copy size={16} />
           </button>
@@ -529,7 +529,7 @@ export default function DuoReadingPanel() {
             className="duo-reading-panel__icon-button"
             onClick={handleRefresh}
             disabled={loading}
-            title="Refresh room"
+            title="Làm mới phòng"
           >
             <RefreshCw size={18} />
           </button>
@@ -537,7 +537,7 @@ export default function DuoReadingPanel() {
           <button
             type="button"
             className="duo-reading-panel__icon-button duo-reading-panel__icon-button--danger"
-            title="Leave room"
+            title="Rời phòng"
             onClick={handleLeaveRoom}
           >
             <SquareArrowRightExit size={18} />
@@ -551,7 +551,7 @@ export default function DuoReadingPanel() {
 
         <div className="duo-reading-panel__section">
           <div className="duo-reading-panel__field-label">
-            Participants
+            Người tham gia
           </div>
 
           <div className="duo-reading-panel__slots">
@@ -583,26 +583,26 @@ export default function DuoReadingPanel() {
                             participant,
                             storedUser
                           )
-                        : `Participant ${slotLabel}`}
+                        : `Người tham gia ${slotLabel}`}
                     </div>
 
                     <div className="duo-reading-panel__slot-meta">
                       <div>
-                        Joined:{" "}
+                        Tham gia:{" "}
                         {participant
                           ? formatJoinedAt(
                               participant.joined_at
                             )
-                          : "Waiting for partner..."}
+                          : "Đang chờ bạn đồng hành..."}
                       </div>
 
                       <div>
-                        Card:{" "}
+                        Lá bài:{" "}
                         {participant
                           ? card
                             ? `${card.card_name} (${card.orientation})`
-                            : "Waiting for upload"
-                          : "Waiting for partner..."}
+                            : "Đang chờ tải lên"
+                          : "Đang chờ bạn đồng hành..."}
                       </div>
                     </div>
                   </div>
@@ -614,7 +614,7 @@ export default function DuoReadingPanel() {
 
         <div className="duo-reading-panel__section">
           <div className="duo-reading-panel__field-label">
-            Upload Card
+            Tải lên lá bài
           </div>
 
           {canUploadCard ? (
@@ -639,7 +639,7 @@ export default function DuoReadingPanel() {
                 >
                   <Upload size={18} />
                   <span>
-                    Choose Card Image
+                    Chọn ảnh lá bài
                   </span>
                 </label>
 
@@ -647,7 +647,7 @@ export default function DuoReadingPanel() {
                   <div className="duo-reading-panel__preview-card">
                     <img
                       src={previewUrl}
-                      alt={selectedImage?.name || "Selected card"}
+                      alt={selectedImage?.name || "Lá bài đã chọn"}
                       className="duo-reading-panel__preview-image"
                     />
 
@@ -655,7 +655,7 @@ export default function DuoReadingPanel() {
                       type="button"
                       className="duo-reading-panel__preview-remove"
                       onClick={clearSelectedImage}
-                      title="Remove selected image"
+                      title="Xóa ảnh đã chọn"
                     >
                       <X size={14} />
                     </button>
@@ -673,14 +673,14 @@ export default function DuoReadingPanel() {
                   disabled={loading}
                 >
                   {loading
-                    ? "Uploading..."
-                    : "Upload My Card"}
+                    ? "Đang tải lên..."
+                    : "Tải lên lá bài của tôi"}
                 </button>
               </div>
             </>
           ) : (
             <div className="duo-reading-panel__note">
-              You already uploaded your card.
+              Bạn đã tải lên lá bài của mình rồi.
             </div>
           )}
         </div>
@@ -690,7 +690,7 @@ export default function DuoReadingPanel() {
           (duoSession?.cards?.length || 0) === 2 &&
           duoSession?.status !== "completed" && (
             <div className="duo-reading-panel__note">
-              Shared reading will be generated automatically after both cards are uploaded.
+              Trải bài chung sẽ được tạo tự động sau khi cả hai lá bài được tải lên.
             </div>
           )}
 
@@ -698,7 +698,7 @@ export default function DuoReadingPanel() {
         duoSession?.reading && (
           <div className="duo-reading-panel__result">
             <div className="duo-reading-panel__field-label">
-              Duo Reading Result
+              Kết quả Trải Bài Đôi
             </div>
 
             <div className="duo-reading-panel__result-text">

@@ -10,8 +10,9 @@ loguru>=0.7
 requests>=2.31
 
 # Vision retrieval (card recognition)
-torch>=2.2
-torchvision>=0.17
+# torch + torchvision: cài riêng trong Dockerfile từ PyTorch CPU index
+#   (https://download.pytorch.org/whl/cpu) để image nhẹ hơn ~3-5GB.
+#   Container không cấu hình GPU nên bản CPU chạy y hệt, không kéo theo thư viện CUDA.
 open-clip-torch>=2.24  # provides `import open_clip`
 faiss-cpu>=1.7.4
 opencv-python>=4.8
@@ -27,12 +28,17 @@ uvicorn>=0.30
 python-multipart>=0.0.9
 gradio>=4.44
 sqlalchemy>=2.0
+psycopg2-binary>=2.9   # driver Postgres cho production (dev dùng SQLite thì không cần)
 APScheduler>=3.10
 alembic>=1.13
 
 # Optional: LLM API (only if you will call OpenAI)
 openai>=1.30
 PyJWT>=2.8
+
+# Google OAuth — xác thực id_token cho /api/auth/google (đăng nhập bằng Google).
+# Cung cấp google.auth.transport.requests + google.oauth2.id_token.verify_oauth2_token.
+google-auth>=2.30
 
 # Google Gemini (free tier) — code dùng REST nên SDK là optional
 # Có thể cài để hỗ trợ count_tokens hoặc streaming nếu cần sau:

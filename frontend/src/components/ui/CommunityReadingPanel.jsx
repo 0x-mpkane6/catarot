@@ -33,20 +33,20 @@ import {
 const TABS = [
   {
     key: "feed",
-    label: "Community Feed",
-    hint: "Explore approved readings and interpretations.",
+    label: "Phòng Cộng Đồng",
+    hint: "Khám phá những trải bài và lời luận giải đã được duyệt.",
     icon: MessageSquareHeart,
   },
   {
     key: "share",
-    label: "Share Reading",
-    hint: "Submit a reading question for moderation.",
+    label: "Chia sẻ trải bài",
+    hint: "Gửi một câu hỏi trải bài để kiểm duyệt.",
     icon: Send,
   },
   {
     key: "moderation",
-    label: "Moderation",
-    hint: "Review pending posts if you are an admin.",
+    label: "Kiểm duyệt",
+    hint: "Xem xét các bài viết đang chờ nếu bạn là quản trị viên.",
     icon: ShieldCheck,
   },
 ];
@@ -186,7 +186,7 @@ export default function CommunityReadingPanel() {
           payload
         );
         toast.success(
-          "Post submitted for moderation"
+          "Đã gửi bài viết để kiểm duyệt"
         );
         setActiveTab("feed");
       } catch (error) {
@@ -234,7 +234,7 @@ export default function CommunityReadingPanel() {
         );
 
         toast.success(
-          "Interpretation shared"
+          "Đã chia sẻ lời luận giải"
         );
       } catch (error) {
         console.error(error);
@@ -290,8 +290,8 @@ export default function CommunityReadingPanel() {
 
         toast.success(
           result.created
-            ? "Vote added"
-            : "You already voted for this interpretation"
+            ? "Đã thêm bình chọn"
+            : "Bạn đã bình chọn cho lời luận giải này rồi"
         );
       } catch (error) {
         console.error(error);
@@ -342,7 +342,7 @@ export default function CommunityReadingPanel() {
         );
 
         toast.success(
-          "Interpretation marked as resonated"
+          "Đã đánh dấu lời luận giải là đồng cảm"
         );
       } catch (error) {
         console.error(error);
@@ -380,7 +380,7 @@ export default function CommunityReadingPanel() {
         );
 
         toast.success(
-          "Post approved"
+          "Đã duyệt bài viết"
         );
         await loadFeed();
       } catch (error) {
@@ -419,7 +419,7 @@ export default function CommunityReadingPanel() {
         );
 
         toast.success(
-          "Post rejected"
+          "Đã từ chối bài viết"
         );
       } catch (error) {
         console.error(error);
@@ -451,8 +451,8 @@ export default function CommunityReadingPanel() {
       return (
         <>
           <div className="community-banner">
-            Community posts are anonymous and go through
-            moderation before entering the public feed.
+            Bài viết trong cộng đồng là ẩn danh và phải qua
+            kiểm duyệt trước khi xuất hiện trong phòng công khai.
           </div>
           <CommunityPostComposer
             onSubmit={
@@ -506,10 +506,10 @@ export default function CommunityReadingPanel() {
       <aside className="community-panel__sidebar">
         <div className="community-panel__brand">
           <div className="community-panel__eyebrow">
-            Community Reading Room
+            Phòng Trải Bài Cộng Đồng
           </div>
           <div className="community-panel__title">
-            Shared insight, softly moderated
+            Sẻ chia góc nhìn, kiểm duyệt nhẹ nhàng
           </div>
         </div>
 
@@ -576,7 +576,7 @@ export default function CommunityReadingPanel() {
             type="button"
             className="community-panel__refresh"
             onClick={handleRefresh}
-            title="Refresh community"
+            title="Làm mới cộng đồng"
             disabled={isLoadingFeed}
           >
             <RefreshCw

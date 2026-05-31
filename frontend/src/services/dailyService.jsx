@@ -291,8 +291,11 @@ const request = async (endpoint, options = {}, retryCount = REQUEST_RETRY_COUNT)
  * @returns {boolean} True if error is retryable
  */
 const isRetryableError = (error) => {
+  // axios đặt mã HTTP ở error.response.status (không phải error.statusCode).
+  const status = error?.response?.status;
+
   // Don't retry on auth errors or validation errors
-  if (error.statusCode >= 400 && error.statusCode < 500) {
+  if (status >= 400 && status < 500) {
     return false;
   }
 
@@ -302,8 +305,7 @@ const isRetryableError = (error) => {
     message.includes("Failed to fetch") ||
     message.includes("timeout") ||
     message.includes("abort") ||
-    (error.statusCode && error.statusCode >= 500) ||
-    (error.response?.status && error.response.status >= 500)
+    (status && status >= 500)
   );
 };
 
@@ -411,7 +413,7 @@ export const reflectDailyCard = async (
 
     if (!cleanReflection && !cleanMoodPost) {
       throw new Error(
-        "At least one of reflection or mood_post is required"
+        "Cần nhập chiêm nghiệm hoặc chọn tâm trạng"
       );
     }
 
@@ -603,7 +605,7 @@ export const canDrawDaily = async () => {
     return result?.item || null;
   } catch (error) {
     // If error is 404 or similar, card doesn't exist yet
-    if (error.statusCode === 404) {
+    if (error?.response?.status === 404) {
       return null;
     }
     logError("canDrawDaily", error);

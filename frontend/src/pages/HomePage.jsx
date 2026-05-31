@@ -78,7 +78,7 @@ import "./HomePage.css";
 
 const READING_SESSION_CARD = {
   image: tarotReading,
-  text: "Tarot Reading",
+  text: "Trải Bài",
   mode: "reading",
 };
 
@@ -142,7 +142,7 @@ export default function HomePage() {
   const username =
     userProfile?.display_name ||
     userProfile?.username ||
-    "User";
+    "Bạn";
 
   // Reading History
   const [showHistory, setShowHistory] = useState(false);
@@ -203,11 +203,6 @@ export default function HomePage() {
           const profile =
             await getCurrentUser();
 
-          console.log(
-            "current user profile:",
-            profile
-          );
-
           setUserProfile(
             profile
           );
@@ -266,7 +261,7 @@ export default function HomePage() {
 
           setHasTodayDailyReading(true);
           setDailyInfoNote(
-            "You have already received your daily reading today."
+            "Hôm nay bạn đã nhận lá bài hằng ngày rồi."
           );
 
           setMessages([
@@ -275,13 +270,13 @@ export default function HomePage() {
               content:
                 dailyItem.question ||
                 dailyItem.mood_pre ||
-                "Daily Tarot",
+                "Tarot Hằng Ngày",
             },
             {
               role: "assistant",
               content:
                 dailyItem.affirmation ||
-                "Your daily card has arrived.",
+                "Lá bài hôm nay của bạn đã đến.",
             },
           ]);
 
@@ -344,7 +339,7 @@ export default function HomePage() {
       });
 
       toast.success(
-        "Reflection saved"
+        "Đã lưu chiêm nghiệm"
       );
 
       setReflectionHistoryVersion(
@@ -357,7 +352,7 @@ export default function HomePage() {
 
       toast.error(
         error.message ||
-        "Failed to save reflection"
+        "Lưu chiêm nghiệm thất bại"
       );
     }
 };
@@ -369,7 +364,7 @@ export default function HomePage() {
   }) => {
     if (hasTodayDailyReading) {
       toast.error(
-        "You have already received your daily reading today."
+        "Hôm nay bạn đã nhận lá bài hằng ngày rồi."
       );
       return;
     }
@@ -384,18 +379,13 @@ export default function HomePage() {
           question,
         });
 
-      console.log(
-        "daily response",
-        response
-      );
-
       const dailyItem =
         response?.item;
 
       if (!dailyItem) {
 
         toast.error(
-          "No daily card returned"
+          "Không nhận được lá bài hằng ngày"
         );
 
         return;
@@ -415,7 +405,7 @@ export default function HomePage() {
 
           content:
             dailyItem?.affirmation
-            || "Your daily card has arrived.",
+            || "Lá bài hôm nay của bạn đã đến.",
         },
       ]);
 
@@ -430,7 +420,7 @@ export default function HomePage() {
         true
       );
       setDailyInfoNote(
-        "You have already received your daily reading today."
+        "Hôm nay bạn đã nhận lá bài hằng ngày rồi."
       );
 
       setShowSpreadGrid(false);
@@ -440,8 +430,8 @@ export default function HomePage() {
 
       toast.success(
         response.alreadyDrawn
-          ? "Today's card already exists"
-          : "Daily card drawn"
+          ? "Lá bài hôm nay đã tồn tại"
+          : "Đã rút lá bài hằng ngày"
       );
 
     } catch (error) {
@@ -450,7 +440,7 @@ export default function HomePage() {
 
       toast.error(
         error.message ||
-        "Failed to draw daily card"
+        "Rút lá bài hằng ngày thất bại"
       );
 
     } finally {
@@ -474,7 +464,7 @@ export default function HomePage() {
         setIsToastVisible(true);
 
         toast.error(
-          "This feature is currently under development.",
+          "Tính năng này đang được phát triển.",
           {
             duration: 1800,
           }
@@ -569,7 +559,7 @@ const handleChatSubmitDraft =
 
           title:
             draft.question ||
-            "Untitled Reading",
+            "Trải bài chưa đặt tên",
 
           mode:
             selectedCard.mode,
@@ -590,7 +580,7 @@ const handleChatSubmitDraft =
         );
 
         toast.success(
-          "Reading complete"
+          "Đã hoàn tất trải bài"
         );
 
       } catch (error) {
@@ -598,7 +588,7 @@ const handleChatSubmitDraft =
         console.error(error);
 
         toast.error(
-          "Something went wrong"
+          "Đã có lỗi xảy ra"
         );
 
       } finally {
@@ -621,7 +611,7 @@ const handleChatSubmitDraft =
 
     if (selectedCards.length < requiredCards) {
       toast.error(
-        `Please select ${requiredCards} card${requiredCards > 1 ? "s" : ""} before continuing.`
+        `Vui lòng chọn ${requiredCards} lá bài trước khi tiếp tục.`
       );
       return;
     }
@@ -636,14 +626,12 @@ const handleChatSubmitDraft =
           selectedCards,
         });
 
-        console.log("daily response", response);
-
         const dailyItem =
           response?.item;
 
         if (!dailyItem) {
           toast.error(
-            "No daily card returned"
+            "Không nhận được lá bài hằng ngày"
           );
           return;
         }
@@ -659,7 +647,7 @@ const handleChatSubmitDraft =
           role: "assistant",
           content:
             dailyItem.affirmation ||
-            "Your daily card has arrived.",
+            "Lá bài hôm nay của bạn đã đến.",
         },
       ]);
 
@@ -674,7 +662,7 @@ const handleChatSubmitDraft =
         true
       );
       setDailyInfoNote(
-        "You have already received your daily reading today."
+        "Hôm nay bạn đã nhận lá bài hằng ngày rồi."
       );
 
       setCurrentSession(null);
@@ -683,8 +671,8 @@ const handleChatSubmitDraft =
 
         toast.success(
           response.alreadyDrawn
-            ? "Today's card is already drawn"
-            : "Daily card drawn"
+            ? "Hôm nay đã rút lá bài rồi"
+            : "Đã rút lá bài hằng ngày"
         );
       } else {
         response = await askTarotQuestion({
@@ -693,8 +681,6 @@ const handleChatSubmitDraft =
           audio: pendingInput.audio,
           selectedCards,
         });
-
-        console.log("tarot response", response);
 
         setMessages([
         {
@@ -716,7 +702,7 @@ const handleChatSubmitDraft =
 
       setShowResult(true);
 
-        toast.success("Reading complete");
+        toast.success("Đã hoàn tất trải bài");
       }
 
       const sessionMeta = {
@@ -725,7 +711,7 @@ const handleChatSubmitDraft =
 
         title:
           pendingInput.question ||
-          "Untitled Reading",
+          "Trải bài chưa đặt tên",
 
         mode:
           selectedCard.mode,
@@ -752,7 +738,7 @@ const handleChatSubmitDraft =
 
       toast.error(
         error.message ||
-          "Something went wrong"
+          "Đã có lỗi xảy ra"
       );
     } finally {
       setIsBackendLoading(false);
@@ -815,7 +801,7 @@ const handleChatSubmitDraft =
           console.error(error);
 
           toast.error(
-            `Failed to load session: ${getApiErrorMessage(error)}`
+            `Không tải được phiên: ${getApiErrorMessage(error)}`
           );
 
         } finally {
@@ -826,18 +812,18 @@ const handleChatSubmitDraft =
 
   const items = [
     {
-      label: "Readings",
+      label: "Xem Bài",
       bgColor: "rgba(25, 18, 40, 0.82)",
       textColor: "#ffffff",
       links: [
         {
-          label: "Reflection History",
+          label: "Lịch sử chiêm nghiệm",
           onClick: () =>
             setShowReflectionHistory(
               true
             ),
         },
-        { label: "Reading History", 
+        { label: "Lịch sử trải bài",
           onClick: () => setShowHistory(true) },
       ],
     },
@@ -848,11 +834,11 @@ const handleChatSubmitDraft =
       textColor: "#ffffff",
       links: [
         {
-          label: "What is Tarot?",
+          label: "Tarot là gì?",
           onClick: () =>
             setActiveMarkdownDoc({
               title:
-                "WHAT IS TAROT?",
+                "TAROT LÀ GÌ?",
               content:
                 whatIsTarotContent,
             }),
@@ -871,12 +857,12 @@ const handleChatSubmitDraft =
     },
 
     {
-      label: "Contact",
+      label: "Liên hệ",
       bgColor: "rgba(30, 16, 50, 0.82)",
       textColor: "#ffffff",
       links: [
-        { label: "More Info",
-          onClick: () => { setShowContact(true); 
+        { label: "Thông tin thêm",
+          onClick: () => { setShowContact(true);
 
           } 
         },
@@ -901,7 +887,7 @@ const handleChatSubmitDraft =
         logo=""
         items={items}
 
-        buttonLabel={username || "User"}
+        buttonLabel={username || "Bạn"}
 
         onButtonClick={() => {
           setShowProfile(true);

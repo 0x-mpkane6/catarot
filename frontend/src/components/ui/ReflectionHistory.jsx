@@ -2,12 +2,33 @@ import { useEffect, useMemo, useState } from "react";
 // eslint-disable-next-line no-unused-vars -- dùng dưới dạng <motion.div>
 import { motion, AnimatePresence } from "motion/react";
 
+const MOOD_LABELS = {
+  calm: "Bình thản",
+  anxious: "Lo âu",
+  hopeful: "Hy vọng",
+  tired: "Mệt mỏi",
+  grateful: "Biết ơn",
+  uncertain: "Bất định",
+  joyful: "Vui vẻ",
+  lonely: "Cô đơn",
+  focused: "Tập trung",
+  sad: "Buồn",
+  neutral: "Trung tính",
+  angry: "Giận dữ",
+  inspired: "Cảm hứng",
+};
+
+const ORIENTATION_LABELS = {
+  upright: "Xuôi",
+  reversed: "Ngược",
+};
+
 const formatDate = (value) => {
-  if (!value) return "Unknown date";
+  if (!value) return "Không rõ ngày";
 
   try {
     return new Date(value).toLocaleDateString(
-      "en-US",
+      "vi-VN",
       {
         weekday: "short",
         month: "short",
@@ -30,10 +51,10 @@ const getPreviewText = (item) => {
   }
 
   if (item?.mood_post) {
-    return `Mood after reading: ${item.mood_post}`;
+    return `Tâm trạng sau khi trải bài: ${MOOD_LABELS[item.mood_post] || item.mood_post}`;
   }
 
-  return "No reflection saved.";
+  return "Chưa lưu chiêm nghiệm nào.";
 };
 
 export default function ReflectionHistory({
@@ -85,11 +106,11 @@ export default function ReflectionHistory({
   const headerText = useMemo(
     () =>
       isLoading
-        ? "Loading reflections..."
-        : `${items.length} reflection${
+        ? "Đang tải chiêm nghiệm..."
+        : `${items.length} chiêm nghiệm${
             items.length === 1
               ? ""
-              : "s"
+              : ""
           }`,
     [isLoading, items.length]
   );
@@ -145,7 +166,7 @@ export default function ReflectionHistory({
             marginBottom: "8px",
           }}
         >
-          Reflection History
+          Lịch sử chiêm nghiệm
         </div>
 
         <div
@@ -247,7 +268,7 @@ export default function ReflectionHistory({
                       letterSpacing: "0.08em",
                     }}
                   >
-                    {item.orientation}
+                    {ORIENTATION_LABELS[item.orientation] || item.orientation}
                   </div>
 
                   {item.mood_post && (
@@ -267,7 +288,7 @@ export default function ReflectionHistory({
                           "capitalize",
                       }}
                     >
-                      {item.mood_post}
+                      {MOOD_LABELS[item.mood_post] || item.mood_post}
                     </div>
                   )}
 
@@ -298,9 +319,9 @@ export default function ReflectionHistory({
                   lineHeight: 1.7,
                 }}
               >
-                No reflections yet.
+                Chưa có chiêm nghiệm nào.
                 <br />
-                Save one from your Daily Tarot result to see it here.
+                Hãy lưu một chiêm nghiệm từ kết quả Tarot Hằng Ngày của bạn để xem tại đây.
               </div>
             )}
         </div>

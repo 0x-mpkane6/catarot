@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 
 const formatDateTime = (value) => {
-  if (!value) return "Unknown time";
+  if (!value) return "Không rõ thời gian";
 
   try {
     return new Date(value).toLocaleString();
@@ -19,7 +19,17 @@ const formatDateTime = (value) => {
 const getCardLabel = (card) =>
   card?.name ||
   card?.label ||
-  "Unnamed card";
+  "Lá bài chưa đặt tên";
+
+// Nhãn tiếng Việt cho trạng thái hộp (giữ nguyên key tiếng Anh cho className/logic).
+const STATUS_LABELS = {
+  sealed: "Đã niêm phong",
+  revealed: "Đã hé lộ",
+  opened: "Đã mở",
+  verified: "Đã xác minh",
+};
+
+const statusLabel = (status) => STATUS_LABELS[status] || status;
 
 export default function TimeCapsuleCard({
   capsule,
@@ -54,7 +64,7 @@ export default function TimeCapsuleCard({
             {capsule.title}
           </div>
           <div className="visions-card__meta">
-            Reveal at{" "}
+            Hé lộ vào{" "}
             {formatDateTime(
               capsule.reveal_at
             )}
@@ -64,14 +74,14 @@ export default function TimeCapsuleCard({
         <div
           className={`visions-card__status is-${capsule.status}`}
         >
-          {capsule.status}
+          {statusLabel(capsule.status)}
         </div>
       </div>
 
       <div className="visions-card__grid">
         <div className="visions-card__cell">
           <div className="visions-card__cell-label">
-            Reveal Date
+            Ngày hé lộ
           </div>
           <div className="visions-card__cell-value">
             {formatDateTime(
@@ -82,35 +92,35 @@ export default function TimeCapsuleCard({
 
         <div className="visions-card__cell">
           <div className="visions-card__cell-label">
-            Opened
+            Đã mở
           </div>
           <div className="visions-card__cell-value">
             {capsule.opened_at
               ? formatDateTime(
                   capsule.opened_at
                 )
-              : "Not opened yet"}
+              : "Chưa mở"}
           </div>
         </div>
       </div>
 
       <div className="visions-card__section-title">
-        Capsule State
+        Trạng thái hộp
       </div>
 
       <div className="visions-card__body">
         {isSealed &&
         !capsule.is_unlocked
           ? capsule.seal_message ||
-            "This reading is still sealed."
+            "Trải bài này vẫn đang được niêm phong."
           : capsule.question_text ||
-            "Unlocked capsule."}
+            "Hộp đã được mở khóa."}
       </div>
 
       {!isSealed && (
         <>
           <div className="visions-card__section-title">
-            Prediction
+            Dự đoán
           </div>
           <div className="visions-card__body">
             {capsule.prediction_text}
@@ -163,8 +173,8 @@ export default function TimeCapsuleCard({
           )}
           <span>
             {capsule.is_unlocked
-              ? "Open Capsule"
-              : "Still Sealed"}
+              ? "Mở hộp"
+              : "Vẫn niêm phong"}
           </span>
         </button>
       </div>
@@ -172,7 +182,7 @@ export default function TimeCapsuleCard({
       {capsule.is_unlocked && (
         <div className="visions-inline-form">
           <div className="visions-card__section-title">
-            Accuracy Verdict
+            Đánh giá độ chính xác
           </div>
 
           <select
@@ -209,7 +219,7 @@ export default function TimeCapsuleCard({
                 event.target.value
               )
             }
-            placeholder="How accurate did this feel once reality caught up?"
+            placeholder="Khi thực tế xảy ra, bạn thấy điều này chính xác đến đâu?"
             style={{
               minHeight: "94px",
             }}
@@ -244,15 +254,15 @@ export default function TimeCapsuleCard({
               <span>
                 {capsule.status ===
                 "verified"
-                  ? "Verified"
-                  : "Save Verdict"}
+                  ? "Đã xác minh"
+                  : "Lưu đánh giá"}
               </span>
             </button>
 
             {capsule.accuracy_score !=
               null && (
               <div className="visions-card__meta">
-                Saved score:{" "}
+                Điểm đã lưu:{" "}
                 {
                   capsule.accuracy_score
                 }
@@ -266,7 +276,7 @@ export default function TimeCapsuleCard({
       {capsule.accuracy_note && (
         <>
           <div className="visions-card__section-title">
-            Saved Note
+            Ghi chú đã lưu
           </div>
           <div className="visions-card__body">
             <Sparkles

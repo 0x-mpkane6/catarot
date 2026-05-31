@@ -1,7 +1,7 @@
 import { MoonStar } from "lucide-react";
 
 const formatDateTime = (value) => {
-  if (!value) return "Unknown time";
+  if (!value) return "Không rõ thời gian";
 
   try {
     return new Date(value).toLocaleString();
@@ -18,7 +18,7 @@ export default function DreamEntryCard({
       <div className="visions-card__header">
         <div>
           <div className="visions-card__title">
-            Dream Entry #{dream.id}
+            Bản ghi giấc mơ #{dream.id}
           </div>
           <div className="visions-card__meta">
             {formatDateTime(
@@ -28,14 +28,14 @@ export default function DreamEntryCard({
         </div>
 
         <div className="visions-card__status is-revealed">
-          decoded
+          đã giải mã
         </div>
       </div>
 
       {dream.raw_text && (
         <>
           <div className="visions-card__section-title">
-            Raw Dream
+            Giấc mơ gốc
           </div>
           <div className="visions-card__body">
             {dream.raw_text}
@@ -46,7 +46,7 @@ export default function DreamEntryCard({
       {dream.transcript && (
         <>
           <div className="visions-card__section-title">
-            Transcript
+            Bản chép lời
           </div>
           <div className="visions-card__body">
             {dream.transcript}
@@ -58,7 +58,7 @@ export default function DreamEntryCard({
         0 && (
         <>
           <div className="visions-card__section-title">
-            Symbols
+            Biểu tượng
           </div>
           <div className="visions-card__chips">
             {dream.symbols.map(
@@ -79,7 +79,7 @@ export default function DreamEntryCard({
         0 && (
         <>
           <div className="visions-card__section-title">
-            Arcana Mapping
+            Bản đồ ẩn tinh
           </div>
           <div className="visions-card__grid">
             {dream.mapped_arcana.map(
@@ -93,7 +93,7 @@ export default function DreamEntryCard({
                 >
                   <div className="visions-card__cell-label">
                     {row.symbol ||
-                      "Symbol"}
+                      "Biểu tượng"}
                   </div>
                   <div className="visions-card__cell-value">
                     {Array.isArray(
@@ -104,7 +104,7 @@ export default function DreamEntryCard({
                       ? row.arcana_candidates.join(
                           ", "
                         )
-                      : "No mapped arcana"}
+                      : "Không có ẩn tinh tương ứng"}
                   </div>
                 </div>
               )
@@ -117,7 +117,7 @@ export default function DreamEntryCard({
         0 && (
         <>
           <div className="visions-card__section-title">
-            Recent Reading Matches
+            Trải bài gần đây trùng khớp
           </div>
           <div className="visions-card__grid">
             {dream.matches.map(
@@ -150,7 +150,7 @@ export default function DreamEntryCard({
         0 && (
         <>
           <div className="visions-card__section-title">
-            Notes
+            Ghi chú
           </div>
           <div className="visions-card__body">
             <MoonStar

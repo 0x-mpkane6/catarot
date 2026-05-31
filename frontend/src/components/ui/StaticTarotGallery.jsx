@@ -9,27 +9,27 @@ import communityRoom from "../../assets/images/homepage/the-world.png";
 const TAROT_CARDS = [
   {
     image: dailyTarot,
-    text: "Daily Tarot",
+    text: "Tarot Hằng Ngày",
     mode: "daily",
   },
   {
     image: timeCapsule,
-    text: "Visions Vault",
+    text: "Kho Tầm Nhìn",
     mode: "visions",
   },
   {
     image: tarotReading,
-    text: "Tarot Reading",
+    text: "Trải Bài",
     mode: "reading",
   },
   {
     image: duoReading,
-    text: "Duo Reading",
+    text: "Trải Bài Đôi",
     mode: "duo",
   },
   {
     image: communityRoom,
-    text: "Community Room",
+    text: "Phòng Cộng Đồng",
     mode: "community",
   },
 ];

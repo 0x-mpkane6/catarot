@@ -15,7 +15,7 @@ export default function MagicCat({
 }) {
 
   const [message] =
-    useState("Welcome back.");
+    useState("Chào mừng bạn trở lại.");
 
   const [visible, setVisible] =
     useState(true);
@@ -65,7 +65,7 @@ export default function MagicCat({
 
       <img
         src={magicCat}
-        alt="Magic Cat"
+        alt="Mèo Phép Thuật"
         className="magic-cat-image"
       />
     </div>

@@ -26,7 +26,7 @@ const CardNav = ({
   buttonBgColor,
   buttonTextColor,
 
-  buttonLabel = "Get Started",
+  buttonLabel = "Bắt đầu",
   onButtonClick,
 }) => {
 
@@ -322,8 +322,8 @@ const CardNav = ({
             role="button"
             aria-label={
               isExpanded
-                ? "Close menu"
-                : "Open menu"
+                ? "Đóng menu"
+                : "Mở menu"
             }
             tabIndex={0}
             style={{

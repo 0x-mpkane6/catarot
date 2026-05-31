@@ -34,14 +34,15 @@ https://<username>-<space-name>.hf.space/docs
 
 **Secrets** (KHÔNG bao giờ log/expose):
 - `GEMINI_API_KEY` — lấy tại https://aistudio.google.com/apikey
-- `JWT_SECRET_KEY` — sinh: `python -c "import secrets; print(secrets.token_urlsafe(48))"`
-- `GOOGLE_CLIENT_ID` — optional, cho Google login
+- `JWT_SECRET_KEY` — BẮT BUỘC khi APP_ENV=production (>=32 ký tự). Sinh: `python -c "import secrets; print(secrets.token_urlsafe(48))"`
+- `GOOGLE_CLIENT_ID` — cho Google login. PHẢI khớp `VITE_GOOGLE_CLIENT_ID` ở frontend (dùng làm audience khi verify id_token).
+- `DATABASE_URL` — KHUYẾN NGHỊ cho production (xem mục Lưu ý về persistence). VD Neon: `postgresql+psycopg2://USER:PASS@HOST/DB?sslmode=require`
 
 **Variables** (config public):
 - `APP_ENV=production`
 - `OLLAMA_ENABLED=false`
 - `EXPOSE_RESET_TOKEN_IN_RESPONSE=false`
-- `API_ALLOWED_ORIGINS=https://<your-vercel-domain>.vercel.app`
+- `API_ALLOWED_ORIGINS=https://throbbing-bar-16f0.trangtuananh.workers.dev` (origin frontend đã deploy; phân tách bằng dấu phẩy nếu có nhiều domain, KHÔNG dấu `/` ở cuối)
 - `GEMINI_MODEL=gemini-2.5-flash` (optional, mặc định flash)
 - `ASK_RATE_LIMIT_MAX=20`
 - `ASK_RATE_LIMIT_WINDOW=60`
@@ -57,5 +58,8 @@ GET /api/health
 
 - Lần build đầu mất 10-15 phút (tải vision/RAG/ASR models)
 - Free tier 16GB RAM + 2 vCPU đủ cho demo
-- DB SQLite lưu trong `/app/data/app.db` — Space sẽ persist qua restart
+- DB mặc định là SQLite trong `/app/data/app.db` — **KHÔNG persist** qua restart/rebuild trên free tier
+  (mất toàn bộ user/lịch sử). Production: đặt `DATABASE_URL` trỏ tới Postgres (Neon free tier),
+  hoặc gắn HF persistent storage vào `/app/data`. Code tự nhận diện Postgres (pool_pre_ping).
+- Google login cần lib `google-auth` (đã có trong requirements.txt) → rebuild Space sau khi cập nhật requirements.
 - Nếu cold-start chậm, đó là Space đang load model vào RAM lần đầu

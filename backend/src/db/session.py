@@ -47,15 +47,19 @@ def get_engine() -> Engine:
     database_url = _resolve_sqlite_url(database_url)
 
     connect_args: dict[str, object] = {}
+    engine_kwargs: dict[str, object] = {
+        "future": True,
+        "echo": _as_bool(os.getenv("DB_ECHO"), default=False),
+    }
     if database_url.startswith("sqlite"):
         connect_args["check_same_thread"] = False
+    else:
+        # Postgres (Neon...): kiểm tra kết nối trước khi dùng + tái tạo định kỳ
+        # để tránh lỗi "SSL connection has been closed" khi Neon đóng kết nối nhàn rỗi.
+        engine_kwargs["pool_pre_ping"] = True
+        engine_kwargs["pool_recycle"] = 300
 
-    engine = create_engine(
-        database_url,
-        connect_args=connect_args,
-        future=True,
-        echo=_as_bool(os.getenv("DB_ECHO"), default=False),
-    )
+    engine = create_engine(database_url, connect_args=connect_args, **engine_kwargs)
 
     if database_url.startswith("sqlite"):
         @event.listens_for(engine, "connect")

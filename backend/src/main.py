@@ -65,6 +65,7 @@ from src.auth.deps import (
     get_websocket_user,
     resolve_optional_user_id,
 )
+from src.auth.security import _jwt_secret
 from src.auth.service import (
     ProfileUpdatePayload,
     authenticate_user_by_identifier,
@@ -118,6 +119,17 @@ def _normalize_rating_reminder_days(value: Any) -> int:
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     initialize_database_if_needed(seed_reference_data=True)
+    # Fail-fast cấu hình JWT: ở production (APP_ENV=production), JWT_SECRET_KEY thiếu/yếu/<32
+    # ký tự sẽ CHẶN khởi động (RuntimeError) — tránh việc mọi endpoint auth âm thầm trả 500
+    # lúc chạy. Ở dev, _jwt_secret() trả placeholder nên chỉ cảnh báo ở dưới.
+    try:
+        _jwt_secret()
+    except RuntimeError:
+        LOGGER.error(
+            "Khởi động bị hủy: JWT_SECRET_KEY chưa cấu hình đúng cho production. "
+            "Sinh khóa mạnh: python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+        )
+        raise
     if (os.getenv("JWT_SECRET_KEY", "") or "").strip().startswith("change_me"):
         LOGGER.warning(
             "JWT_SECRET_KEY is using the default placeholder. Set a strong secret in production."
@@ -512,7 +524,7 @@ def _enforce_ask_rate_limit(request: Request, scope: str = "ask") -> None:
 
 
 @app.post("/api/ask")
-async def ask(req: QuestionRequest, request: Request):
+def ask(req: QuestionRequest, request: Request):
     _enforce_ask_rate_limit(request, scope="ask")
     clean_spread = _normalize_spread_type(req.spread_type)
     reminder_days = _normalize_rating_reminder_days(req.rating_reminder_days)
@@ -539,13 +551,36 @@ async def ask(req: QuestionRequest, request: Request):
 # Upload file endpoint
 # =============================
 
+# Giới hạn upload (bảo mật): chỉ nhận ảnh/âm thanh hợp lệ, chặn tệp quá lớn.
+ALLOWED_UPLOAD_EXTENSIONS = {
+    ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp",
+    ".wav", ".mp3", ".ogg", ".m4a", ".webm", ".flac",
+}
+MAX_UPLOAD_BYTES = 25 * 1024 * 1024  # 25 MB
+
+
 def _save_upload(upload_dir: Path, file: UploadFile) -> str:
     original_name = file.filename or ""
-    ext = Path(original_name).suffix
-    unique_name = f"{uuid.uuid4().hex}{ext}"
-    save_path = upload_dir / unique_name
+    ext = Path(original_name).suffix.lower()
+    if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Định dạng tệp không được hỗ trợ: {ext or '(trống)'}",
+        )
+
+    save_path = upload_dir / f"{uuid.uuid4().hex}{ext}"
+    size = 0
     with save_path.open("wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        while True:
+            chunk = file.file.read(1024 * 1024)
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > MAX_UPLOAD_BYTES:
+                buffer.close()
+                save_path.unlink(missing_ok=True)
+                raise HTTPException(status_code=413, detail="Tệp quá lớn (tối đa 25MB).")
+            buffer.write(chunk)
     return str(save_path)
 
 
@@ -610,7 +645,7 @@ def _run_pipeline_from_uploads(
 
 
 @app.post("/api/ask_with_media")
-async def ask_with_media(
+def ask_with_media(
     request: Request,
     question: str = Form(...),
     spread_type: str = Form("three"),
@@ -633,7 +668,7 @@ async def ask_with_media(
 
 
 @app.post("/api/ask_with_image")
-async def ask_with_image(
+def ask_with_image(
     request: Request,
     question: str = Form(...),
     spread_type: str = Form("three"),
