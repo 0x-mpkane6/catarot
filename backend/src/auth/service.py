@@ -24,11 +24,21 @@ class AuthUser:
     bio: str | None = None
 
 
+def _admin_emails() -> set[str]:
+    """Email được cấp quyền admin qua biến môi trường ADMIN_EMAILS (phân tách dấu phẩy)."""
+    raw = os.getenv("ADMIN_EMAILS", "") or ""
+    return {e.strip().lower() for e in raw.split(",") if e.strip()}
+
+
 def _to_auth_user(user: User) -> AuthUser:
+    # Bootstrap admin: email nằm trong ADMIN_EMAILS luôn được coi là admin. Tính lại mỗi lần
+    # dựng user nên KHÔNG cần sửa DB và vẫn đúng kể cả khi DB bị reset. Đăng ký thường vẫn
+    # chỉ là "member" (không tự phong admin được).
+    role = "admin" if (user.email or "").strip().lower() in _admin_emails() else user.role
     return AuthUser(
         id=user.id,
         email=user.email,
-        role=user.role,
+        role=role,
         username=user.username,
         display_name=user.display_name,
         avatar_url=user.avatar_url,
