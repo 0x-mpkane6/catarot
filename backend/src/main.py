@@ -15,6 +15,11 @@ from pydantic import BaseModel, Field
 
 from src.advanced.affirmations import generate_affirmation
 from src.advanced.analytics_scheduler import start_analytics_scheduler, stop_analytics_scheduler
+from src.advanced.community_automod import (
+    auto_moderate_pending_posts,
+    start_automod_scheduler,
+    stop_automod_scheduler,
+)
 from src.advanced.archetype_profiler import get_user_archetype_profile
 from src.advanced.community_room import (
     add_interpretation,
@@ -136,9 +141,11 @@ async def lifespan(_app: FastAPI):
         )
     start_rating_scheduler()
     start_analytics_scheduler()
+    start_automod_scheduler()  # bot tự kiểm duyệt cộng đồng (opt-in qua COMMUNITY_AUTOMOD_ENABLED)
     try:
         yield
     finally:
+        stop_automod_scheduler()
         stop_analytics_scheduler()
         stop_rating_scheduler()
 
@@ -1065,6 +1072,25 @@ async def admin_reject_post(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/admin/community/automod/run")
+async def admin_automod_run(
+    limit: int = Query(default=20, ge=1, le=200),
+    dry_run: bool = Query(default=False),
+    _admin: CurrentUser = Depends(get_current_admin),
+):
+    """Chạy bot tự kiểm duyệt trên hàng đợi pending NGAY. dry_run=true để xem trước, không áp dụng."""
+    return auto_moderate_pending_posts(limit=limit, dry_run=dry_run)
+
+
+@app.get("/api/admin/community/automod/preview")
+async def admin_automod_preview(
+    limit: int = Query(default=20, ge=1, le=200),
+    _admin: CurrentUser = Depends(get_current_admin),
+):
+    """Xem trước quyết định của bot mà KHÔNG thay đổi gì (dry-run)."""
+    return auto_moderate_pending_posts(limit=limit, dry_run=True)
 
 
 @app.post("/api/dreams")
