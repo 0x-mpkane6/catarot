@@ -6,18 +6,15 @@ import { useLocation } from "react-router-dom";
 import { subscribeScene } from "./sceneTransition";
 
 /**
- * "Cosmic Vortex" — chuyển cảnh dạng XOÁY.
+ * "Smoke Swirl" — chuyển cảnh dạng KHÓI XOÁY (ảo).
  *
- * Một xoáy thiên hà (các cánh xoắn quay ngược chiều + cuộn vào tâm) bung ra che kín
- * màn hình, giữ một nhịp, rồi cuộn co về một điểm để lộ cảnh mới. Phát cho CẢ:
- *   - đổi route (theo useLocation), VÀ
- *   - chuyển cảnh trong trang (bấm danh mục / chọn lá bài) qua playScene({onCover}).
+ * Lấy cảm hứng từ hiệu ứng con trỏ (SplashCursor): những cụm khói tím lỏng tỏa ra
+ * từ tâm, cuộn xoáy DẦN RA theo 2 luồng quay ngược chiều, mờ ảo (blur + blend screen),
+ * giữ một nhịp rồi tan để lộ cảnh mới. Phát cho CẢ đổi route VÀ bấm danh mục trong trang
+ * (qua playScene({onCover})). onCover() chạy đúng lúc khói che kín → đổi nội dung khi
+ * đang bị che. GPU-only; overlay pointer-events:none.
  *
- * onCover() được gọi đúng lúc xoáy che kín → đổi nội dung khi đang bị che, người dùng
- * chỉ thấy cảnh mới khi xoáy tan. GPU-only (transform/opacity/clip-path/filter),
- * overlay pointer-events:none nên không đụng position:fixed của trang.
- *
- * prefers-reduced-motion: KHÔNG vẽ xoáy, nhưng vẫn gọi onCover ngay để cảnh vẫn đổi.
+ * prefers-reduced-motion: KHÔNG vẽ khói nhưng vẫn gọi onCover ngay để cảnh vẫn đổi.
  */
 export default function CosmicVeil() {
   const location = useLocation();
@@ -31,8 +28,8 @@ export default function CosmicVeil() {
   const seq = useRef(0);
   const [active, setActive] = useState(null); // { token, onCover }
 
-  const DUR = 1.4;
-  const COVER_PEAK_MS = 520; // thời điểm xoáy che kín → swap nội dung
+  const DUR = 1.5;
+  const COVER_PEAK_MS = 560; // thời điểm khói che kín → swap nội dung
 
   const trigger = (onCover) => {
     if (reduceRef.current) {
@@ -43,7 +40,6 @@ export default function CosmicVeil() {
     setActive({ token: `t${seq.current}`, onCover: typeof onCover === "function" ? onCover : null });
   };
 
-  // Đổi route
   useEffect(() => {
     if (isFirst.current) {
       isFirst.current = false;
@@ -52,10 +48,8 @@ export default function CosmicVeil() {
     trigger(null);
   }, [location.pathname]);
 
-  // Chuyển cảnh trong trang (imperative)
   useEffect(() => subscribeScene((opts) => trigger(opts?.onCover)), []);
 
-  // Swap nội dung đúng lúc xoáy che kín
   useEffect(() => {
     if (!active) return undefined;
     const t = setTimeout(() => {
@@ -66,13 +60,20 @@ export default function CosmicVeil() {
 
   if (reduce) return null;
 
+  // Một luồng khói = nhiều cụm puff lệch tâm, quay + nở dần ra.
+  const swarm = (dir) => ({
+    initial: { rotate: 0, scale: 0.28, opacity: 0 },
+    animate: { rotate: dir * 240, scale: [0.28, 1.15, 1.95], opacity: [0, 0.95, 0] },
+    transition: { duration: DUR, times: [0, 0.5, 1], ease: [0.33, 0, 0.2, 1] },
+  });
+
   return (
     <AnimatePresence>
       {active && (
         <motion.div
           key={active.token}
           aria-hidden="true"
-          className="vx"
+          className="smk"
           initial={{ clipPath: "circle(0% at 50% 50%)" }}
           animate={{
             clipPath: [
@@ -82,40 +83,38 @@ export default function CosmicVeil() {
               "circle(0% at 50% 50%)",
             ],
           }}
-          transition={{ duration: DUR, times: [0, 0.3, 0.62, 1], ease: [0.65, 0, 0.35, 1] }}
+          transition={{ duration: DUR, times: [0, 0.32, 0.62, 1], ease: [0.6, 0, 0.4, 1] }}
           onAnimationComplete={() => setActive(null)}
         >
-          {/* Cánh xoắn lớn — quay thuận, cuộn vào tâm */}
+          <motion.div className="smk-swarm" {...swarm(1)}>
+            <span className="smk-puff p1" />
+            <span className="smk-puff p2" />
+            <span className="smk-puff p3" />
+          </motion.div>
+
+          <motion.div className="smk-swarm" {...swarm(-1)}>
+            <span className="smk-puff p4" />
+            <span className="smk-puff p5" />
+            <span className="smk-puff p6" />
+          </motion.div>
+
+          {/* Lõi sáng mềm như nguồn khói */}
           <motion.div
-            className="vx-spiral vx-spiral-a"
-            initial={{ rotate: 0, scale: 0.35, opacity: 0 }}
-            animate={{ rotate: 430, scale: [0.35, 1.5, 0.3], opacity: [0, 1, 0] }}
-            transition={{ duration: DUR, times: [0, 0.5, 1], ease: "easeInOut" }}
-          />
-          {/* Cánh xoắn nhỏ — quay ngược, tạo churn */}
-          <motion.div
-            className="vx-spiral vx-spiral-b"
-            initial={{ rotate: 0, scale: 0.3, opacity: 0 }}
-            animate={{ rotate: -620, scale: [0.3, 1.15, 0.2], opacity: [0, 1, 0] }}
-            transition={{ duration: DUR, times: [0, 0.5, 1], ease: "easeInOut" }}
-          />
-          {/* Lõi sáng */}
-          <motion.div
-            className="vx-core"
+            className="smk-core"
             initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: [0, 1.2, 0.2], opacity: [0, 1, 0] }}
-            transition={{ duration: DUR, times: [0, 0.5, 1], ease: "easeInOut" }}
+            animate={{ scale: [0, 1.1, 2.2], opacity: [0, 0.95, 0] }}
+            transition={{ duration: DUR, times: [0, 0.46, 1], ease: "easeOut" }}
           />
-          {/* Lóa sáng đỉnh điểm */}
+          {/* Lóa nhẹ (ảo, không chói) */}
           <motion.div
-            className="vx-flash"
+            className="smk-flash"
             initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0, 0.8, 0] }}
-            transition={{ duration: DUR, times: [0, 0.36, 0.46, 0.64], ease: "easeOut" }}
+            animate={{ opacity: [0, 0, 0.45, 0] }}
+            transition={{ duration: DUR, times: [0, 0.38, 0.48, 0.66], ease: "easeOut" }}
           />
 
           <style>{`
-            .vx {
+            .smk {
               position: fixed;
               inset: 0;
               z-index: 120;
@@ -125,70 +124,62 @@ export default function CosmicVeil() {
               align-items: center;
               justify-content: center;
               background: radial-gradient(circle at 50% 50%,
-                rgba(124, 58, 237, 0.96),
-                rgba(43, 15, 79, 0.97) 46%,
-                #05030f 80%);
+                rgba(120, 60, 220, 0.78),
+                rgba(40, 14, 78, 0.92) 50%,
+                #07041a 82%);
+              -webkit-backdrop-filter: blur(7px);
+              backdrop-filter: blur(7px);
               will-change: clip-path;
             }
-            .vx-spiral {
+            .smk-swarm {
               position: absolute;
               left: 50%;
               top: 50%;
-              width: 200vmax;
-              height: 200vmax;
-              margin: -100vmax 0 0 -100vmax;
-              border-radius: 50%;
-              filter: blur(3px);
+              width: 90vmax;
+              height: 90vmax;
+              margin: -45vmax 0 0 -45vmax;
               will-change: transform, opacity;
-              -webkit-mask: radial-gradient(circle, transparent 4%, #000 14%, #000 60%, transparent 80%);
-              mask: radial-gradient(circle, transparent 4%, #000 14%, #000 60%, transparent 80%);
             }
-            .vx-spiral-a {
-              background: conic-gradient(from 0deg at 50% 50%,
-                rgba(236,201,255,0) 0deg,
-                rgba(236,201,255,0.55) 22deg,
-                rgba(168,85,247,0) 70deg,
-                rgba(236,201,255,0) 130deg,
-                rgba(217,70,239,0.5) 168deg,
-                rgba(168,85,247,0) 220deg,
-                rgba(236,201,255,0) 280deg,
-                rgba(165,180,252,0.5) 318deg,
-                rgba(168,85,247,0) 356deg);
-            }
-            .vx-spiral-b {
-              width: 130vmax;
-              height: 130vmax;
-              margin: -65vmax 0 0 -65vmax;
-              filter: blur(2px);
-              background: conic-gradient(from 40deg at 50% 50%,
-                rgba(255,255,255,0) 0deg,
-                rgba(255,255,255,0.5) 30deg,
-                rgba(217,70,239,0) 90deg,
-                rgba(255,255,255,0) 170deg,
-                rgba(165,180,252,0.55) 210deg,
-                rgba(99,102,241,0) 280deg,
-                rgba(255,255,255,0) 360deg);
-            }
-            .vx-core {
+            .smk-puff {
               position: absolute;
-              width: 90px;
-              height: 90px;
               border-radius: 50%;
-              background: radial-gradient(circle, #fff, rgba(236,201,255,0.95) 36%, rgba(168,85,247,0) 72%);
-              box-shadow: 0 0 60px 16px rgba(236, 201, 255, 0.7);
+              filter: blur(52px);
+              mix-blend-mode: screen;
+            }
+            /* các cụm khói lệch tâm, kích thước/màu khác nhau → cuộn tự nhiên */
+            .p1 { left: 26%; top: 22%; width: 40vmax; height: 40vmax;
+              background: radial-gradient(circle, rgba(168,85,247,0.85), rgba(168,85,247,0) 62%); }
+            .p2 { left: 58%; top: 40%; width: 32vmax; height: 32vmax;
+              background: radial-gradient(circle, rgba(217,70,239,0.7), rgba(217,70,239,0) 62%); }
+            .p3 { left: 40%; top: 64%; width: 36vmax; height: 36vmax;
+              background: radial-gradient(circle, rgba(236,201,255,0.62), rgba(236,201,255,0) 62%); }
+            .p4 { left: 60%; top: 60%; width: 38vmax; height: 38vmax;
+              background: radial-gradient(circle, rgba(124,58,237,0.8), rgba(124,58,237,0) 62%); }
+            .p5 { left: 30%; top: 50%; width: 30vmax; height: 30vmax;
+              background: radial-gradient(circle, rgba(99,102,241,0.62), rgba(99,102,241,0) 62%); }
+            .p6 { left: 50%; top: 30%; width: 34vmax; height: 34vmax;
+              background: radial-gradient(circle, rgba(192,132,252,0.7), rgba(192,132,252,0) 62%); }
+            .smk-core {
+              position: absolute;
+              width: 120px;
+              height: 120px;
+              border-radius: 50%;
+              background: radial-gradient(circle, rgba(255,255,255,0.95), rgba(236,201,255,0.7) 34%, rgba(168,85,247,0) 72%);
+              filter: blur(6px);
+              mix-blend-mode: screen;
               will-change: transform, opacity;
             }
-            .vx-flash {
+            .smk-flash {
               position: absolute;
               inset: 0;
               background: radial-gradient(circle at 50% 50%,
-                rgba(255,255,255,0.92),
-                rgba(236,201,255,0.55) 36%,
-                rgba(168,85,247,0) 70%);
+                rgba(236,201,255,0.7),
+                rgba(168,85,247,0.25) 40%,
+                rgba(124,58,237,0) 72%);
               will-change: opacity;
             }
             @media (prefers-reduced-motion: reduce) {
-              .vx { display: none; }
+              .smk { display: none; }
             }
           `}</style>
         </motion.div>
