@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -603,3 +603,90 @@ class TimeCapsule(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     user: Mapped[User] = relationship(back_populates="time_capsules")
+
+
+# =============================
+# Phase-1 retention + đo lường (notifications + analytics)
+# Các bảng dưới đây độc lập, FK trỏ tới users; KHÔNG thêm back_populates lên User để
+# giữ thay đổi tối thiểu (quan hệ một chiều là đủ cho nhu cầu hiện tại).
+# =============================
+
+
+class NotificationPreference(Base):
+    """Cấu hình thông báo cho mỗi user (mỗi user tối đa 1 dòng)."""
+
+    __tablename__ = "notification_preferences"
+    __table_args__ = (
+        CheckConstraint(
+            "daily_card_hour >= 0 AND daily_card_hour <= 23",
+            name="ck_notification_preferences_hour",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    daily_card_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    daily_card_hour: Mapped[int] = mapped_column(Integer, nullable=False, default=8, server_default="8")
+    email_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    # timezone override; null = dùng APP_TIMEZONE toàn cục.
+    timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class Notification(Base):
+    """Thông báo in-app + đồng thời là sổ ghi (audit) cho lần gửi email tương ứng."""
+
+    __tablename__ = "notifications"
+    __table_args__ = (
+        CheckConstraint(
+            "type IN ('daily_card', 'oracle', 'archetype', 'rating', 'custom')",
+            name="ck_notifications_type",
+        ),
+        CheckConstraint(
+            "status IN ('pending', 'sent', 'failed', 'skipped', 'read')",
+            name="ck_notifications_status",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", server_default="pending")
+    scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    payload_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), index=True
+    )
+
+
+class AnalyticsEvent(Base):
+    """Sự kiện funnel tối thiểu để đo loop. Best-effort, không bao giờ chặn luồng chính."""
+
+    __tablename__ = "analytics_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    event: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    props_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), index=True
+    )

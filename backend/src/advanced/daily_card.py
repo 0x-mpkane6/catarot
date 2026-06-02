@@ -165,6 +165,23 @@ def get_today_card(*, user_id: int) -> dict[str, Any] | None:
         return _serialize_daily_card(record)
 
 
+def get_card_on_date(*, user_id: int, draw_date: str) -> dict[str, Any] | None:
+    """Lấy daily card của 1 user theo ngày (chuỗi ISO YYYY-MM-DD). Dùng cho ảnh share."""
+    clean = (draw_date or "").strip()
+    if not clean:
+        return None
+    with session_scope() as session:
+        record = session.scalar(
+            select(DailyCard).where(
+                DailyCard.user_id == user_id,
+                DailyCard.draw_date == clean,
+            )
+        )
+        if record is None:
+            return None
+        return _serialize_daily_card(record)
+
+
 def draw_today_card(*, user_id: int, mood_pre: Any = None) -> dict[str, Any]:
     """Idempotent: re-calling on the same day returns the existing draw."""
     today_iso = _today_local_iso()

@@ -162,7 +162,13 @@ def persist_reading_result(
                 )
 
             session.flush()
-            return reading_session.id
+            new_session_id = reading_session.id
+        # Best-effort funnel event SAU khi transaction commit. track_event tự nuốt lỗi
+        # (không bao giờ ném) nên không ảnh hưởng luồng lưu. Import lazy để tránh đảo tầng.
+        from src.advanced.analytics import track_event
+
+        track_event(user_id, "reading_created", {"session_id": new_session_id})
+        return new_session_id
     except (OperationalError, IntegrityError, ProgrammingError) as exc:
         # Lỗi vận hành/DB nghiêm trọng (mất kết nối, sai schema, thiếu quyền, vi phạm ràng buộc):
         # log mức ERROR kèm ngữ cảnh để phát hiện sớm trên production, thay vì âm thầm bỏ qua như

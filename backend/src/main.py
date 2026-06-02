@@ -1,12 +1,12 @@
 import os
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, List
 
 import sqlalchemy as sa
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -29,13 +29,24 @@ from src.advanced.community_room import (
     vote_interpretation,
 )
 from src.advanced.conversation import add_followup_turn, get_conversation_turns
+from src.advanced.analytics import funnel_counts, track_event
 from src.advanced.daily_card import (
     add_reflection,
     draw_today_card,
+    get_card_on_date,
     get_streak,
     get_today_card,
     list_history as list_daily_history,
 )
+from src.advanced.notifications import (
+    get_or_create_preference,
+    list_notifications,
+    mark_notification_read,
+    start_notification_scheduler,
+    stop_notification_scheduler,
+    update_preference,
+)
+from src.advanced.share_image import get_or_render_daily_card_image
 from src.advanced.dream_journal import create_dream_entry, get_dream_entry, list_dream_entries
 from src.advanced.duo_reading import (
     DUO_WS_MANAGER,
@@ -140,9 +151,11 @@ async def lifespan(_app: FastAPI):
     start_rating_scheduler()
     start_analytics_scheduler()
     start_automod_scheduler()  # bot tự kiểm duyệt cộng đồng (opt-in qua COMMUNITY_AUTOMOD_ENABLED)
+    start_notification_scheduler()  # daily card hằng ngày (opt-in qua NOTIFICATION_SCHEDULER_ENABLED)
     try:
         yield
     finally:
+        stop_notification_scheduler()
         stop_automod_scheduler()
         stop_analytics_scheduler()
         stop_rating_scheduler()
@@ -384,6 +397,7 @@ async def auth_register(req: RegisterRequest, request: Request):
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    track_event(user.id, "user_registered", {"via": "password"})
     return _user_response(user)
 
 
@@ -808,7 +822,7 @@ async def followup(
 ):
     owner_id = _ensure_session_owner_or_admin(current_user, session_id)
     try:
-        return add_followup_turn(
+        result = add_followup_turn(
             session_id=session_id,
             user_id=owner_id,
             message=req.message,
@@ -818,6 +832,8 @@ async def followup(
         if "empty" in message:
             raise HTTPException(status_code=400, detail=message) from exc
         raise HTTPException(status_code=404, detail=message) from exc
+    track_event(owner_id, "followup_created", {"session_id": session_id})
+    return result
 
 
 @app.get("/api/sessions/{session_id}/conversation")
@@ -1184,6 +1200,140 @@ async def daily_card_history(
     current_user: CurrentUser = Depends(get_current_user),
 ):
     return {"items": list_daily_history(user_id=current_user.id, limit=limit)}
+
+
+@app.get("/api/daily-card")
+async def daily_card_one_tap(current_user: CurrentUser = Depends(get_current_user)):
+    """Một-chạm: lấy lá hôm nay của user (TẠO nếu chưa có) + streak.
+
+    Bổ sung, KHÔNG thay thế /api/daily-card/today (chỉ đọc) hay /draw (tạo) — gộp
+    get-or-create + streak để client gọi đúng 1 lần.
+    """
+    record = get_today_card(user_id=current_user.id)
+    if record is None:
+        try:
+            record = draw_today_card(user_id=current_user.id)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    streak = get_streak(user_id=current_user.id)
+    track_event(current_user.id, "daily_card_viewed", {"date": record.get("draw_date")})
+    return {"item": record, "streak": streak}
+
+
+@app.get("/api/daily-card/{date}/image")
+async def daily_card_image(
+    date: str,
+    format: str = Query(default="png"),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Ảnh PNG share cho daily card của CHÍNH user ở ngày `date` (YYYY-MM-DD).
+
+    ?format=base64 trả JSON {image_base64}. Cache theo (user, date).
+    """
+    record = get_card_on_date(user_id=current_user.id, draw_date=date)
+    if record is None:
+        raise HTTPException(status_code=404, detail="daily card not found for this date")
+    try:
+        png_bytes = get_or_render_daily_card_image(record, user_id=current_user.id, date_key=date)
+    except ImportError as exc:  # Pillow thiếu -> tính năng ảnh không khả dụng, KHÔNG sập app
+        raise HTTPException(status_code=503, detail="image rendering unavailable") from exc
+    except Exception as exc:  # pragma: no cover - phòng thủ
+        raise HTTPException(status_code=500, detail=f"could not render image: {exc}") from exc
+
+    track_event(current_user.id, "daily_card_shared", {"date": date})
+
+    if format == "base64":
+        import base64
+
+        encoded = base64.b64encode(png_bytes).decode("ascii")
+        return {"date": date, "image_base64": f"data:image/png;base64,{encoded}"}
+    return Response(content=png_bytes, media_type="image/png")
+
+
+# =============================
+# Notifications (in-app + email) + preferences
+# =============================
+
+
+class NotificationPreferenceUpdateRequest(BaseModel):
+    daily_card_enabled: bool | None = None
+    daily_card_hour: int | None = Field(default=None, ge=0, le=23)
+    email_enabled: bool | None = None
+    timezone: str | None = Field(default=None, max_length=64)
+
+
+@app.get("/api/notifications")
+async def notifications_feed(
+    limit: int = Query(default=30, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    return {"items": list_notifications(user_id=current_user.id, limit=limit)}
+
+
+@app.post("/api/notifications/{notification_id}/read")
+async def notifications_mark_read(
+    notification_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    try:
+        return mark_notification_read(user_id=current_user.id, notification_id=notification_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/api/notification-preferences")
+async def notification_preferences_get(current_user: CurrentUser = Depends(get_current_user)):
+    return get_or_create_preference(user_id=current_user.id)
+
+
+@app.put("/api/notification-preferences")
+async def notification_preferences_update(
+    req: NotificationPreferenceUpdateRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    try:
+        return update_preference(
+            user_id=current_user.id,
+            daily_card_enabled=req.daily_card_enabled,
+            daily_card_hour=req.daily_card_hour,
+            email_enabled=req.email_enabled,
+            timezone_name=req.timezone,
+            timezone_provided=("timezone" in req.model_fields_set),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+# =============================
+# Analytics funnel (admin-only)
+# =============================
+
+
+def _parse_iso_naive(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    candidate = value.strip()
+    if candidate.endswith("Z"):
+        candidate = candidate[:-1]
+    try:
+        moment = datetime.fromisoformat(candidate)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"invalid datetime: {value}") from exc
+    if moment.tzinfo is not None:
+        moment = moment.astimezone(timezone.utc).replace(tzinfo=None)
+    return moment
+
+
+@app.get("/api/admin/analytics/funnel")
+async def admin_analytics_funnel(
+    from_: str | None = Query(default=None, alias="from"),
+    to: str | None = Query(default=None),
+    _admin: CurrentUser = Depends(get_current_admin),
+):
+    """Đếm số sự kiện theo loại trong khoảng + retention D1/D7 đơn giản. Chỉ admin."""
+    date_from = _parse_iso_naive(from_)
+    date_to = _parse_iso_naive(to)
+    return funnel_counts(date_from=date_from, date_to=date_to)
 
 
 # =============================
