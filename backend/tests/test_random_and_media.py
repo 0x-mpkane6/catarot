@@ -116,15 +116,15 @@ def test_ask_with_media_upload_audio_cleanup(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(main_module, "_get_pipeline", lambda: dummy)
 
     audio = UploadFile(filename="voice.webm", file=BytesIO(b"fake-audio"))
-    result = asyncio.run(
-        main_module.ask_with_media(
-            request=None,
-            question="Audio test",
-            spread_type="single",
-            random_draw="false",
-            image=None,
-            audio=audio,
-        )
+    # ask_with_media là route đồng bộ (def, không async) — FastAPI chạy nó trong
+    # threadpool. Gọi trực tiếp, KHÔNG bọc asyncio.run (nó không trả coroutine).
+    result = main_module.ask_with_media(
+        request=None,
+        question="Audio test",
+        spread_type="single",
+        random_draw="false",
+        image=None,
+        audio=audio,
     )
 
     assert result["spread_type"] == "three"
@@ -171,15 +171,13 @@ def test_ask_with_media_random_without_images(monkeypatch, tmp_path) -> None:
     dummy = DummyPipeline()
     monkeypatch.setattr(main_module, "_get_pipeline", lambda: dummy)
 
-    result = asyncio.run(
-        main_module.ask_with_media(
-            request=None,
-            question="Random test",
-            spread_type="three",
-            random_draw="true",
-            image=None,
-            audio=None,
-        )
+    result = main_module.ask_with_media(
+        request=None,
+        question="Random test",
+        spread_type="three",
+        random_draw="true",
+        image=None,
+        audio=None,
     )
 
     assert result["spread_type"] == "three"

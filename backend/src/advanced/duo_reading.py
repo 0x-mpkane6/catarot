@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import WebSocket
-from sqlalchemy import and_, select
+from sqlalchemy import select
 
 from src.db.models import DuoCard, DuoParticipant, DuoReading, DuoSession
 from src.db.session import session_scope

@@ -5,7 +5,7 @@ import re
 from collections import Counter
 from datetime import datetime, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from src.db.models import ReadingSession, RecognizedCard, TarotCard, User, UserArchetypeProfile
 from src.db.session import session_scope

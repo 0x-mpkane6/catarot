@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from src.db.models import (
     CommunityInterpretation,
@@ -172,12 +173,32 @@ def vote_interpretation(*, user_id: int, interpretation_id: int) -> dict:
         created = False
         if existing is None:
             session.add(CommunityVote(interpretation_id=interpretation_id, user_id=user_id))
-            interpretation.vote_count = int(interpretation.vote_count or 0) + 1
-            created = True
-        session.flush()
+            try:
+                session.flush()  # ép INSERT bay ngay để bắt vi phạm unique constraint tại chỗ
+                created = True
+            except IntegrityError:
+                # Race: request song song cùng user đã vote trước → coi như đã vote (idempotent),
+                # tránh trả HTTP 500. rollback để phiên dùng lại được cho truy vấn đếm bên dưới.
+                session.rollback()
+
+        # Đếm lại số vote THỰC TẾ từ bảng thay vì tin counter — tránh lệch đếm khi có race,
+        # đồng thời tự chữa nếu counter từng bị lệch trước đó.
+        real_count = (
+            session.scalar(
+                select(func.count())
+                .select_from(CommunityVote)
+                .where(CommunityVote.interpretation_id == interpretation_id)
+            )
+            or 0
+        )
+        interpretation = session.scalar(
+            select(CommunityInterpretation).where(CommunityInterpretation.id == interpretation_id)
+        )
+        if interpretation is not None:
+            interpretation.vote_count = int(real_count)
         return {
             "interpretation_id": interpretation_id,
-            "vote_count": interpretation.vote_count,
+            "vote_count": int(real_count),
             "created": created,
         }
 

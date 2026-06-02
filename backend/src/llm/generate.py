@@ -328,6 +328,39 @@ class ReadingGenerator:
             return ""
         return str((choices[0].get("message") or {}).get("content", "")).strip()
 
+    def _generate_groq_messages(self, messages: list[dict[str, str]]) -> str:
+        """Groq cho hội thoại nhiều lượt (follow-up) — OpenAI-compatible, nhận thẳng mảng messages."""
+        if not self.groq_api_key:
+            raise RuntimeError("Groq API key not configured")
+        payload: dict[str, Any] = {
+            "model": self.groq_model,
+            "messages": messages,
+            "temperature": self.gemini_temperature,
+        }
+        if self.gemini_max_output_tokens > 0:
+            payload["max_tokens"] = self.gemini_max_output_tokens
+        try:
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                json=payload,
+                timeout=self.groq_timeout,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.groq_api_key}",
+                },
+            )
+        except requests.exceptions.RequestException as exc:
+            raise RuntimeError(f"Groq network error: {exc}") from exc
+        if not response.ok:
+            raw = response.text or ""
+            scrubbed = raw.replace(self.groq_api_key, "<redacted>") if self.groq_api_key else raw
+            raise RuntimeError(f"Groq HTTP {response.status_code}: {scrubbed[:300]}")
+        data = response.json()
+        choices = data.get("choices") or []
+        if not choices:
+            return ""
+        return str((choices[0].get("message") or {}).get("content", "")).strip()
+
     def _generate_openai(self, system_prompt: str, user_prompt: str) -> str:
         from openai import OpenAI  # type: ignore
 
@@ -425,7 +458,7 @@ class ReadingGenerator:
         }
         return self._gemini_post(payload, api_key=api_key)
 
-    def _generate_gemini_messages(self, messages: list[dict[str, str]]) -> str:
+    def _generate_gemini_messages(self, messages: list[dict[str, str]], api_key: str | None = None) -> str:
         system_text_parts: list[str] = []
         contents: list[dict[str, Any]] = []
         for row in messages:
@@ -447,7 +480,7 @@ class ReadingGenerator:
         }
         if system_text_parts:
             payload["systemInstruction"] = {"parts": [{"text": "\n\n".join(system_text_parts)}]}
-        return self._gemini_post(payload)
+        return self._gemini_post(payload, api_key=api_key)
 
     def _extract_ollama_text(self, payload: dict[str, Any]) -> str:
         message = payload.get("message")
@@ -771,21 +804,30 @@ class ReadingGenerator:
                 extra_warnings,
             )
 
-        # Tier 1: Google Gemini
-        if self.gemini_api_key:
+        # Tier 1: Google Gemini — XOAY VÒNG nhiều key khi lỗi/hết quota (đồng nhất với generate()).
+        for _idx, _key in enumerate(self.gemini_api_keys):
             try:
-                answer = self._generate_gemini_messages(messages)
+                answer = self._generate_gemini_messages(messages, api_key=_key)
                 if answer.strip():
                     self.last_used_model = f"gemini:{self.gemini_model}"
                     return answer.strip(), extra_warnings
                 extra_warnings.append("Gemini trả về nội dung tiếp nối rỗng; thử backend kế tiếp.")
+                break  # rỗng (không phải hết quota) → sang tier khác, khỏi thử key kế
             except Exception as exc:
                 LOGGER.warning(
-                    "Gemini follow-up generation failed (key=%s): %s",
-                    _mask_secret(self.gemini_api_key),
+                    "Gemini follow-up key #%d failed (model=%s): %s",
+                    _idx + 1,
+                    self.gemini_model,
                     exc,
                 )
-                extra_warnings.append("Gemini (tiếp nối) lỗi; thử backend kế tiếp.")
+                if _idx < len(self.gemini_api_keys) - 1:
+                    extra_warnings.append(
+                        f"Gemini key #{_idx + 1} (tiếp nối) lỗi/hết quota; thử key kế tiếp."
+                    )
+                else:
+                    extra_warnings.append(
+                        "Gemini (mọi key, tiếp nối) lỗi/hết quota; thử backend kế tiếp."
+                    )
 
         # Tier 2: OpenAI
         if self.api_key:
@@ -796,9 +838,20 @@ class ReadingGenerator:
                     return answer.strip(), extra_warnings
             except Exception as exc:
                 LOGGER.warning("OpenAI follow-up generation failed: %s", exc)
-                extra_warnings.append("OpenAI lỗi; đang thử Ollama cục bộ.")
+                extra_warnings.append("OpenAI lỗi; thử backend kế tiếp.")
 
-        # Tier 3: Local Ollama
+        # Tier 3: Groq (cloud free, OpenAI-compatible) — backup chính khi mọi key Gemini hết quota.
+        if self.groq_api_key:
+            try:
+                answer = self._generate_groq_messages(messages)
+                if answer.strip():
+                    self.last_used_model = f"groq:{self.groq_model}"
+                    return answer.strip(), extra_warnings
+            except Exception as exc:
+                LOGGER.warning("Groq follow-up generation failed: %s", exc)
+                extra_warnings.append("Groq (tiếp nối) lỗi; thử backend kế tiếp.")
+
+        # Tier 4: Local Ollama
         if self.ollama_enabled:
             try:
                 answer = self._generate_ollama_messages(messages)

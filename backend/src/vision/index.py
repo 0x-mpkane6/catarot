@@ -97,6 +97,16 @@ def search_index(index, meta: list[dict[str, Any]], query_vector: np.ndarray, to
         return []
 
     query = np.asarray(query_vector, dtype="float32").reshape(1, -1)
+    # Guard chiều vector: nếu chiều query khác chiều index đã build, FAISS sẽ nổ
+    # assertion mơ hồ ở lớp C++. Nêu lỗi rõ ràng để dễ chẩn đoán (ví dụ index build
+    # bằng OpenCLIP 512 chiều nhưng runtime bật VISION_DEMO_MODE → embedder demo 864 chiều).
+    index_dim = getattr(index, "d", None)
+    if index_dim is not None and query.shape[1] != index_dim:
+        raise ValueError(
+            f"Vector dim lệch: query={query.shape[1]} nhưng index build ở dim={index_dim}. "
+            "Có thể index được build ở chế độ khác (OpenCLIP 512 vs demo 864). "
+            "Hãy build lại index đúng với VISION_DEMO_MODE đang dùng."
+        )
     k = min(top_k, len(meta))
     scores, indices = index.search(query, k)
 

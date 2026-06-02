@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError
 from sqlalchemy.orm import Session
 
 from src.db.init_db import initialize_database_if_needed
@@ -162,6 +163,19 @@ def persist_reading_result(
 
             session.flush()
             return reading_session.id
+    except (OperationalError, IntegrityError, ProgrammingError) as exc:
+        # Lỗi vận hành/DB nghiêm trọng (mất kết nối, sai schema, thiếu quyền, vi phạm ràng buộc):
+        # log mức ERROR kèm ngữ cảnh để phát hiện sớm trên production, thay vì âm thầm bỏ qua như
+        # một lỗi có thể chấp nhận. Vẫn trả None để phiên đọc bài không sập vì lỗi lưu trữ.
+        cards = result.get("cards")
+        LOGGER.error(
+            "Persist reading FAILED (operational): %s | user_id=%s cards=%d q_len=%d",
+            exc,
+            user_id,
+            len(cards) if isinstance(cards, list) else 0,
+            len(_normalize_text(question)),
+        )
+        return None
     except Exception as exc:
         LOGGER.warning("Database persistence skipped due to error: %s", exc)
         return None

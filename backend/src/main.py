@@ -1,6 +1,4 @@
-import logging
 import os
-import shutil
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -423,10 +421,9 @@ async def auth_forgot_password(req: ForgotPasswordRequest, request: Request):
         window_seconds=60,
     )
     try:
-        found, dev_token, expires_at = request_password_reset(email=req.email)
+        _found, dev_token, expires_at = request_password_reset(email=req.email)
     except Exception as exc:  # pragma: no cover - defensive
         LOGGER.warning("forgot-password failed: %s", exc)
-        found = False
         dev_token = None
         expires_at = None
 

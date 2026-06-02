@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import pickle
-from pathlib import Path
 
-import numpy as np
 
 from src.rag.build_index import RagEmbedder
 from src.utils.config import resolve_path
