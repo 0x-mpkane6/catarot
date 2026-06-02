@@ -326,16 +326,22 @@ export default function CommunityReadingPanel() {
             postId,
             (post) => ({
               ...post,
+              // Chỉ cập nhật đúng luận giải được bấm; GIỮ NGUYÊN trạng thái các luận giải
+              // khác. Backend cho phép chủ bài đồng cảm nhiều luận giải (không reset cái khác),
+              // nên không được ép resonated_by_post_owner=false cho phần còn lại → tránh nhãn
+              // nhảy/sai cho tới khi refresh feed.
               interpretations:
                 post.interpretations.map(
                   (
                     interpretation
-                  ) => ({
-                    ...interpretation,
-                    resonated_by_post_owner:
-                      interpretation.id ===
-                      interpretationId,
-                  })
+                  ) =>
+                    interpretation.id ===
+                    interpretationId
+                      ? {
+                          ...interpretation,
+                          resonated_by_post_owner: true,
+                        }
+                      : interpretation
                 ),
             })
           )

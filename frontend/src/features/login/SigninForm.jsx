@@ -62,6 +62,13 @@ export default function SigninForm() {
 
   // Đăng ký/đăng nhập bằng Google → đã có phiên đăng nhập, vào thẳng trang chính.
   const handleGoogleSuccess = (res) => {
+    // Dọn sạch phiên cũ ở CẢ hai storage trước khi ghi phiên mới. Nếu không, token cũ
+    // còn trong localStorage (vd lần trước đăng nhập có tích "Ghi nhớ đăng nhập") sẽ được
+    // getStoredToken ưu tiên hơn token mới ở sessionStorage → request chạy dưới danh tính cũ.
+    ["token", "access_token", "user"].forEach((key) => {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    });
     sessionStorage.setItem("token", res.token);
     sessionStorage.setItem("user", JSON.stringify(res.user));
     toast.success("Chào mừng bạn!");

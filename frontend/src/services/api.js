@@ -42,6 +42,26 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Token hết hạn/không hợp lệ khi gọi API cần đăng nhập → tự đăng xuất + về /login,
+    // tránh kẹt ở trang hỏng. KHÔNG áp dụng cho chính các endpoint /api/auth/* (đăng nhập
+    // sai mật khẩu không nên xoá phiên/điều hướng), và không điều hướng nếu đang ở trang auth.
+    const status = error?.response?.status;
+    const reqUrl = error?.config?.url || "";
+    const isAuthEndpoint = reqUrl.includes("/api/auth/");
+    if (status === 401 && !isAuthEndpoint && typeof window !== "undefined") {
+      try {
+        ["token", "access_token", "user"].forEach((key) => {
+          localStorage.removeItem(key);
+          sessionStorage.removeItem(key);
+        });
+      } catch {
+        /* ignore storage errors */
+      }
+      const path = window.location.pathname;
+      if (path !== "/login" && path !== "/signin") {
+        window.location.assign("/login");
+      }
+    }
     console.error("[api] response error", {
       method: error?.config?.method,
       url: error?.config?.url,

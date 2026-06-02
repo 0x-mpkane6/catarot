@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 import { getReadingHistory } from "../../services/historyService";
 import AnimatedList from "./AnimatedList";
@@ -28,6 +29,11 @@ export default function ReadingHistory({
             : getReadingHistory());
 
         setSessions(data || []);
+      } catch (error) {
+        // Không nuốt lỗi âm thầm: báo người dùng + đưa danh sách về rỗng rõ ràng.
+        console.error("Không tải được lịch sử xem bài", error);
+        toast.error("Không tải được lịch sử xem bài");
+        setSessions([]);
       } finally {
         setIsLoading(false);
       }

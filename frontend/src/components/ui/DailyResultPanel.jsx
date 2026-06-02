@@ -805,6 +805,10 @@ export default function DailyResultPanel({
 
       {/* REFLECTION MODAL */}
       <ReflectionModal
+        /* key theo định danh lá: khi đổi lá bài, React remount modal → state local
+           (reflection/mood_post) tự khởi tạo lại theo lá mới, tránh hiển thị nội dung
+           cũ của lá trước (modal không unmount khi đóng nên state vốn bị giữ lại). */
+        key={card?.daily_card_id ?? card?.id ?? card?.card_id}
         isOpen={showReflectionModal}
         card={card}
         onSubmit={handleReflectionSubmit}

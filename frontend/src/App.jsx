@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import SplashCursor from "./components/common/SplashCursor";
 import RouteTransition from "./components/transition/RouteTransition";
@@ -13,6 +13,25 @@ const LoginPage = lazy(() => import("./pages/LoginPage"));
 const HomePage = lazy(() => import("./pages/HomePage"));
 const SigninPage = lazy(() => import("./pages/SigninPage"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
+
+// Đọc token đăng nhập từ cả localStorage (ghi nhớ) lẫn sessionStorage (phiên), cùng thứ tự
+// với services/api.js để tránh lệch.
+function getStoredToken() {
+  for (const storage of [localStorage, sessionStorage]) {
+    const token =
+      storage.getItem("token") || storage.getItem("access_token");
+    if (token) return token;
+  }
+  return null;
+}
+
+// Guard điều hướng phía client: chưa đăng nhập mà vào /home thì đẩy về /login thay vì hiển thị
+// trang chính ở trạng thái hỏng (không có user, lịch sử rỗng). Dữ liệu nhạy cảm vẫn được backend
+// bảo vệ bằng 401 — đây chỉ là cải thiện UX/điều hướng.
+function RequireAuth({ children }) {
+  if (!getStoredToken()) return <Navigate to="/login" replace />;
+  return children;
+}
 
 function App() {
   return (
@@ -52,7 +71,14 @@ function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signin" element={<SigninPage />} />
-              <Route path="/home" element={<HomePage />} />
+              <Route
+                path="/home"
+                element={
+                  <RequireAuth>
+                    <HomePage />
+                  </RequireAuth>
+                }
+              />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             </Routes>
           </Suspense>
