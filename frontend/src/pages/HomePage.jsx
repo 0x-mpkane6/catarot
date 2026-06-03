@@ -174,14 +174,18 @@ export default function HomePage() {
 
   // Zoom-to-fit toàn bộ layout desktop theo CẢ chiều rộng lẫn chiều cao.
   // (CSS cũ chỉ scale theo chiều cao nên màn hẹp bị tràn/cắt lưới bài.)
-  // Lấy hệ số nhỏ nhất giữa 2 trục, không phóng to quá 1, sàn 0.45.
+  // Tham chiếu chiều cao 880 (trước 1024): 1024 cao hơn hầu hết laptop
+  // (~720–900px CSS, nhất là Windows scale 125/150%) nên trang luôn bị co
+  // ~70–85% → chữ/component nhỏ khó đọc. Hạ về 880 cho trang to hơn ~16%
+  // mà lưới bài (cao ~580px) vẫn vừa khung.
+  // Lấy hệ số nhỏ nhất giữa 2 trục, không phóng to quá 1 (sàn 0.2 chống lỗi).
   // Trên mobile KHÔNG scale (pageScale = 1) để layout chảy tĩnh, dễ cuộn.
   const computeScale = () => {
     if (typeof window === "undefined") return 1;
     if (isMobile) return 1;
     return Math.max(
       0.2,
-      Math.min(window.innerWidth / 1500, window.innerHeight / 1024, 1)
+      Math.min(window.innerWidth / 1500, window.innerHeight / 880, 1)
     );
   };
   const [pageScale, setPageScale] = useState(computeScale);
@@ -260,7 +264,7 @@ export default function HomePage() {
           ? 1
           : Math.max(
               0.2,
-              Math.min(window.innerWidth / 1500, window.innerHeight / 1024, 1)
+              Math.min(window.innerWidth / 1500, window.innerHeight / 880, 1)
             )
       );
     onResize();
