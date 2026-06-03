@@ -10,6 +10,11 @@
   position: relative;
   width: min(560px, 90vw);
   min-height: 0;
+  /* Trần chiều cao để khung không tràn khỏi viewport (đặc biệt khi kết quả
+     Trải Bài Đôi dài); phần nội dung bên trong sẽ tự cuộn. */
+  max-height: calc(100vh - 140px);
+  display: flex;
+  flex-direction: column;
   margin: 0 auto;
   padding: 18px;
   border-radius: 22px;
@@ -56,6 +61,11 @@
 .duo-reading-panel__content {
   position: relative;
   z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
 }
 
 .duo-reading-panel__actions {
@@ -417,6 +427,12 @@
   .duo-reading-panel {
     width: 94vw;
     padding: 16px;
+    /* Mobile: bỏ trần chiều cao + để nội dung chảy tĩnh, dùng cuộn trang. */
+    max-height: none;
+  }
+
+  .duo-reading-panel__content {
+    overflow-y: visible;
   }
 
   .duo-reading-panel--landing {
