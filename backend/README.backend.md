@@ -22,9 +22,9 @@ ollama --version
 
 Nếu thiếu:
 
-- `ffmpeg`: cần để xử lý audio không phải wav.
-- `ollama`: cần để sinh câu trả lời LLM local.
-- `open-clip-torch`: cần cho vision retrieval mặc định.
+- `ffmpeg`: cần để xử lý audio không phải WAV (ASR giọng nói).
+- `ollama`: chỉ cần nếu muốn chạy LLM local offline; **mặc định dùng `GEMINI_API_KEY`**.
+- `open-clip-torch`: cần cho vision retrieval (hoặc bật `VISION_DEMO_MODE=true` để bỏ qua).
 
 ## Dữ liệu (bắt buộc)
 
@@ -35,12 +35,15 @@ Nếu thiếu:
 
 - Bắt buộc:
   - Python 3.10+
-  - ffmpeg
-  - Ollama
-  - OpenCLIP (`open-clip-torch`)
+  - ffmpeg (xử lý audio cho ASR)
+  - OpenCLIP (`open-clip-torch`) — hoặc `VISION_DEMO_MODE=true`
   - SQLAlchemy (`sqlalchemy`)
-- Tùy chọn:
-  - `OPENAI_API_KEY` (nếu muốn ưu tiên OpenAI thay vì Ollama)
+- LLM (cần ít nhất 1; dùng theo thứ tự ưu tiên):
+  - `GEMINI_API_KEY` — **mặc định, khuyến nghị** (free tier)
+  - `OPENAI_API_KEY` — tùy chọn
+  - `GROQ_API_KEY` — tùy chọn (backup nhanh khi Gemini hết quota)
+  - Ollama local — tùy chọn (offline)
+  - Không có LLM nào → hệ thống dùng **template tất định**
 
 ## 3) Quickstart bằng Docker (khuyến nghị)
 
@@ -133,6 +136,8 @@ Mặc định trong `.env.example`:
 
 - Ưu tiên độ chính xác cao cho tiếng Việt/tiếng Anh.
 - Nếu `faster-whisper` lỗi, hệ thống tự fallback sang `transformers`.
+
+> ⚠️ `large-v3` rất nặng trên CPU (đặc biệt host 2 vCPU): một câu nói có thể mất 30–90s và tải ~3GB lần đầu. Để chạy nhanh/demo, đặt `ASR_MODEL_FASTER=base` hoặc `small`.
 
 ## 7) API công khai cho frontend
 

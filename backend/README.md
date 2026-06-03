@@ -107,7 +107,7 @@ npm run dev -- --host 127.0.0.1 --port 5173
 | **Time Capsule Reading** | Khoá một dự đoán cho ngày mở trong tương lai; đến ngày, user verify accuracy → feed vào rating loop. | `POST /api/time-capsules`, `POST /api/time-capsules/{id}/reveal` |
 | **Card Affirmation widget** | Sinh affirmation deterministic theo card + ngày, dùng cho widget lock-screen. | `GET /api/affirmations/{card_name}` |
 
-Xem chi tiết tại [`tong-hop-tinh-nang-backend.md`](./tong-hop-tinh-nang-backend.md) và [`report.md`](./report.md).
+Xem chi tiết tại [`../docs/BAO-CAO-DO-AN.md`](../docs/BAO-CAO-DO-AN.md).
 
 ### Hardening v0.2
 
@@ -143,12 +143,11 @@ Xem chi tiết tại [`tong-hop-tinh-nang-backend.md`](./tong-hop-tinh-nang-back
 API_UPLOAD_DIR=/tmp/tarot_test_uploads pytest tests/ --ignore=tests/test_vision_smoke.py --ignore=tests/test_rag_smoke.py
 ```
 
-Trạng thái hiện tại (v0.2.0): **52 passed** (36 legacy + 15 unique features + 1 vision/RAG smoke khi data đầy đủ).
+Trạng thái bản final: **109 hàm test trên 21 file** (pytest), bao phủ pipeline, auth/security, DB persistence, migration, LLM fallback, RAG, vision và các tính năng nâng cao.
 
 ## Link tài liệu chi tiết
 
-- Backend runbook: [README.backend.md](./README.backend.md)
-- Frontend runbook: [frontend/README.md](./frontend/README.md)
-- Tổng hợp tính năng backend: [tong-hop-tinh-nang-backend.md](./tong-hop-tinh-nang-backend.md)
-- Báo cáo kiến trúc: [report.md](./report.md)
-- Changelog: [CHANGELOG.md](./CHANGELOG.md)
+- Báo cáo đồ án đầy đủ: [`../docs/BAO-CAO-DO-AN.md`](../docs/BAO-CAO-DO-AN.md)
+- Sơ đồ kiến trúc (Mermaid): [`../docs/SO-DO-KIEN-TRUC.md`](../docs/SO-DO-KIEN-TRUC.md)
+- Hướng dẫn deploy: [`../docs/HUONG-DAN-DEPLOY.md`](../docs/HUONG-DAN-DEPLOY.md)
+- Backend runbook chi tiết: [README.backend.md](./README.backend.md)
