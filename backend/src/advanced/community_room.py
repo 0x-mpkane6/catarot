@@ -244,6 +244,11 @@ def moderate_post(*, admin_user_id: int | None, post_id: int, action: str, reaso
         post = session.scalar(select(CommunityPost).where(CommunityPost.id == post_id))
         if post is None:
             raise ValueError("post not found")
+        # Automod (admin_user_id is None) chi duoc xu ly post CON pending. Trong cua so quet
+        # (moi post goi LLM mat vai giay), neu admin da duyet/tu choi thu cong thi KHONG ghi de
+        # quyet dinh cua nguoi that — bo qua idempotent. Admin that van co the moderate lai.
+        if admin_user_id is None and post.status != "pending":
+            return _post_payload(post)
         if clean_action == "approve":
             post.status = "approved"
             post.approved_at = now

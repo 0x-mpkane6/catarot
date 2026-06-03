@@ -18,6 +18,7 @@ export default function SigninForm() {
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async () => {
+    if (loading) return; // chan double-submit khi nhan Enter lien tuc luc request dang bay
     try {
       setLoading(true);
 

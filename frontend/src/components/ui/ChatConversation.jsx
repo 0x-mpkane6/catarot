@@ -22,15 +22,20 @@ export default function ChatConversation({
     text,
     index
   ) => {
-
-    await navigator.clipboard
-      .writeText(text);
-
-    setCopiedIndex(index);
-
-    setTimeout(() => {
-      setCopiedIndex(null);
-    }, 1500);
+    // navigator.clipboard la undefined khi chay o ngu canh khong an toan (HTTP non-localhost)
+    // -> tranh unhandled rejection lam nut copy "im lang" khong phan hoi.
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("clipboard unavailable");
+      }
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      setTimeout(() => {
+        setCopiedIndex(null);
+      }, 1500);
+    } catch {
+      /* clipboard khong kha dung: bo qua, khong lam vo UI */
+    }
   };
 
   return (

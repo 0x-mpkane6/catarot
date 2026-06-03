@@ -220,9 +220,21 @@ _RESPONSE_SCHEMA = {
 }
 
 
+def _resolve_gemini_key() -> str:
+    """Lấy 1 key Gemini, gộp GEMINI_API_KEYS (xoay vòng, phân tách dấu phẩy) với
+    GEMINI_API_KEY giống src/llm/generate.py. Trước đây chỉ đọc GEMINI_API_KEY nên khi
+    người dùng cấu hình theo cách rotation (chỉ GEMINI_API_KEYS) thì automod bị tắt ngầm."""
+    raw = (os.getenv("GEMINI_API_KEYS", "") or "") + "," + (os.getenv("GEMINI_API_KEY", "") or "")
+    for part in raw.split(","):
+        key = part.strip()
+        if key:
+            return key
+    return ""
+
+
 def _gemini_classify(text: str) -> dict[str, Any] | None:
     """Gọi Gemini phân loại, trả dict hoặc None nếu lỗi/không cấu hình."""
-    api_key = (os.getenv("GEMINI_API_KEY", "") or "").strip()
+    api_key = _resolve_gemini_key()
     if not api_key:
         return None
     model = (os.getenv("GEMINI_MODEL", "gemini-2.5-flash") or "gemini-2.5-flash").strip()

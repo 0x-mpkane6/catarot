@@ -13,7 +13,11 @@ services:
       # Override để CORS chấp nhận frontend container; cho phép inject origin thật khi deploy.
       API_ALLOWED_ORIGINS: "${API_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost,http://frontend}"
       DATABASE_URL: "sqlite:///./data/app.db"
-      WEB_CONCURRENCY: 2
+      # SQLite chi nen chay 1 worker: nhieu process ghi chung 1 file SQLite gay
+      # "database is locked" va race khi cap phat turn_index/duo-card/seed. Doi sang
+      # Postgres + WEB_CONCURRENCY>1 neu can scale. Scheduler (automod/notify) cung
+      # gia dinh single-worker de tranh chay trung lich.
+      WEB_CONCURRENCY: 1
       # Trong container, 127.0.0.1 là chính container → trỏ Ollama (nếu dùng) về host.
       # LLM mặc định vẫn ưu tiên GEMINI_API_KEY nạp từ env_file ./backend/.env.
       OLLAMA_BASE_URL: "http://host.docker.internal:11434"

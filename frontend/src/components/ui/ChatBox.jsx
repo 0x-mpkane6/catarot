@@ -9,6 +9,7 @@ import {
 
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -48,6 +49,18 @@ export default function ChatBox({
   const textareaRef = useRef(null);
 
   const supportsMedia = mode !== "daily";
+
+  // Tao blob URL preview MOT lan moi file (truoc day goi URL.createObjectURL ngay trong JSX
+  // -> moi lan re-render khi go phim lai cap phat URL moi va khong bao gio revoke -> ro ri bo nho).
+  const previewUrls = useMemo(
+    () => uploadedImages.map((file) => URL.createObjectURL(file)),
+    [uploadedImages]
+  );
+  useEffect(() => {
+    return () => {
+      previewUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [previewUrls]);
 
   useEffect(() => {
     const textarea =
@@ -264,7 +277,7 @@ export default function ChatBox({
             >
 
               <img
-                src={URL.createObjectURL(file)}
+                src={previewUrls[index]}
 
                 alt="xem trước"
 

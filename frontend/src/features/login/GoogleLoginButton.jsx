@@ -59,6 +59,13 @@ export default function GoogleLoginButton({
   fallbackLabel = "Google",
 }) {
   const containerRef = useRef(null);
+  // Giu onSuccess trong ref: LoginForm/SigninForm truyen handler inline (doi identity moi
+  // lan render). Neu de onSuccess trong deps cua effect ben duoi thi MOI lan go phim se
+  // huy + dung lai nut Google -> nhap nhay. Dung ref + deps chi [text] de render dung 1 lan.
+  const onSuccessRef = useRef(onSuccess);
+  useEffect(() => {
+    onSuccessRef.current = onSuccess;
+  }, [onSuccess]);
   // GOOGLE_CLIENT_ID là hằng số lúc build → suy ra trạng thái ban đầu, tránh setState
   // đồng bộ trong effect (react-hooks/set-state-in-effect).
   const [unavailable, setUnavailable] = useState(!GOOGLE_CLIENT_ID);
@@ -79,7 +86,7 @@ export default function GoogleLoginButton({
           callback: async ({ credential }) => {
             try {
               const res = await loginWithGoogle(credential);
-              onSuccess?.(res);
+              onSuccessRef.current?.(res);
             } catch (err) {
               console.error(err);
               toast.error(
@@ -112,7 +119,7 @@ export default function GoogleLoginButton({
     return () => {
       cancelled = true;
     };
-  }, [onSuccess, text]);
+  }, [text]);
 
   if (unavailable) {
     return (

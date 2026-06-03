@@ -13,6 +13,7 @@ export default function ForgotPasswordForm() {
   const [loading, setLoading] = useState(false);
 
   const handleSend = async () => {
+    if (loading) return; // chan double-submit khi nhan Enter lien tuc luc request dang bay
     try {
       setLoading(true);
 

@@ -32,6 +32,7 @@ export default function LoginForm() {
   };
 
   const handleLogin = async () => {
+    if (loading) return; // chan double-submit khi nhan Enter lien tuc luc request dang bay (nut da disabled nhung phim Enter thi khong)
     try {
       setLoading(true);
 

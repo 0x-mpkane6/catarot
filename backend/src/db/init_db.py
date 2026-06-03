@@ -3,6 +3,7 @@ from __future__ import annotations
 import threading
 
 from sqlalchemy import inspect
+from sqlalchemy.exc import IntegrityError
 
 from src.db.models import Base
 from src.db.seed import seed_tarot_cards
@@ -69,10 +70,16 @@ def initialize_database(seed_reference_data: bool = True) -> None:
     if not seed_reference_data:
         return
 
-    with session_scope() as session:
-        inserted = seed_tarot_cards(session)
-    if inserted:
-        LOGGER.info("Seeded %d tarot_cards row(s).", inserted)
+    try:
+        with session_scope() as session:
+            inserted = seed_tarot_cards(session)
+        if inserted:
+            LOGGER.info("Seeded %d tarot_cards row(s).", inserted)
+    except IntegrityError:
+        # Khi chay nhieu worker/process cung khoi dong tren DB rong, hai ben co the
+        # cung doc "chua co the bai" roi cung INSERT 78 ten unique -> mot ben dinh
+        # UNIQUE constraint. Day la idempotent: coi nhu da seed xong, khong crash startup.
+        LOGGER.info("tarot_cards seed skipped (already seeded by a concurrent worker).")
 
 
 def initialize_database_if_needed(seed_reference_data: bool = True) -> None:
