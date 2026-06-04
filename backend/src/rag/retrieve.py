@@ -1,3 +1,10 @@
+"""RAG — truy hồi ý nghĩa lá bài liên quan để LLM bám vào (giảm bịa đặt).
+
+RagRetriever.retrieve(): embedding "câu hỏi + tên lá + chiều" (sentence-transformers),
+tìm trong FAISS rồi LỌC theo metadata để snippet đúng lá đang xét. Nhiều lớp dự phòng
+(cùng lá khác chiều → placeholder) đảm bảo luôn đủ số snippet tối thiểu. Thiếu
+index/thư viện → trả snippet placeholder thay vì báo lỗi.
+"""
 from __future__ import annotations
 
 import pickle

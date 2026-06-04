@@ -1,3 +1,11 @@
+"""Nhận diện lá bài Tarot từ ảnh chụp (tầng Vision).
+
+CardPredictor.predict(): sinh embedding (OpenCLIP) cho CẢ ảnh gốc lẫn ảnh XOAY 180°,
+tìm lá gần nhất trong FAISS index (vector đã L2-norm nên inner product = cosine
+similarity). Ứng viên từ ảnh xoay được đảo chiều (xuôi↔ngược) → nhận biết lá ngược mà
+không cần ảnh huấn luyện riêng. Độ tin cậy = KHOẢNG CÁCH điểm giữa ứng viên nhất và
+nhì; thấp hơn ngưỡng → cảnh báo chụp lại. Thiếu index → trả kết quả dự phòng, không sập.
+"""
 from __future__ import annotations
 
 import json

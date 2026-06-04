@@ -1,3 +1,10 @@
+"""ASR — chuyển giọng nói thành văn bản cho luồng hỏi bằng audio.
+
+transcribe_audio(): chuẩn hoá file về WAV mono 16kHz (ffmpeg), rồi nhận diện bằng
+faster-whisper (ưu tiên) hoặc transformers whisper (dự phòng). Chế độ song ngữ
+auto_vi_en chạy cả tiếng Việt lẫn Anh và chọn bản có độ tin cậy (avg_logprob) cao hơn.
+Mọi lỗi đều suy biến mềm: trả None + cảnh báo, pipeline vẫn chạy tiếp không có transcript.
+"""
 from __future__ import annotations
 
 import importlib.util

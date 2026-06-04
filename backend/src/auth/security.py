@@ -1,3 +1,10 @@
+"""Mật mã & token cho xác thực — chỉ dùng thư viện chuẩn, không thêm dependency nặng.
+
+Băm mật khẩu bằng PBKDF2-HMAC-SHA256 200.000 vòng + salt ngẫu nhiên 16 byte, so sánh
+bằng hmac.compare_digest (chống dò qua thời gian phản hồi). Ký/giải JWT HS256 (payload
+{sub, role, iat, exp}). Ở production, JWT_SECRET_KEY yếu/thiếu sẽ bị chặn ngay từ lúc
+khởi động (fail-fast) thay vì âm thầm hỏng lúc chạy.
+"""
 from __future__ import annotations
 
 import base64

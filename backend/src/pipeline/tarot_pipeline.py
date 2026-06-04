@@ -1,3 +1,11 @@
+"""Bộ điều phối pipeline đọc bài đa phương thức — "trái tim" của hệ thống.
+
+run_pipeline() chạy 7 bước: ASR (giọng nói→chữ) → phân tích cảm xúc → lấy lá
+(nhận diện từ ảnh hoặc rút ngẫu nhiên) → áp override → gộp truy vấn → RAG (tra ý
+nghĩa lá bài) → LLM (sinh luận giải). File này KHÔNG chứa AI mà điều phối các module
+con; mọi sự cố mềm được gom vào danh sách `warnings` thay vì ném lỗi, để một tầng
+hỏng không làm sập cả phiên đọc (graceful degradation).
+"""
 from __future__ import annotations
 
 import os

@@ -1,3 +1,11 @@
+"""Sinh luận giải Tarot bằng LLM — chuỗi dự phòng nhiều tầng.
+
+ReadingGenerator.generate() thử lần lượt: Gemini (xoay vòng nhiều API key) → OpenAI →
+Groq → Ollama (local) → cuối cùng là bản TẤT ĐỊNH (template + từ điển nghĩa lá bài
+tiếng Việt) chạy được cả khi mất mạng — nên không bao giờ trả lỗi 500 vì thiếu model
+hay hết quota. Mọi log đều che (redact) API key. generate_custom() tái dùng chính
+chuỗi fallback này cho luận giải sâu daily-card và diễn giải giấc mơ.
+"""
 from __future__ import annotations
 
 import json

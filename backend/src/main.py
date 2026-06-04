@@ -1,3 +1,12 @@
+"""Điểm vào ứng dụng FastAPI — tầng HTTP của backend Tarot.
+
+Đăng ký toàn bộ route REST (~60) + 1 WebSocket (đọc bài đôi); middleware gắn
+x-request-id, CORS, và một exception handler tổng (mọi lỗi không lường → JSON 500 kèm
+request_id, KHÔNG lộ stack trace). Lifespan lúc khởi động: khởi tạo DB + seed lá bài,
+fail-fast JWT ở production, bật các scheduler nền. Route ở đây MỎNG — chỉ validate
+(Pydantic/Form), lấy user_id từ JWT (không tin client) rồi uỷ thác xuống tầng service
+(`advanced/*`, `pipeline/*`).
+"""
 import os
 import uuid
 from contextlib import asynccontextmanager

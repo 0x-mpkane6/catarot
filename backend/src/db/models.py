@@ -1,3 +1,12 @@
+"""Định nghĩa 24 bảng ORM (SQLAlchemy 2.0) của toàn hệ thống.
+
+Gồm: lõi đọc bài (users, tarot_cards, reading_sessions, recognized_cards, readings,
+conversation_turns, rating_reminders), phân tích (archetype, oracle, analytics), đọc
+bài đôi (duo_*), cộng đồng (community_*), và tính năng khác (dream_entries,
+daily_cards, daily_deep_readings, time_capsules, notifications…). Toàn vẹn dữ liệu nhờ
+CheckConstraint (enum trạng thái), UniqueConstraint (chống trùng) và ForeignKey với
+ondelete CASCADE (xoá kèm) hoặc SET NULL (giữ lịch sử khi user/khách bị xoá).
+"""
 from __future__ import annotations
 
 from datetime import datetime

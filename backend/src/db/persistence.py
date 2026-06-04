@@ -1,3 +1,11 @@
+"""Lưu kết quả một phiên đọc bài xuống DB một cách an toàn.
+
+persist_reading_result(): ghi trọn ReadingSession + RecognizedCard + Reading (+ nhắc
+chấm điểm nếu có user) trong MỘT transaction. user_id rác (0/khách) được coerce về
+None để tránh vỡ khoá ngoại. Lỗi DB được phân tầng log (Operational/Integrity/
+Programming → ERROR; còn lại → WARNING) và NUỐT MỀM (trả None) — phiên đọc vẫn trả về
+cho người dùng thay vì sập.
+"""
 from __future__ import annotations
 
 import os
