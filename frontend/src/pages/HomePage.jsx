@@ -87,6 +87,23 @@ const READING_SESSION_CARD = {
   mode: "reading",
 };
 
+/**
+ * Dựng nội dung bong bóng "user" cho trải bài.
+ * Khi hỏi bằng giọng nói (chưa gõ chữ), hiển thị transcript nhận diện được để người
+ * dùng thấy hệ thống đã "nghe" đúng. Hỏi bằng chữ thì giữ nguyên câu hỏi.
+ * @param {string} [question] câu hỏi gõ tay (có thể rỗng)
+ * @param {string} [transcript] văn bản ASR từ giọng nói (có thể rỗng/null)
+ * @returns {string}
+ */
+function buildUserMessageContent(question, transcript) {
+  const q = (question || "").trim();
+  const t = (transcript || "").trim();
+  if (q && t && t !== q) return `${q}\n\n🎙️ ${t}`;
+  if (q) return q;
+  if (t) return `🎙️ ${t}`;
+  return "";
+}
+
 export default function HomePage() {
   // Cờ mobile (< 768px) — chỉ dùng để rẽ nhánh style, KHÔNG đổi giao diện desktop.
   const isMobile = useIsMobile();
@@ -579,8 +596,10 @@ const handleChatSubmitDraft =
         setMessages([
           {
             role: "user",
-            content:
+            content: buildUserMessageContent(
               draft.question,
+              response.transcript
+            ),
           },
 
           {
@@ -728,8 +747,10 @@ const handleChatSubmitDraft =
         setMessages([
         {
           role: "user",
-          content:
+          content: buildUserMessageContent(
             pendingInput.question,
+            response.transcript
+          ),
         },
 
         {
