@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import ReactMarkdown from "react-markdown";
 
 import {
   createDuoSession,
@@ -45,6 +46,19 @@ const getParticipantCard = (session, participantId) =>
   session?.cards?.find(
     (card) => card.participant_id === participantId
   ) || null;
+
+const formatCardLabel = (card) => {
+  if (!card) return "Đang chờ tải lên";
+
+  const base = `${card.card_name} (${card.orientation})`;
+  const confidence = Number(card.confidence);
+
+  if (Number.isFinite(confidence) && confidence > 0) {
+    return `${base} · độ tin cậy ${Math.round(confidence * 100)}%`;
+  }
+
+  return base;
+};
 
 const getStatusMessage = (session) => {
   const status = session?.status;
@@ -98,33 +112,31 @@ const getParticipantName = (
 ) => {
   if (!participant) return "Bạn đồng hành";
 
-  const directName =
+  // Người đang đăng nhập luôn hiển thị "Bạn" cho rõ ràng. Trước đây ô này hiện
+  // display_name — mà với tài khoản không đặt tên đăng nhập, display_name mặc
+  // định là phần đầu email (vd "24520131"), khiến tên trông như bị lỗi.
+  if (
+    storedUser?.id != null &&
+    participant.user_id === storedUser.id
+  ) {
+    return "Bạn";
+  }
+
+  // Người còn lại: ưu tiên tên hiển thị / tên đăng nhập thật. KHÔNG fallback ra
+  // email thô (vừa xấu vừa lộ thông tin); nếu không có thì dùng nhãn trung lập.
+  const partnerName =
     participant.display_name ||
     participant.displayName ||
     participant.username ||
     participant.user_name ||
     participant.name ||
     participant.user?.display_name ||
-    participant.user?.username ||
-    participant.user?.email;
+    participant.user?.username;
 
-  if (directName) return directName;
-
-  if (
-    storedUser?.id &&
-    participant.user_id === storedUser.id
-  ) {
-    return (
-      storedUser.display_name ||
-      storedUser.displayName ||
-      storedUser.username ||
-      storedUser.email ||
-      "Bạn"
-    );
-  }
+  if (partnerName) return partnerName;
 
   return participant.slot_label
-    ? `Người tham gia ${participant.slot_label}`
+    ? `Người chơi ${participant.slot_label}`
     : "Bạn đồng hành";
 };
 
@@ -599,9 +611,7 @@ export default function DuoReadingPanel() {
                       <div>
                         Lá bài:{" "}
                         {participant
-                          ? card
-                            ? `${card.card_name} (${card.orientation})`
-                            : "Đang chờ tải lên"
+                          ? formatCardLabel(card)
                           : "Đang chờ bạn đồng hành..."}
                       </div>
                     </div>
@@ -702,7 +712,9 @@ export default function DuoReadingPanel() {
             </div>
 
             <div className="duo-reading-panel__result-text">
-              {duoSession.reading.generated_text}
+              <ReactMarkdown>
+                {duoSession.reading.generated_text}
+              </ReactMarkdown>
             </div>
           </div>
         )}

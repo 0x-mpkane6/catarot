@@ -219,6 +219,18 @@ def submit_duo_card(
     predictor,
 ) -> dict[str, Any]:
     prediction = predictor.predict(image_path)
+
+    # Khi predictor không nhận dạng được (chưa có index, lệch chiều vector, hoặc
+    # ảnh lỗi), nó trả về lá "dự phòng" kèm khoá "_warning" — luôn là lá đầu danh
+    # sách (vd "The Fool"). Trước đây ta lưu thẳng lá này như thể đã nhận dạng,
+    # khiến Trải Bài Đôi "tự dàn xếp" lá thay vì nhận dạng thật. Từ chối rõ ràng
+    # để người dùng biết cần thử lại ảnh khác thay vì nhận một kết quả bịa.
+    if prediction.get("_warning"):
+        raise ValueError(
+            "Chưa nhận dạng được lá bài từ ảnh. Hãy chụp/cắt lá bài rõ ràng hơn "
+            "rồi tải lại (ảnh nên thấy trọn lá bài, đủ sáng)."
+        )
+
     card_name = str(prediction.get("name") or "Unknown Card")
     orientation = str(prediction.get("orientation") or "upright")
     confidence = float(prediction.get("confidence", 0.0))

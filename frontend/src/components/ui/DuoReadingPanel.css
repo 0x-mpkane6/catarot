@@ -416,7 +416,72 @@
   margin-top: 10px;
   color: rgba(255, 255, 255, 0.84);
   line-height: 1.75;
-  white-space: pre-wrap;
+}
+
+/* Nội dung luận giải là Markdown (Gemini trả về **đậm**, tiêu đề, danh sách...).
+   Style các phần tử con để render đẹp thay vì lộ ký tự markdown thô. */
+.duo-reading-panel__result-text > :first-child {
+  margin-top: 0;
+}
+
+.duo-reading-panel__result-text > :last-child {
+  margin-bottom: 0;
+}
+
+.duo-reading-panel__result-text p {
+  margin: 0 0 0.7em;
+}
+
+.duo-reading-panel__result-text h1,
+.duo-reading-panel__result-text h2,
+.duo-reading-panel__result-text h3,
+.duo-reading-panel__result-text h4 {
+  margin: 1em 0 0.45em;
+  line-height: 1.3;
+  color: #fff;
+}
+
+.duo-reading-panel__result-text h1 {
+  font-size: 1.18rem;
+}
+
+.duo-reading-panel__result-text h2 {
+  font-size: 1.1rem;
+}
+
+.duo-reading-panel__result-text h3,
+.duo-reading-panel__result-text h4 {
+  font-size: 1.02rem;
+}
+
+.duo-reading-panel__result-text strong {
+  color: #f3e8ff;
+  font-weight: 600;
+}
+
+.duo-reading-panel__result-text em {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.duo-reading-panel__result-text ul,
+.duo-reading-panel__result-text ol {
+  margin: 0 0 0.7em;
+  padding-left: 1.3em;
+}
+
+.duo-reading-panel__result-text li {
+  margin: 0.2em 0;
+}
+
+.duo-reading-panel__result-text li::marker {
+  color: rgba(192, 132, 252, 0.9);
+}
+
+.duo-reading-panel__result-text blockquote {
+  margin: 0 0 0.7em;
+  padding-left: 0.9em;
+  border-left: 2px solid rgba(192, 132, 252, 0.4);
+  color: rgba(255, 255, 255, 0.78);
 }
 
 @media (max-width: 760px) {
