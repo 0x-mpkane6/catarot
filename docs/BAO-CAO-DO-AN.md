@@ -30,7 +30,7 @@
 
 **Triết lý sản phẩm:** chạy **hoàn toàn miễn phí** trên hạ tầng free tier (phù hợp đồ án sinh viên), và **không bao giờ trả lỗi 500 vì thiếu model/API key** — mỗi tầng AI đều có cơ chế suy biến an toàn (graceful degradation).
 
-**Quy mô:** ~8.600 dòng Python (`backend/src`) + ~17.600 dòng JS/JSX/CSS (`frontend/src`); **61 route** (~60 REST + 1 WebSocket); cơ sở dữ liệu **23 bảng** quan hệ; bộ kiểm thử **109 hàm test trên 21 file**.
+**Quy mô:** ~9.500 dòng Python (`backend/src`) + ~18.100 dòng JS/JSX/CSS (`frontend/src`); **hơn 60 endpoint REST + 1 WebSocket**; cơ sở dữ liệu **24 bảng** quan hệ; bộ kiểm thử **124 hàm test trên 23 file**.
 
 ---
 
@@ -45,7 +45,7 @@ Hệ thống theo kiến trúc **client–server tách rời (decoupled SPA + AP
 ┌──────────────────────────────┐   HTTPS / WSS            ┌────────────────────────────────────────┐
 │  FRONTEND (SPA)              │   REST JSON + multipart  │  BACKEND (FastAPI monolith)              │
 │  React 19 + Vite 7           │ ───────────────────────▶ │                                           │
-│  → Cloudflare Workers (CDN)  │   JWT Bearer             │  HTTP layer (main.py, ~50 route + 1 WS)  │
+│  → Cloudflare Workers (CDN)  │   JWT Bearer             │  HTTP layer (main.py, ~60 route + 1 WS)  │
 │                              │ ◀─────────────────────── │      │                                    │
 │  - React Router v7 (SPA)     │                          │      ▼                                    │
 │  - axios (JWT interceptor)   │                          │  Service layer (advanced/*, pipeline/*)  │
@@ -79,6 +79,7 @@ Hệ thống theo kiến trúc **client–server tách rời (decoupled SPA + AP
 
 - **Đa phương thức:** `POST /api/ask` (JSON text), `POST /api/ask_with_image` (multipart, tối đa 3 ảnh), `POST /api/ask_with_media` (ảnh + audio). Tất cả chạy qua pipeline 4 tầng AI (mục 5).
 - **Hai chế độ rút bài:** nhận diện từ ảnh thật, hoặc **rút ngẫu nhiên** (`random_draw`) khi người dùng không có bài vật lý. Mọi quẻ chuẩn hoá về kiểu trải **"three"** (Quá khứ / Hiện tại / Tương lai).
+- **Hỏi bằng giọng nói (voice-only):** `question` là **tuỳ chọn** (`Form("")`) ở `ask_with_media`/`ask_with_image` — khi chỉ ghi âm không gõ chữ, câu hỏi nằm trong audio; transcript ASR được ghép vào truy vấn và **hiển thị lại trên giao diện** (bong bóng `🎙️ …`).
 - **`user_id` lấy từ JWT, không tin body** — chống giả mạo, tránh ghi đè lịch sử của user khác.
 - **Chấm điểm:** `POST /api/readings/{session_id}/rating` (1–5 sao).
 
@@ -109,6 +110,7 @@ Hệ thống theo kiến trúc **client–server tách rời (decoupled SPA + AP
 - **Streak:** đếm số ngày liên tiếp (mỗi ngày cách nhau đúng 1 ngày, tính từ hôm nay/hôm qua); cũng tính `longest_streak` bằng cách quét toàn lịch sử.
 - **Idempotent + chống race:** dựa vào `UniqueConstraint(user_id, draw_date)`; nếu 2 request cùng ngày chạy song song, request thua bắt `IntegrityError`, rollback và đọc lại bản ghi đã có.
 - **Affirmation tất định:** kèm theo lá là một câu khẳng định sinh **tất định** (hash SHA-1 của `lá|chiều|ngày` → chọn template) — cùng lá, cùng chiều, cùng ngày luôn cho cùng một câu, không tốn LLM.
+- **Luận giải sâu theo chủ đề (RAG + LLM):** `POST /api/daily-card/deep-reading` — người dùng **gõ chủ đề tự do** (vd "chuyện chuyển việc", "sức khoẻ tinh thần"); LLM (qua chuỗi fallback) sinh 4 mục cố định (Tổng quan / Lời khuyên / Một việc nên làm / Một điều nên tránh), có **bản dự phòng tất định** khi mất mạng. Chủ đề tự do được `_detect_theme()` suy ra nhóm cho phần dự phòng. **Cache theo `(user, ngày, chủ đề)`** trong bảng `daily_deep_readings` (unique constraint) → bấm lại cùng chủ đề trong ngày không gọi lại LLM.
 
 ### 3.7. Time Capsule (viên nang thời gian)
 
@@ -120,7 +122,8 @@ Hệ thống theo kiến trúc **client–server tách rời (decoupled SPA + AP
 ### 3.8. Dream Journal (nhật ký giấc mơ)
 
 - `POST /api/dreams` (text và/hoặc audio), `GET /api/dreams`, `GET /api/dreams/{id}`.
-- **Cách hoạt động:** nhận giấc mơ → (nếu có audio) chuyển giọng thành text → **trích biểu tượng** (2 tầng: ưu tiên LLM trả mảng JSON 3–7 biểu tượng; nếu rỗng dùng luật khớp chuỗi con từ `dream_symbol_map.json`) → **ánh xạ sang lá Tarot (arcana)** → **đối chiếu chéo** với các phiên đọc bài của user trong 7 ngày gần nhất để tìm liên hệ.
+- **Cách hoạt động:** nhận giấc mơ → (nếu có audio) chuyển giọng thành text → **trích biểu tượng** (2 tầng: ưu tiên LLM trả mảng JSON 3–7 biểu tượng kèm lá bài + câu ý nghĩa; nếu rỗng dùng luật khớp chuỗi con từ `dream_symbol_map.json`) → **ánh xạ sang lá Tarot (arcana)** → **đối chiếu chéo** với các phiên đọc bài của user trong 7 ngày gần nhất.
+- **Diễn giải tổng hợp (nâng cấp mới):** ngoài biểu tượng + lá bài, LLM (qua chuỗi fallback) sinh thêm `summary_interpretation` ("giấc mơ nói gì về mình"), `main_theme`, `emotional_tone`, `recent_reading_connections` (liên hệ phiên đọc 7 ngày — **lọc bỏ session_id LLM bịa**), `reflection_questions` (2–3 câu phản tư) và `suggested_action` (một việc nhỏ nên làm). Có **bản dự phòng tất định** khi LLM lỗi; lưu ở cột `interpretation_json` (nullable → giấc mơ cũ vẫn an toàn, frontend tự ẩn các mục mới).
 
 ### 3.9. Duo Reading (đọc bài đôi thời gian thực)
 
@@ -263,12 +266,12 @@ Hệ thống theo kiến trúc **client–server tách rời (decoupled SPA + AP
 
 ### 6.1. ORM & danh mục bảng
 
-- **SQLAlchemy 2.0** (kiểu `Mapped[...]` / `mapped_column`), **23 bảng** quan hệ:
+- **SQLAlchemy 2.0** (kiểu `Mapped[...]` / `mapped_column`), **24 bảng** quan hệ:
   - *Lõi đọc bài:* `users`, `tarot_cards`, `reading_sessions`, `recognized_cards`, `readings`, `conversation_turns`, `rating_reminders`.
   - *Phân tích:* `user_archetype_profiles`, `oracle_reports`, `analytics_events`.
   - *Đọc bài đôi:* `duo_sessions`, `duo_participants`, `duo_cards`, `duo_readings`.
   - *Cộng đồng:* `community_posts`, `community_interpretations`, `community_votes`, `community_moderation_logs`.
-  - *Tính năng khác:* `dream_entries`, `daily_cards`, `time_capsules`, `notification_preferences`, `notifications`.
+  - *Tính năng khác:* `dream_entries` (kèm cột `interpretation_json`), `daily_cards`, `daily_deep_readings`, `time_capsules`, `notification_preferences`, `notifications`.
 
 ### 6.2. Toàn vẹn dữ liệu
 
@@ -294,7 +297,7 @@ Hệ thống theo kiến trúc **client–server tách rời (decoupled SPA + AP
 
 - Bootstrap **idempotent, an toàn đa luồng/đa worker** (`initialize_database_if_needed` dùng double-checked locking).
 - Seed bài Tarot từ `data/raw/tarot_json/tarot.json` (kỳ vọng 78 lá), idempotent theo tên.
-- **Alembic** có 3 revision (initial → daily_card+time_capsule → notifications+analytics); ngoài ra có "lightweight migration" tự viết trong `init_db.py` để `ALTER TABLE ADD COLUMN` cho các cột bổ sung về sau (emotion_state, accuracy_score…).
+- **Alembic** có 5 revision (initial → daily_card+time_capsule → notifications+analytics → daily_deep_readings → dream interpretation); ngoài ra "lightweight migration" trong `init_db.py` tự `ALTER TABLE ADD COLUMN` cho cột bổ sung (emotion_state, accuracy_score, **dream_entries.interpretation_json**…) và tự **tạo lại bảng cache `daily_deep_readings`** nếu gặp schema CHECK enum cũ (chuyển chủ đề cố định → tự do, an toàn cho cả SQLite lẫn Postgres).
 
 ---
 
@@ -346,6 +349,7 @@ Dùng **APScheduler** (`BackgroundScheduler`, chạy **in-process** cùng FastAP
 - **State thuần React** (`useState`/`useEffect`/`useCallback`, ~25 state local — không dùng Redux/Zustand/React Query); đồng bộ user từ storage + `getCurrentUser()`.
 - **`pageScale`** zoom-to-fit desktop (tham chiếu 1500×880), mobile = 1 (hook `useIsMobile`).
 - Hiệu ứng chuyển cảnh `playScene()` đổi nội dung đúng lúc màn hình bị che (`onCover`).
+- **Hiển thị transcript giọng nói:** khi hỏi bằng giọng nói, bong bóng câu hỏi hiển thị `🎙️ <transcript>` (văn bản ASR nhận diện được) qua helper `buildUserMessageContent` — giúp người dùng thấy hệ thống "nghe" đúng.
 
 ### 8.5. Thư viện component (theo nhóm)
 
@@ -429,7 +433,7 @@ Mỗi thành phần có đặc tính tài nguyên khác nhau: backend cần RAM 
 
 ## 12. Kiểm thử & chất lượng mã
 
-- **Backend (pytest):** **109 hàm test trên 21 file**, bao phủ pipeline (smoke), DB persistence, migration Alembic, auth/security, LLM fallback, conversation context, RAG, vision, rating reminders, các tính năng nâng cao (duo, community, daily, time capsule), random/media, timezone. Bản final: toàn bộ xanh.
+- **Backend (pytest):** **124 hàm test trên 23 file**, bao phủ pipeline (smoke), DB persistence, migration Alembic, auth/security, LLM fallback, conversation context, RAG, vision, rating reminders, các tính năng nâng cao (duo, community, daily-card + luận giải sâu, dream journal + diễn giải tổng hợp, time capsule), random/media, timezone. Bản final: toàn bộ xanh.
 - **Lint backend:** `ruff check src/` **sạch (0 lỗi)**.
 - **Frontend:** `npm run lint` (ESLint, rule `react-hooks` nghiêm) **sạch**; `npm run build` (Vite production) **thành công**.
 - **Quy trình review đa tác tử (bản final):** trinh sát + đọc lõi thủ công → fan-out 9 reviewer song song theo lát cắt → **xác minh đối nghịch** từng phát hiện (một tác tử độc lập mặc định cố bác bỏ để loại phát hiện sai). Kết quả: 32 phát hiện thô → 12 xác nhận thật (3 HIGH, 9 MEDIUM) đã sửa, 1 bị bác bỏ (cảnh báo "Duo realtime hỏng" là **sai** — FE cập nhật qua polling).
@@ -442,6 +446,7 @@ Mỗi thành phần có đặc tính tài nguyên khác nhau: backend cần RAM 
 - **Rate limit in-memory** — chỉ đúng khi 1 process; multi-worker cần Redis.
 - **SQLite không bền vững trên free tier** — production nên dùng Postgres (Neon).
 - **Model nặng RAM** (~4GB) — host nhỏ cần bật `VISION_DEMO_MODE`.
+- **ASR `large-v3` nặng trên CPU** — host ít vCPU (HF free 2 vCPU) nên đặt `ASR_MODEL_FASTER=base`/`small` để giọng nói phản hồi nhanh, tránh timeout.
 - **Duo Reading:** backend đã có WebSocket nhưng **frontend hiện dùng polling REST** — chưa nối WS client.
 - **Lá người dùng "chọn" ở luồng text không quyết định lá kết quả** — backend rút ngẫu nhiên (ẩn dụ "vũ trụ chọn cho bạn"); lá hiển thị khớp lá đưa vào LLM nên nhất quán. Muốn lá chọn thực sự ảnh hưởng cần đổi contract `QuestionRequest`.
 - **`add_followup_turn` cấp `turn_index` không nguyên tử** khi 2 followup cùng phiên chạy song song (hiếm với 1 người dùng tuần tự); khắc phục triệt để cần `UniqueConstraint(session_id, turn_index)` + migration.
