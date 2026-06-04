@@ -671,7 +671,8 @@ def _run_pipeline_from_uploads(
 @app.post("/api/ask_with_media")
 def ask_with_media(
     request: Request,
-    question: str = Form(...),
+    # Hỏi bằng giọng nói: câu hỏi nằm trong audio nên question text có thể rỗng → default "".
+    question: str = Form(""),
     spread_type: str = Form("three"),
     random_draw: str | bool = Form(False),
     rating_reminder_days: int = Form(7),
@@ -694,7 +695,7 @@ def ask_with_media(
 @app.post("/api/ask_with_image")
 def ask_with_image(
     request: Request,
-    question: str = Form(...),
+    question: str = Form(""),
     spread_type: str = Form("three"),
     rating_reminder_days: int = Form(7),
     image: List[UploadFile] = File(...),
