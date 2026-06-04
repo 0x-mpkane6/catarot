@@ -38,6 +38,7 @@ from src.advanced.daily_card import (
     get_today_card,
     list_history as list_daily_history,
 )
+from src.advanced.daily_deep_reading import get_or_create_deep_reading
 from src.advanced.notifications import (
     get_or_create_preference,
     list_notifications,
@@ -324,6 +325,10 @@ class DailyCardDrawRequest(BaseModel):
 class DailyCardReflectionRequest(BaseModel):
     reflection: str | None = None
     mood_post: str | None = None
+
+
+class DailyCardDeepReadingRequest(BaseModel):
+    topic: str = Field(default="general", max_length=32)
 
 
 class TimeCapsuleCreateRequest(BaseModel):
@@ -1248,6 +1253,45 @@ async def daily_card_image(
         encoded = base64.b64encode(png_bytes).decode("ascii")
         return {"date": date, "image_base64": f"data:image/png;base64,{encoded}"}
     return Response(content=png_bytes, media_type="image/png")
+
+
+@app.post("/api/daily-card/deep-reading")
+async def daily_card_deep_reading(
+    request: Request,
+    req: DailyCardDeepReadingRequest | None = None,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Luận giải sâu "hôm nay" cho lá Daily Card theo chủ đề (RAG + LLM).
+
+    CHỈ chạy khi client gọi (nút bấm), KHÔNG tự chạy lúc mở trang. user_id lấy từ JWT.
+    Cache theo (user, ngày, topic): bấm lại cùng topic trong ngày trả bản cũ (cached=True),
+    không gọi lại LLM. Tái dùng reader + retriever đã nạp sẵn của pipeline.
+    """
+    # Chống lạm dụng/cạn quota LLM: mỗi lần cache-miss kích hoạt cả chuỗi provider.
+    enforce_rate_limit(
+        request=request,
+        scope="daily_deep_reading",
+        max_hits=10,
+        window_seconds=60,
+    )
+    topic = (req.topic if req else "general")
+    pipeline = _get_pipeline()
+    try:
+        result = get_or_create_deep_reading(
+            user_id=current_user.id,
+            topic=topic,
+            reader=pipeline.reader,
+            retriever=pipeline.rag_retriever,
+        )
+    except ValueError as exc:  # topic không hợp lệ
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    track_event(
+        current_user.id,
+        "daily_deep_reading",
+        {"topic": result.get("topic"), "cached": result.get("cached")},
+    )
+    return result
 
 
 # =============================

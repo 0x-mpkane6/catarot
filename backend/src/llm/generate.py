@@ -735,6 +735,99 @@ class ReadingGenerator:
             extra_warnings,
         )
 
+    def generate_custom(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        fallback_text: str,
+    ) -> tuple[str, list[str]]:
+        """Chạy ĐÚNG chuỗi fallback hiện có cho một cặp (system, user) prompt tuỳ biến.
+
+        Thứ tự: Gemini (xoay nhiều key) → OpenAI → Groq → Ollama → fallback_text
+        (deterministic do caller dựng sẵn). KHÔNG gọi thẳng một provider đơn lẻ; tái
+        dùng nguyên các method _generate_* của chuỗi chính. Set self.last_used_model
+        đồng nhất với generate()/generate_followup().
+        """
+        self.last_used_model = None
+        extra_warnings: list[str] = []
+
+        if (
+            not self.gemini_api_keys
+            and not self.api_key
+            and not self.groq_api_key
+            and not self.ollama_enabled
+        ):
+            extra_warnings.append(
+                "Chưa cấu hình mô hình ngôn ngữ (LLM); dùng luận giải dự phòng tự động."
+            )
+            self.last_used_model = "deterministic-fallback"
+            return fallback_text, extra_warnings
+
+        # Tier 1: Gemini — xoay vòng nhiều key khi lỗi/hết quota.
+        for _idx, _key in enumerate(self.gemini_api_keys):
+            try:
+                answer = self._generate_gemini(system_prompt, user_prompt, api_key=_key)
+                if answer.strip():
+                    self.last_used_model = f"gemini:{self.gemini_model}"
+                    return answer.strip(), extra_warnings
+                extra_warnings.append("Gemini trả về nội dung rỗng; thử backend kế tiếp.")
+                break
+            except Exception as exc:
+                LOGGER.warning(
+                    "Gemini deep-reading key #%d failed (model=%s): %s",
+                    _idx + 1,
+                    self.gemini_model,
+                    exc,
+                )
+                if _idx < len(self.gemini_api_keys) - 1:
+                    extra_warnings.append(
+                        f"Gemini key #{_idx + 1} lỗi/hết quota; thử key kế tiếp."
+                    )
+                else:
+                    extra_warnings.append(
+                        "Gemini (mọi key) lỗi/hết quota; thử backend kế tiếp."
+                    )
+
+        # Tier 2: OpenAI
+        if self.api_key:
+            try:
+                answer = self._generate_openai(system_prompt, user_prompt)
+                if answer.strip():
+                    self.last_used_model = f"openai:{self.model}"
+                    return answer.strip(), extra_warnings
+            except Exception as exc:
+                LOGGER.warning("OpenAI deep-reading generation failed: %s", exc)
+                extra_warnings.append("OpenAI lỗi; thử backend kế tiếp.")
+
+        # Tier 3: Groq (cloud free, OpenAI-compatible)
+        if self.groq_api_key:
+            try:
+                answer = self._generate_groq(system_prompt, user_prompt)
+                if answer.strip():
+                    self.last_used_model = f"groq:{self.groq_model}"
+                    return answer.strip(), extra_warnings
+            except Exception as exc:
+                LOGGER.warning("Groq deep-reading generation failed: %s", exc)
+                extra_warnings.append("Groq lỗi; thử backend kế tiếp.")
+
+        # Tier 4: Local Ollama
+        if self.ollama_enabled:
+            try:
+                answer = self._generate_ollama(system_prompt, user_prompt)
+                if answer.strip():
+                    self.last_used_model = f"ollama:{self.ollama_model}"
+                    return answer.strip(), extra_warnings
+                extra_warnings.append("Ollama trả về nội dung rỗng; dùng luận giải dự phòng tự động.")
+            except Exception as exc:
+                LOGGER.warning("Ollama deep-reading generation failed: %s", exc)
+                extra_warnings.append(
+                    "Không kết nối được Ollama; chuyển sang luận giải dự phòng tự động."
+                )
+
+        self.last_used_model = "deterministic-fallback"
+        return fallback_text, extra_warnings
+
     def _generate_followup_fallback(
         self,
         *,

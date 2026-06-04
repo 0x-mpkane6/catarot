@@ -35,6 +35,20 @@ export const VALID_MOODS = new Set([
   "inspired",
 ]);
 
+/** Các chủ đề cho "Luận giải sâu hôm nay" (đồng bộ với backend). */
+export const DEEP_READING_TOPICS = [
+  { value: "general", label: "Tổng quan" },
+  { value: "work", label: "Công việc" },
+  { value: "love", label: "Tình cảm" },
+  { value: "study", label: "Học tập" },
+  { value: "finance", label: "Tài chính" },
+];
+
+/** @type {Set<string>} Tập giá trị topic hợp lệ. */
+export const VALID_DEEP_READING_TOPICS = new Set(
+  DEEP_READING_TOPICS.map((topic) => topic.value)
+);
+
 const DAILY_CACHE_PREFIX =
   "daily_tarot";
 
@@ -372,6 +386,45 @@ export const drawDailyCard = async ({
     return response;
   } catch (error) {
     logError("drawDailyCard", error);
+    throw error;
+  }
+};
+
+/**
+ * Lấy/sinh "Luận giải sâu hôm nay" cho lá Daily Card theo chủ đề (RAG + LLM).
+ * CHỈ gọi khi user bấm nút. Backend cache theo (user, ngày, topic): bấm lại cùng
+ * topic trong ngày sẽ trả bản cũ (cached=true) mà không gọi lại LLM.
+ * @param {Object} params
+ * @param {string} [params.topic="general"] - general | work | love | study | finance
+ * @returns {Promise<{card: Object, topic: string, deep_reading: string, llm_model: string|null, cached: boolean, warnings: string[]}>}
+ * @throws {Error} Nếu topic không hợp lệ hoặc request thất bại
+ */
+export const getDeepReading = async ({ topic = "general" } = {}) => {
+  const cleanTopic = String(topic || "general").trim().toLowerCase();
+  if (!VALID_DEEP_READING_TOPICS.has(cleanTopic)) {
+    throw new Error(
+      `Chủ đề không hợp lệ: "${topic}". Hợp lệ: ${Array.from(
+        VALID_DEEP_READING_TOPICS
+      ).join(", ")}`
+    );
+  }
+
+  try {
+    // LLM có thể mất nhiều giây → nới timeout so với mặc định 10s. KHÔNG retry (tham số
+    // thứ 3 = 0): backend đã có chuỗi fallback nội bộ, retry timeout sẽ khiến user chờ tới
+    // 3×60s vô ích.
+    const response = await request(
+      "/api/daily-card/deep-reading",
+      {
+        method: "POST",
+        body: JSON.stringify({ topic: cleanTopic }),
+        timeout: 60000,
+      },
+      0
+    );
+    return response;
+  } catch (error) {
+    logError("getDeepReading", error);
     throw error;
   }
 };

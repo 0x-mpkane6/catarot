@@ -564,6 +564,57 @@ class DailyCard(Base):
     user: Mapped[User] = relationship(back_populates="daily_cards")
 
 
+class DailyDeepReading(Base):
+    """Luận giải sâu (RAG + LLM) cho lá Daily Card, theo (user, ngày, chủ đề).
+
+    CHỈ sinh khi user bấm nút; được cache theo (user_id, draw_date, topic) để bấm
+    lại cùng chủ đề trong ngày KHÔNG gọi lại LLM. Quan hệ một chiều (không thêm
+    back_populates lên User/DailyCard) để giữ thay đổi tối thiểu, đồng nhất với các
+    bảng phase-1 phía dưới.
+    """
+
+    __tablename__ = "daily_deep_readings"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "draw_date", "topic", name="uq_daily_deep_readings_user_date_topic"
+        ),
+        CheckConstraint(
+            "topic IN ('general', 'work', 'love', 'study', 'finance')",
+            name="ck_daily_deep_readings_topic",
+        ),
+        CheckConstraint(
+            "orientation IN ('upright', 'reversed')",
+            name="ck_daily_deep_readings_orientation",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    daily_card_id: Mapped[int] = mapped_column(
+        ForeignKey("daily_cards.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    draw_date: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
+    topic: Mapped[str] = mapped_column(String(16), nullable=False)
+    card_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    orientation: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="upright", server_default="upright"
+    )
+    deep_reading: Mapped[str] = mapped_column(Text, nullable=False)
+    llm_model: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    warnings_json: Mapped[str] = mapped_column(
+        Text, nullable=False, default="[]", server_default="[]"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 class TimeCapsule(Base):
     """A user-locked prediction that reveals on a future date."""
 

@@ -19,6 +19,8 @@ from "../components/ui/DailyChatBox";
 
 import DailyResultPanel
 from "../components/ui/DailyResultPanel";
+import DeepReadingPanel
+from "../components/ui/DeepReadingPanel";
 
 import {
   getConversationSafe,
@@ -1310,6 +1312,7 @@ const handleChatSubmitDraft =
         selectedCard?.mode ===
         "daily" ? (
 
+        <>
         <DailyResultPanel
           card={revealedCards?.[0]}
           isLoading={isBackendLoading}
@@ -1318,6 +1321,10 @@ const handleChatSubmitDraft =
             handleReflectSubmit
           }
         />
+        <DeepReadingPanel
+          card={revealedCards?.[0]}
+        />
+        </>
 
         ) : (
 
