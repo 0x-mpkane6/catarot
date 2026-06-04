@@ -97,6 +97,13 @@ const normalizeDreamEntry = (
   )
     ? dream.warnings
     : [],
+  // Diễn giải tổng hợp (mới): object hoặc null cho giấc mơ cũ chưa có.
+  interpretation:
+    dream.interpretation &&
+    typeof dream.interpretation ===
+      "object"
+      ? dream.interpretation
+      : null,
   created_at:
     dream.created_at || null,
 });

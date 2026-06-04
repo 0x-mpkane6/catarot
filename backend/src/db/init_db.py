@@ -61,9 +61,43 @@ def _apply_lightweight_migrations() -> None:
         column_name="rated_at",
         ddl_fragment="TIMESTAMP",  # tương thích cả SQLite lẫn Postgres (DATETIME chỉ đúng trên SQLite)
     )
+    _add_column_if_missing(
+        table_name="dream_entries",
+        column_name="interpretation_json",
+        ddl_fragment="TEXT",
+    )
+
+
+def _recreate_daily_deep_readings_if_stale() -> None:
+    """Drop bảng cache daily_deep_readings nếu còn schema cũ (CHECK topic enum) để
+    chuyển sang chủ đề tự do. Bảng này là cache nên drop an toàn — create_all tạo lại."""
+    engine = get_engine()
+    if "daily_deep_readings" not in inspect(engine).get_table_names():
+        return
+    try:
+        with engine.begin() as conn:
+            if engine.dialect.name == "sqlite":
+                row = conn.exec_driver_sql(
+                    "SELECT sql FROM sqlite_master WHERE type='table' AND name='daily_deep_readings'"
+                ).fetchone()
+                stale = bool(row and row[0] and "topic IN" in row[0])
+            else:
+                row = conn.exec_driver_sql(
+                    "SELECT 1 FROM information_schema.check_constraints "
+                    "WHERE constraint_name = 'ck_daily_deep_readings_topic'"
+                ).fetchone()
+                stale = bool(row)
+            if stale:
+                conn.exec_driver_sql("DROP TABLE daily_deep_readings")
+                LOGGER.info(
+                    "Dropped stale daily_deep_readings (topic CHECK cũ); sẽ tạo lại cho chủ đề tự do."
+                )
+    except Exception as exc:  # pragma: no cover - phòng thủ, không chặn startup
+        LOGGER.warning("Không tái tạo được daily_deep_readings: %s", exc)
 
 
 def initialize_database(seed_reference_data: bool = True) -> None:
+    _recreate_daily_deep_readings_if_stale()
     Base.metadata.create_all(bind=get_engine())
     _apply_lightweight_migrations()
 

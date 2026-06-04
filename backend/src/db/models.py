@@ -526,6 +526,11 @@ class DreamEntry(Base):
     symbols_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
     mapped_arcana_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
     matches_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
+    # Diễn giải tổng hợp (RAG/LLM + fallback) cho giấc mơ: object JSON gồm
+    # summary_interpretation, main_theme, emotional_tone, reflection_questions,
+    # suggested_action, recent_reading_connections, llm_model, source, warnings.
+    # Nullable: giấc mơ cũ chưa có field này -> null, frontend xử lý an toàn.
+    interpretation_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     user: Mapped[User | None] = relationship(back_populates="dream_entries")
@@ -579,10 +584,6 @@ class DailyDeepReading(Base):
             "user_id", "draw_date", "topic", name="uq_daily_deep_readings_user_date_topic"
         ),
         CheckConstraint(
-            "topic IN ('general', 'work', 'love', 'study', 'finance')",
-            name="ck_daily_deep_readings_topic",
-        ),
-        CheckConstraint(
             "orientation IN ('upright', 'reversed')",
             name="ck_daily_deep_readings_orientation",
         ),
@@ -600,7 +601,8 @@ class DailyDeepReading(Base):
         index=True,
     )
     draw_date: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
-    topic: Mapped[str] = mapped_column(String(16), nullable=False)
+    # Chủ đề tự do người dùng nhập (không còn giới hạn enum); đủ dài cho một cụm câu ngắn.
+    topic: Mapped[str] = mapped_column(String(64), nullable=False)
     card_name: Mapped[str] = mapped_column(String(120), nullable=False)
     orientation: Mapped[str] = mapped_column(
         String(16), nullable=False, default="upright", server_default="upright"

@@ -400,14 +400,10 @@ export const drawDailyCard = async ({
  * @throws {Error} Nếu topic không hợp lệ hoặc request thất bại
  */
 export const getDeepReading = async ({ topic = "general" } = {}) => {
-  const cleanTopic = String(topic || "general").trim().toLowerCase();
-  if (!VALID_DEEP_READING_TOPICS.has(cleanTopic)) {
-    throw new Error(
-      `Chủ đề không hợp lệ: "${topic}". Hợp lệ: ${Array.from(
-        VALID_DEEP_READING_TOPICS
-      ).join(", ")}`
-    );
-  }
+  // Chủ đề TỰ DO: chỉ chuẩn hoá nhẹ (gộp khoảng trắng, cắt độ dài), không chặn theo danh sách.
+  let cleanTopic = String(topic ?? "").replace(/\s+/g, " ").trim();
+  if (!cleanTopic) cleanTopic = "general";
+  if (cleanTopic.length > 60) cleanTopic = cleanTopic.slice(0, 60).trim();
 
   try {
     // LLM có thể mất nhiều giây → nới timeout so với mặc định 10s. KHÔNG retry (tham số

@@ -2,11 +2,19 @@ import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import toast from "react-hot-toast";
 
-import {
-  DEEP_READING_TOPICS,
-  getDeepReading,
-} from "../../services/dailyService";
+import { getDeepReading } from "../../services/dailyService";
 import useIsMobile from "../../hooks/useIsMobile";
+
+/** Gợi ý chủ đề nhanh (bấm để điền vào ô nhập); người dùng vẫn gõ tự do được. */
+const TOPIC_SUGGESTIONS = [
+  "Tổng quan",
+  "Công việc",
+  "Tình cảm",
+  "Học tập",
+  "Tài chính",
+  "Sức khỏe",
+  "Các mối quan hệ",
+];
 
 /**
  * Panel "Luận giải sâu hôm nay" cho lá Daily Card.
@@ -20,7 +28,7 @@ import useIsMobile from "../../hooks/useIsMobile";
  */
 export default function DeepReadingPanel({ card = null }) {
   const isMobile = useIsMobile();
-  const [topic, setTopic] = useState("general");
+  const [topic, setTopic] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
@@ -30,16 +38,15 @@ export default function DeepReadingPanel({ card = null }) {
   useEffect(() => {
     setResult(null);
     setError("");
-    setTopic("general");
+    setTopic("");
   }, [cardKey]);
 
   if (!card || !card.card_name) {
     return null;
   }
 
-  const handleSelectTopic = (nextTopic) => {
-    if (nextTopic === topic) return;
-    setTopic(nextTopic);
+  const applySuggestion = (label) => {
+    setTopic(label);
     // Kết quả cũ thuộc chủ đề khác → xoá để tránh hiển thị lệch chủ đề.
     setResult(null);
     setError("");
@@ -62,8 +69,7 @@ export default function DeepReadingPanel({ card = null }) {
     }
   };
 
-  const activeTopicLabel =
-    DEEP_READING_TOPICS.find((t) => t.value === topic)?.label || "Tổng quan";
+  const activeTopicLabel = topic.trim() || "Tổng quan";
 
   return (
     <div
@@ -127,10 +133,36 @@ export default function DeepReadingPanel({ card = null }) {
         </div>
       </div>
 
-      {/* TOPIC SELECTOR */}
+      {/* TOPIC INPUT (chủ đề tự do) */}
+      <input
+        type="text"
+        value={topic}
+        maxLength={60}
+        disabled={isLoading}
+        onChange={(e) => setTopic(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !isLoading) handleGenerate();
+        }}
+        placeholder="Chủ đề bạn muốn hỏi (vd: tình cảm, chuyển việc, sức khỏe…)"
+        aria-label="Chủ đề luận giải (tự do)"
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          padding: "11px 14px",
+          marginBottom: "10px",
+          borderRadius: "14px",
+          border: "1px solid rgba(192,132,252,0.3)",
+          background: "rgba(255,255,255,0.05)",
+          color: "#f5e9ff",
+          fontSize: "0.92rem",
+          outline: "none",
+        }}
+      />
+
+      {/* GỢI Ý NHANH */}
       <div
         role="group"
-        aria-label="Chọn chủ đề luận giải"
+        aria-label="Gợi ý chủ đề"
         style={{
           display: "flex",
           flexWrap: "wrap",
@@ -138,33 +170,33 @@ export default function DeepReadingPanel({ card = null }) {
           marginBottom: "16px",
         }}
       >
-        {DEEP_READING_TOPICS.map((option) => {
-          const active = option.value === topic;
+        {TOPIC_SUGGESTIONS.map((label) => {
+          const active =
+            label.toLowerCase() === topic.trim().toLowerCase();
           return (
             <button
-              key={option.value}
+              key={label}
               type="button"
-              aria-pressed={active}
-              aria-label={`Chủ đề ${option.label}`}
               disabled={isLoading}
-              onClick={() => handleSelectTopic(option.value)}
+              aria-label={`Gợi ý ${label}`}
+              onClick={() => applySuggestion(label)}
               style={{
-                padding: "7px 14px",
+                padding: "6px 12px",
                 borderRadius: "999px",
-                fontSize: "0.85rem",
+                fontSize: "0.8rem",
                 fontWeight: 600,
                 cursor: isLoading ? "default" : "pointer",
                 transition: "0.2s ease",
-                color: active ? "#fff" : "rgba(233,213,255,0.78)",
+                color: active ? "#fff" : "rgba(233,213,255,0.72)",
                 border: active
                   ? "1px solid rgba(192,132,252,0.7)"
                   : "1px solid rgba(255,255,255,0.12)",
                 background: active
-                  ? "rgba(168,85,247,0.32)"
+                  ? "rgba(168,85,247,0.3)"
                   : "rgba(255,255,255,0.04)",
               }}
             >
-              {option.label}
+              {label}
             </button>
           );
         })}

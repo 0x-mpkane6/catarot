@@ -27,7 +27,7 @@ from src.advanced.daily_card import (
 from src.db.models import DailyDeepReading, TarotCard
 from src.db.session import session_scope
 from src.llm.card_meanings_vi import card_keywords_vi, card_meaning_phrase_vi
-from src.llm.generate import _advice_line
+from src.llm.generate import _advice_line, _detect_theme
 from src.utils.logging import get_logger
 
 if TYPE_CHECKING:  # tránh import nặng lúc load module; chỉ cần cho type hint
@@ -61,6 +61,7 @@ _ACTION_BY_THEME: dict[str, str] = {
     "love": "Nói hoặc nhắn thẳng một điều bạn thật sự muốn chia sẻ với người quan trọng.",
     "study": "Dành một phiên học 25–30 phút tập trung cho đúng một mục tiêu rõ ràng.",
     "finance": "Ghi lại các khoản chi hôm nay và cắt một khoản không thật sự cần thiết.",
+    "health": "Ưu tiên một thói quen lành mạnh nhỏ hôm nay: ngủ đủ, vận động nhẹ hoặc uống đủ nước.",
 }
 _AVOID_BY_THEME: dict[str, str] = {
     "general": "Tránh ôm đồm quá nhiều việc cùng lúc khiến không việc nào xong.",
@@ -68,18 +69,42 @@ _AVOID_BY_THEME: dict[str, str] = {
     "love": "Tránh suy diễn ý người khác khi chưa hỏi cho rõ.",
     "study": "Tránh học dồn nhiều thứ một lúc rồi mất tập trung.",
     "finance": "Tránh quyết định chi tiêu hay đầu tư vội vàng khi còn đang phân vân.",
+    "health": "Tránh ép bản thân quá sức hoặc bỏ bê nghỉ ngơi để chạy theo việc khác.",
 }
 
 _MAX_SNIPPETS = 3
 
 
+_MAX_TOPIC_LEN = 60  # < String(64) của cột topic; đủ cho một cụm chủ đề ngắn.
+
+
 def validate_topic(topic: Any) -> str:
-    """Chuẩn hoá + kiểm tra chủ đề. Raise ValueError nếu không hợp lệ."""
-    clean = str(topic or "general").strip().lower()
-    if clean not in VALID_TOPICS:
-        allowed = ", ".join(sorted(VALID_TOPICS))
-        raise ValueError(f"topic không hợp lệ: {topic!r}. Chọn một trong: {allowed}.")
+    """Chuẩn hoá chủ đề TỰ DO do người dùng nhập (không còn giới hạn danh sách cố định).
+
+    Gộp khoảng trắng thừa, cắt độ dài an toàn, rỗng → 'general'. Chủ đề preset được
+    hạ chữ thường để map theme/nhãn ổn định; chủ đề tự do giữ nguyên dạng để hiển thị.
+    """
+    clean = " ".join(str(topic or "").split()).strip()
+    if not clean:
+        return "general"
+    if len(clean) > _MAX_TOPIC_LEN:
+        clean = clean[:_MAX_TOPIC_LEN].strip()
+    if clean.lower() in VALID_TOPICS:
+        return clean.lower()
     return clean
+
+
+def _theme_for_topic(topic: str) -> str:
+    """Suy ra 'theme' (cho lời khuyên dự phòng tất định) từ chủ đề tự do."""
+    preset = TOPIC_TO_THEME.get(topic.lower())
+    if preset:
+        return preset
+    return _detect_theme(topic, None)
+
+
+def _topic_label(topic: str) -> str:
+    """Nhãn hiển thị trong prompt: preset có nhãn tiếng Việt riêng, tự do dùng chính nó."""
+    return TOPIC_LABEL_VI.get(topic.lower(), topic)
 
 
 def _orientation_vi(orientation: str) -> str:
@@ -117,7 +142,7 @@ def _retrieve_snippets(
     topic: str,
 ) -> list[dict[str, Any]]:
     """Lấy snippet RAG cho lá bài + chủ đề. RAG tự fallback an toàn nếu thiếu index."""
-    query_text = f"{TOPIC_LABEL_VI[topic]} {card_name}"
+    query_text = f"{_topic_label(topic)} {card_name}"
     try:
         snippets = retriever.retrieve(
             query_text=query_text,
@@ -151,7 +176,7 @@ def build_deep_reading_prompt(
 ) -> tuple[str, str]:
     """Dựng (system_prompt, user_prompt) tiếng Việt cho luận giải sâu 4 mục."""
     orient_vi = _orientation_vi(orientation)
-    topic_vi = TOPIC_LABEL_VI[topic]
+    topic_vi = _topic_label(topic)
     snippet_block = "\n".join(_snippet_lines(snippets)) or "(không có tư liệu RAG cho lá này)"
 
     system_prompt = (
@@ -189,8 +214,8 @@ def build_deterministic_deep_reading(
     snippets: list[dict[str, Any]],
 ) -> str:
     """Bản dự phòng tất định 4 mục khi LLM lỗi/hết quota — vẫn rõ nghĩa, đúng định dạng."""
-    theme = TOPIC_TO_THEME[topic]
-    topic_vi = TOPIC_LABEL_VI[topic]
+    theme = _theme_for_topic(topic)
+    topic_vi = _topic_label(topic)
     orient_vi = _orientation_vi(orientation)
     is_reversed = str(orientation or "upright").lower() == "reversed"
 

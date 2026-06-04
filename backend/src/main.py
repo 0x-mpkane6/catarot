@@ -328,7 +328,8 @@ class DailyCardReflectionRequest(BaseModel):
 
 
 class DailyCardDeepReadingRequest(BaseModel):
-    topic: str = Field(default="general", max_length=32)
+    # Chủ đề tự do người dùng nhập (đã chuẩn hoá/cắt thêm ở validate_topic phía service).
+    topic: str = Field(default="general", max_length=64)
 
 
 class TimeCapsuleCreateRequest(BaseModel):

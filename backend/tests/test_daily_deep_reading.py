@@ -163,7 +163,7 @@ def test_deep_reading_defaults_to_general_when_no_body(monkeypatch, tmp_path):
         assert res.json()["topic"] == "general"
 
 
-def test_deep_reading_invalid_topic_returns_400(monkeypatch, tmp_path):
+def test_deep_reading_accepts_free_text_topic(monkeypatch, tmp_path):
     main_module = _bootstrap(monkeypatch, tmp_path)
     _install_stub_pipeline(monkeypatch, main_module)
     from fastapi.testclient import TestClient
@@ -172,8 +172,10 @@ def test_deep_reading_invalid_topic_returns_400(monkeypatch, tmp_path):
         _, token = _register_login(client, "deep4@example.com")
         headers = {"Authorization": f"Bearer {token}"}
 
-        res = client.post("/api/daily-card/deep-reading", headers=headers, json={"topic": "health"})
-        assert res.status_code == 400, res.text
+        # Topic giờ là TỰ DO (không còn enum cố định) → chủ đề tự do vẫn trả 200, echo lại topic.
+        res = client.post("/api/daily-card/deep-reading", headers=headers, json={"topic": "sức khỏe"})
+        assert res.status_code == 200, res.text
+        assert res.json()["topic"] == "sức khỏe"
 
 
 def test_deep_reading_requires_auth(monkeypatch, tmp_path):
