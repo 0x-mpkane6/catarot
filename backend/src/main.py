@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, List
+from urllib.parse import quote
 
 import sqlalchemy as sa
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
@@ -101,6 +102,7 @@ from src.auth.service import (
 )
 from src.db import initialize_database_if_needed, persist_reading_result
 from src.pipeline.tarot_pipeline import TarotPipeline
+from src.tts.synthesize import synthesize_vietnamese
 from src.utils.logging import get_logger
 from src.utils.rate_limit import enforce_rate_limit
 
@@ -184,6 +186,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Cho phép JS phía frontend (khác origin) đọc cảnh báo TTS trả qua header.
+    expose_headers=["X-TTS-Warnings"],
 )
 
 
@@ -578,6 +582,37 @@ def ask(req: QuestionRequest, request: Request):
     if session_id is not None:
         result["session_id"] = session_id
     return result
+
+
+class TtsRequest(BaseModel):
+    text: str
+
+
+@app.post("/api/tts")
+def text_to_speech(req: TtsRequest, request: Request):
+    """Đọc luận giải tiếng Việt thành giọng nói → trả audio/wav.
+
+    Nhận text (vd: final_answer) và tổng hợp bằng facebook/mms-tts-vie. Suy biến
+    mềm: văn bản rỗng → 400; TTS chưa sẵn sàng / lỗi → 503 kèm thông điệp, KHÔNG
+    lộ stack trace. Tổng hợp on-demand nên KHÔNG làm chậm luồng /api/ask.
+    """
+    _enforce_ask_rate_limit(request, scope="tts")
+    if not (req.text or "").strip():
+        raise HTTPException(status_code=400, detail="Thiếu nội dung văn bản để đọc.")
+
+    audio_bytes, warnings = synthesize_vietnamese(req.text)
+    if audio_bytes is None:
+        detail = warnings[0] if warnings else "Không tạo được giọng đọc."
+        raise HTTPException(status_code=503, detail=detail)
+
+    headers = {"Content-Disposition": 'inline; filename="reading.wav"'}
+    if warnings:
+        # Cảnh báo mềm (vd: đã cắt bớt văn bản) trả qua header để client tuỳ chọn hiển thị.
+        # Header HTTP chỉ chấp nhận latin-1 nên phải percent-encode chuỗi tiếng Việt
+        # (client đọc bằng decodeURIComponent). Cắt bớt TRƯỚC khi encode để không
+        # đứt giữa chừng một cụm %XX.
+        headers["X-TTS-Warnings"] = quote(" | ".join(warnings)[:500], safe="")
+    return Response(content=audio_bytes, media_type="audio/wav", headers=headers)
 
 
 # =============================

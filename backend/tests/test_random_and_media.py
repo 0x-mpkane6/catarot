@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import importlib
 from io import BytesIO
 from pathlib import Path

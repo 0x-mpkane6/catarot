@@ -41,6 +41,7 @@ Backend **phân 3 tầng**: `main.py` (HTTP/route) → `advanced/*` + `pipeline/
 | `rag/build_index.py` | Dựng index RAG + lớp embedder text (có demo fallback). |
 | `llm/generate.py` | **Sinh luận giải** — chuỗi dự phòng Gemini → OpenAI → Groq → Ollama → template tất định; che API key trong log. |
 | `llm/card_meanings_vi.py` | Từ điển nghĩa lá bài tiếng Việt (cho fallback tất định). |
+| `tts/synthesize.py` | **TTS** — đọc luận giải thành giọng nói tiếng Việt (`facebook/mms-tts-vie`, VITS qua transformers); xuất WAV bằng thư viện chuẩn `wave`, lỗi suy biến mềm (trả cảnh báo thay vì sập). |
 | `advanced/emotion_analysis.py` | Phân tích **cảm xúc giọng nói** bằng tín hiệu số (không dùng model ML). |
 
 ### `auth/` — Xác thực & phân quyền
@@ -133,11 +134,12 @@ trả JSON {cards, transcript, final_answer, warnings, session_id} → Frontend 
 | LLM sinh luận giải / fallback? | `llm/generate.py` |
 | RAG hoạt động ra sao? | `rag/retrieve.py` |
 | Giọng nói → chữ? | `asr/transcribe.py` |
+| Chữ → giọng nói (đọc luận giải)? | `tts/synthesize.py` + route `/api/tts` trong `main.py` |
 | Bot kiểm duyệt cộng đồng? | `advanced/community_automod.py` |
 | Diễn giải giấc mơ? | `advanced/dream_journal.py` |
 | Bảo mật mật khẩu / JWT? | `auth/security.py`, `auth/service.py`, `auth/deps.py` |
 | Cấu trúc DB / bảng? | `db/models.py` |
 | Route / API? | `main.py` |
 | Pipeline tổng thể? | `pipeline/tarot_pipeline.py` |
-| Test? | `backend/tests/` (124 hàm test / 23 file) |
+| Test? | `backend/tests/` (137 hàm test / 24 file) |
 ```

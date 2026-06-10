@@ -3,7 +3,6 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-import pytest
 import alembic.command as alembic_command
 from alembic.config import Config
 from sqlalchemy import create_engine, inspect, text

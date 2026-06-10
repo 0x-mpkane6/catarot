@@ -26,11 +26,11 @@
 
 **Tên hệ thống:** Tarot Multimodal Web App (API tự đặt tiêu đề `Tarot Multimodal API`, version `0.2.0`).
 
-**Mô tả:** Ứng dụng web cho phép người dùng đặt câu hỏi bằng **văn bản**, **giọng nói**, hoặc **ảnh chụp lá bài thật**; hệ thống nhận diện lá bài, tra cứu ý nghĩa và sinh **luận giải tiếng Việt** bằng mô hình ngôn ngữ lớn (LLM). Ngoài luồng đọc bài lõi, hệ thống còn có một hệ sinh thái tính năng tăng tương tác và giữ chân người dùng: lá bài hằng ngày + streak, viên nang thời gian, nhật ký giấc mơ, đọc bài đôi thời gian thực, phòng cộng đồng có kiểm duyệt (kèm bot tự động), hồ sơ nguyên mẫu (archetype), báo cáo Oracle định kỳ, thông báo và phân tích hành vi.
+**Mô tả:** Ứng dụng web cho phép người dùng đặt câu hỏi bằng **văn bản**, **giọng nói**, hoặc **ảnh chụp lá bài thật**; hệ thống nhận diện lá bài, tra cứu ý nghĩa và sinh **luận giải tiếng Việt** bằng mô hình ngôn ngữ lớn (LLM), kèm tuỳ chọn **nghe luận giải bằng giọng đọc tiếng Việt** (TTS). Ngoài luồng đọc bài lõi, hệ thống còn có một hệ sinh thái tính năng tăng tương tác và giữ chân người dùng: lá bài hằng ngày + streak, viên nang thời gian, nhật ký giấc mơ, đọc bài đôi thời gian thực, phòng cộng đồng có kiểm duyệt (kèm bot tự động), hồ sơ nguyên mẫu (archetype), báo cáo Oracle định kỳ, thông báo và phân tích hành vi.
 
 **Triết lý sản phẩm:** chạy **hoàn toàn miễn phí** trên hạ tầng free tier (phù hợp đồ án sinh viên), và **không bao giờ trả lỗi 500 vì thiếu model/API key** — mỗi tầng AI đều có cơ chế suy biến an toàn (graceful degradation).
 
-**Quy mô:** ~9.500 dòng Python (`backend/src`) + ~18.100 dòng JS/JSX/CSS (`frontend/src`); **hơn 60 endpoint REST + 1 WebSocket**; cơ sở dữ liệu **24 bảng** quan hệ; bộ kiểm thử **124 hàm test trên 23 file**.
+**Quy mô:** ~11.600 dòng Python (`backend/src`) + ~20.900 dòng JS/JSX/CSS (`frontend/src`); **hơn 60 endpoint REST + 1 WebSocket**; cơ sở dữ liệu **24 bảng** quan hệ; bộ kiểm thử **137 hàm test trên 24 file**.
 
 ---
 
@@ -81,6 +81,7 @@ Hệ thống theo kiến trúc **client–server tách rời (decoupled SPA + AP
 - **Hai chế độ rút bài:** nhận diện từ ảnh thật, hoặc **rút ngẫu nhiên** (`random_draw`) khi người dùng không có bài vật lý. Mọi quẻ chuẩn hoá về kiểu trải **"three"** (Quá khứ / Hiện tại / Tương lai).
 - **Hỏi bằng giọng nói (voice-only):** `question` là **tuỳ chọn** (`Form("")`) ở `ask_with_media`/`ask_with_image` — khi chỉ ghi âm không gõ chữ, câu hỏi nằm trong audio; transcript ASR được ghép vào truy vấn và **hiển thị lại trên giao diện** (bong bóng `🎙️ …`).
 - **`user_id` lấy từ JWT, không tin body** — chống giả mạo, tránh ghi đè lịch sử của user khác.
+- **Nghe luận giải (TTS):** `POST /api/tts` đọc văn bản luận giải thành **giọng nói tiếng Việt** (`facebook/mms-tts-vie` — VITS, chạy qua `transformers` sẵn có, không thêm dependency), trả `audio/wav`. Văn bản quá 1.200 ký tự được cắt bớt, kèm cảnh báo qua header `X-TTS-Warnings` (percent-encoded vì header HTTP chỉ nhận latin-1). Tổng hợp **on-demand**, không chen vào pipeline đọc bài; TTS tắt/lỗi → 503 kèm thông điệp, phần chữ vẫn dùng bình thường.
 - **Chấm điểm:** `POST /api/readings/{session_id}/rating` (1–5 sao).
 
 ### 3.2. Hội thoại tiếp nối (Follow-up conversation)
@@ -243,6 +244,7 @@ Hệ thống theo kiến trúc **client–server tách rời (decoupled SPA + AP
 | ⤓ | **Fallback tất định** | Lưới an toàn cuối | Sinh luận giải từ template + từ điển nghĩa lá bài tiếng Việt, **không cần internet** |
 
 **Chi tiết kỹ thuật đáng chú ý:**
+
 - **Prompt engineering có chủ đích:** lọc bỏ các cảnh báo nhạy cảm ("ngẫu nhiên", "chụp lại"…) khỏi prompt để LLM không lỡ tiết lộ bài là ngẫu nhiên hay nhắc chụp lại thừa; truyền cờ rõ ràng "có/không thêm mục `### Lưu ý`".
 - **Bảo mật log:** mọi thông báo lỗi HTTP đều **thay API key bằng `<redacted>`**.
 - **`maxOutputTokens = 0`** nghĩa là không đặt trần → bài luận giải không bị cắt giữa câu.
@@ -257,6 +259,7 @@ Hệ thống theo kiến trúc **client–server tách rời (decoupled SPA + AP
 | Vision | OpenCLIP + FAISS | demo embedder | danh sách lá mặc định |
 | RAG | FAISS đúng lá | cùng lá khác chiều | placeholder snippet |
 | LLM | Gemini (nhiều key) | OpenAI → Groq → Ollama | **template tất định offline** |
+| TTS | mms-tts-vie (VITS) | tắt qua `TTS_ENABLED` | 503 kèm thông điệp, web vẫn đọc chữ |
 
 → Hệ thống **không bao giờ trả lỗi 500 chỉ vì thiếu model hay hết quota**.
 
@@ -433,16 +436,17 @@ Mỗi thành phần có đặc tính tài nguyên khác nhau: backend cần RAM 
 
 ## 12. Kiểm thử & chất lượng mã
 
-- **Backend (pytest):** **124 hàm test trên 23 file**, bao phủ pipeline (smoke), DB persistence, migration Alembic, auth/security, LLM fallback, conversation context, RAG, vision, rating reminders, các tính năng nâng cao (duo, community, daily-card + luận giải sâu, dream journal + diễn giải tổng hợp, time capsule), random/media, timezone. Bản final: toàn bộ xanh.
+- **Backend (pytest):** **137 hàm test trên 24 file**, bao phủ pipeline (smoke), DB persistence, migration Alembic, auth/security, LLM fallback, conversation context, RAG, vision, TTS (chuẩn hoá văn bản, đóng gói WAV, suy biến mềm, endpoint), rating reminders, các tính năng nâng cao (duo, community, daily-card + luận giải sâu, dream journal + diễn giải tổng hợp, time capsule), random/media, timezone. Bản final: toàn bộ xanh.
 - **Lint backend:** `ruff check src/` **sạch (0 lỗi)**.
 - **Frontend:** `npm run lint` (ESLint, rule `react-hooks` nghiêm) **sạch**; `npm run build` (Vite production) **thành công**.
-- **Quy trình review đa tác tử (bản final):** trinh sát + đọc lõi thủ công → fan-out 9 reviewer song song theo lát cắt → **xác minh đối nghịch** từng phát hiện (một tác tử độc lập mặc định cố bác bỏ để loại phát hiện sai). Kết quả: 32 phát hiện thô → 12 xác nhận thật (3 HIGH, 9 MEDIUM) đã sửa, 1 bị bác bỏ (cảnh báo "Duo realtime hỏng" là **sai** — FE cập nhật qua polling).
+- **Rà soát chất lượng (bản final):** review chéo nhiều vòng theo từng lát cắt (bảo mật, hiệu năng, logic nghiệp vụ, UX); mỗi phát hiện đều được kiểm chứng lại trực tiếp trên code/chạy thử trước khi sửa. Kết quả: 32 phát hiện thô → 12 lỗi xác nhận thật (3 HIGH, 9 MEDIUM) đã sửa, 1 cảnh báo bị loại sau kiểm chứng (nghi vấn "Duo realtime hỏng" là **sai** — FE cập nhật qua polling).
 
 ---
 
 ## 13. Hạn chế đã biết & hướng phát triển
 
 **Hạn chế (cố ý ghi nhận để trung thực):**
+
 - **Rate limit in-memory** — chỉ đúng khi 1 process; multi-worker cần Redis.
 - **SQLite không bền vững trên free tier** — production nên dùng Postgres (Neon).
 - **Model nặng RAM** (~4GB) — host nhỏ cần bật `VISION_DEMO_MODE`.
@@ -454,6 +458,7 @@ Mỗi thành phần có đặc tính tài nguyên khác nhau: backend cần RAM 
 - **Analytics/retention tính trong bộ nhớ** — hợp dữ liệu nhỏ, chưa tối ưu cho quy mô lớn.
 
 **Hướng phát triển:**
+
 - Bộ Tarot đầy đủ 78 lá có ảnh; realtime Duo qua WebSocket client thay polling; đa ngôn ngữ giao diện; PWA offline; chuyển rate-limit/analytics sang Redis khi scale ngang.
 
 ---

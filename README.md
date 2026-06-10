@@ -19,12 +19,10 @@ Frontend `http://localhost:5173` · Backend `http://localhost:8000/docs`
 
 ## 📚 Tài liệu
 
-Toàn bộ báo cáo, sơ đồ, slide và hướng dẫn deploy nằm trong thư mục [**`docs/`**](./docs/):
+Toàn bộ báo cáo, sơ đồ và hướng dẫn deploy nằm trong thư mục [**`docs/`**](./docs/):
 
 - 📄 [Báo cáo đồ án](./docs/BAO-CAO-DO-AN.md) — kiến trúc · công nghệ · chức năng
 - 🗺️ [Sơ đồ kiến trúc (Mermaid)](./docs/SO-DO-KIEN-TRUC.md)
-- 🖥️ [Slide thuyết trình](./docs/slide-thuyet-trinh.html)
-- 🎬 [Kịch bản demo](./docs/KICH-BAN-DEMO.md)
 - 🚢 [Hướng dẫn deploy](./docs/HUONG-DAN-DEPLOY.md)
 
 Runbook vận hành: [`backend/README.md`](./backend/README.md) · [`frontend/README.md`](./frontend/README.md)
@@ -36,13 +34,13 @@ Runbook vận hành: [`backend/README.md`](./backend/README.md) · [`frontend/RE
 ├── backend/      # FastAPI: pipeline AI, auth, DB, schedulers
 ├── frontend/     # React SPA
 ├── alembic/      # DB migrations
-├── docs/         # 📚 báo cáo, sơ đồ, slide, hướng dẫn
+├── docs/         # 📚 báo cáo, sơ đồ, hướng dẫn
 └── docker-compose.yml
 ```
 
 ## ✨ Điểm kỹ thuật nổi bật
 
-- **Pipeline đa phương thức**: ASR (faster-whisper) · Vision (OpenCLIP + FAISS) · RAG (sentence-transformers) · LLM.
+- **Pipeline đa phương thức**: ASR (faster-whisper) · Vision (OpenCLIP + FAISS) · RAG (sentence-transformers) · LLM · TTS (mms-tts-vie, đọc luận giải tiếng Việt).
 - **Graceful degradation**: mỗi tầng AI đều có dự phòng; LLM 4 tầng **Gemini → OpenAI → Groq → Ollama → template tất định** (chạy được cả khi mất mạng).
 - **Bảo mật**: PBKDF2 200k vòng · JWT fail-fast · chống IDOR · rate limit · chống enumeration.
-- **23 bảng**, **~60 endpoint REST + 1 WebSocket**, **109 hàm test**.
+- **24 bảng**, **hơn 60 endpoint REST + 1 WebSocket**, **137 hàm test**.
