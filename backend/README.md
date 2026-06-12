@@ -149,5 +149,4 @@ Trạng thái bản final: **109 hàm test trên 21 file** (pytest), bao phủ p
 
 - Báo cáo đồ án đầy đủ: [`../docs/BAO-CAO-DO-AN.md`](../docs/BAO-CAO-DO-AN.md)
 - Sơ đồ kiến trúc (Mermaid): [`../docs/SO-DO-KIEN-TRUC.md`](../docs/SO-DO-KIEN-TRUC.md)
-- Hướng dẫn deploy: [`../docs/HUONG-DAN-DEPLOY.md`](../docs/HUONG-DAN-DEPLOY.md)
 - Backend runbook chi tiết: [README.backend.md](./README.backend.md)

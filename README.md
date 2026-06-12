@@ -19,11 +19,10 @@ Frontend `http://localhost:5173` · Backend `http://localhost:8000/docs`
 
 ## 📚 Tài liệu
 
-Toàn bộ báo cáo, sơ đồ và hướng dẫn deploy nằm trong thư mục [**`docs/`**](./docs/):
+Toàn bộ báo cáo và sơ đồ nằm trong thư mục [**`docs/`**](./docs/):
 
 - 📄 [Báo cáo đồ án](./docs/BAO-CAO-DO-AN.md) — kiến trúc · công nghệ · chức năng
 - 🗺️ [Sơ đồ kiến trúc (Mermaid)](./docs/SO-DO-KIEN-TRUC.md)
-- 🚢 [Hướng dẫn deploy](./docs/HUONG-DAN-DEPLOY.md)
 
 Runbook vận hành: [`backend/README.md`](./backend/README.md) · [`frontend/README.md`](./frontend/README.md)
 
