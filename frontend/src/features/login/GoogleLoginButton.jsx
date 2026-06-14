@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 
 import { loginWithGoogle } from "../../services/authService";
 import { useAppSettings } from "../../context/AppSettingsContext";
+import googleIcon from "../../assets/images/auth/google.webp";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const GIS_SRC = "https://accounts.google.com/gsi/client";
@@ -141,6 +142,12 @@ export default function GoogleLoginButton({
             : "Cần đặt VITE_GOOGLE_CLIENT_ID khi build frontend"
         }
       >
+        <img
+          src={googleIcon}
+          alt="Google"
+          width="20"
+          height="20"
+        />
         {fallbackLabel}
       </button>
     );
