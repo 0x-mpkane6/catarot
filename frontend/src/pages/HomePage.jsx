@@ -80,12 +80,22 @@ import tarotReading from "../assets/images/homepage/the-magician.png";
 import whatIsTarotContent from "../assets/text/what_is_tarot.md?raw";
 import catarotContent from "../assets/text/catarot.md?raw";
 import "./HomePage.css";
+import { useAppSettings } from "../context/AppSettingsContext";
 
 const READING_SESSION_CARD = {
   image: tarotReading,
   text: "Trải Bài",
   mode: "reading",
 };
+
+const MAX_PREVIEW_TITLE_LENGTH = 30;
+
+function truncatePreviewTitle(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (text.length <= MAX_PREVIEW_TITLE_LENGTH) return text;
+  return `${text.slice(0, MAX_PREVIEW_TITLE_LENGTH).trimEnd()}...`;
+}
 
 /**
  * Dựng nội dung bong bóng "user" cho trải bài.
@@ -107,6 +117,7 @@ function buildUserMessageContent(question, transcript) {
 export default function HomePage() {
   // Cờ mobile (< 768px) — chỉ dùng để rẽ nhánh style, KHÔNG đổi giao diện desktop.
   const isMobile = useIsMobile();
+  const { settings, t } = useAppSettings();
 
   const getStoredUser =
     () => {
@@ -190,6 +201,7 @@ export default function HomePage() {
   const [showSpreadGrid, setShowSpreadGrid] = useState(false);
   const [pendingInput, setPendingInput] = useState(null);
   const [isBackendLoading, setIsBackendLoading] = useState(false);
+  const [showDeepReadingPanel, setShowDeepReadingPanel] = useState(false);
 
   // Zoom-to-fit toàn bộ layout desktop theo CẢ chiều rộng lẫn chiều cao.
   // (CSS cũ chỉ scale theo chiều cao nên màn hẹp bị tràn/cắt lưới bài.)
@@ -215,6 +227,25 @@ export default function HomePage() {
 
   // eslint-disable-next-line no-unused-vars -- TODO: hook up session reuse
   const [currentSession, setCurrentSession] = useState(null);
+
+  const buildAssistantMessage = (
+    content,
+    shouldUseSpeech = false
+  ) => ({
+    role: "assistant",
+    content,
+    speechPlaybackEnabled: Boolean(
+      shouldUseSpeech &&
+      settings.speechPlaybackEnabled
+    ),
+    speechKey:
+      shouldUseSpeech &&
+      settings.speechPlaybackEnabled
+        ? `${Date.now()}-${Math.random()
+            .toString(36)
+            .slice(2)}`
+        : "",
+  });
 
   const requiredCards =
     selectedCard?.mode === "daily" ? 1 : 3;
@@ -332,10 +363,10 @@ export default function HomePage() {
                 "Tarot Hằng Ngày",
             },
             {
-              role: "assistant",
-              content:
+              ...buildAssistantMessage(
                 dailyItem.affirmation ||
-                "Lá bài hôm nay của bạn đã đến.",
+                  "Lá bài hôm nay của bạn đã đến."
+              ),
             },
           ]);
 
@@ -344,6 +375,7 @@ export default function HomePage() {
           ]);
 
           setShowResult(true);
+          setShowDeepReadingPanel(false);
           setShowSpreadGrid(false);
           setPendingInput(null);
         } catch (error) {
@@ -460,11 +492,10 @@ export default function HomePage() {
         },
 
         {
-          role: "assistant",
-
-          content:
-            dailyItem?.affirmation
-            || "Lá bài hôm nay của bạn đã đến.",
+          ...buildAssistantMessage(
+            dailyItem?.affirmation ||
+              "Lá bài hôm nay của bạn đã đến."
+          ),
         },
       ]);
 
@@ -478,6 +509,7 @@ export default function HomePage() {
       setHasTodayDailyReading(
         true
       );
+      setShowDeepReadingPanel(false);
       setDailyInfoNote(
         "Hôm nay bạn đã nhận lá bài hằng ngày rồi."
       );
@@ -486,6 +518,7 @@ export default function HomePage() {
       setCurrentSession(null);
 
       setShowResult(true);
+      setShowDeepReadingPanel(false);
 
       toast.success(
         response.alreadyDrawn
@@ -549,6 +582,7 @@ export default function HomePage() {
     setShowSpreadGrid(false);
     setPendingInput(null);
     setShowChatUI(false);
+    setShowDeepReadingPanel(false);
     setCurrentSession(null);
 
     // Phát hiệu ứng xoáy; đổi nội dung đúng lúc xoáy che kín màn hình.
@@ -603,9 +637,10 @@ const handleChatSubmitDraft =
           },
 
           {
-            role: "assistant",
-            content:
+            ...buildAssistantMessage(
               response.final_answer,
+              true
+            ),
           },
         ]);
 
@@ -706,10 +741,10 @@ const handleChatSubmitDraft =
         },
 
         {
-          role: "assistant",
-          content:
+          ...buildAssistantMessage(
             dailyItem.affirmation ||
-            "Lá bài hôm nay của bạn đã đến.",
+              "Lá bài hôm nay của bạn đã đến."
+          ),
         },
       ]);
 
@@ -730,6 +765,7 @@ const handleChatSubmitDraft =
       setCurrentSession(null);
 
       setShowResult(true);
+      setShowDeepReadingPanel(false);
 
         toast.success(
           response.alreadyDrawn
@@ -754,9 +790,10 @@ const handleChatSubmitDraft =
         },
 
         {
-          role: "assistant",
-          content:
+          ...buildAssistantMessage(
             response.final_answer,
+            true
+          ),
         },
       ]);
 
@@ -824,6 +861,7 @@ const handleChatSubmitDraft =
         session.title
       );
       setShowResult(true);
+      setShowDeepReadingPanel(false);
 
       const [
         sessionDetail,
@@ -876,45 +914,45 @@ const handleChatSubmitDraft =
 
   const items = [
     {
-      label: "Xem Bài",
+      label: t("nav_reading"),
       bgColor: "rgba(25, 18, 40, 0.82)",
       textColor: "#ffffff",
       links: [
         {
-          label: "Lịch sử chiêm nghiệm",
+          label: t("nav_reflection_history"),
           onClick: () =>
             playScene({
               onCover: () => setShowReflectionHistory(true),
             }),
         },
-        { label: "Lịch sử trải bài",
+        { label: t("nav_reading_history"),
           onClick: () => playScene({ onCover: () => setShowHistory(true) }) },
       ],
     },
 
     {
-      label: "Tarot",
+      label: t("nav_tarot"),
       bgColor: "rgba(40, 22, 60, 0.82)",
       textColor: "#ffffff",
       links: [
         {
-          label: "Tarot là gì?",
+          label: t("nav_what_is_tarot"),
           onClick: () =>
             playScene({
               onCover: () =>
                 setActiveMarkdownDoc({
-                  title: "TAROT LÀ GÌ?",
+                  title: t("overlay_what_is_tarot"),
                   content: whatIsTarotContent,
                 }),
             }),
         },
         {
-          label: "Catarot",
+          label: t("nav_catarot"),
           onClick: () =>
             playScene({
               onCover: () =>
                 setActiveMarkdownDoc({
-                  title: "CATAROT",
+                  title: t("overlay_catarot"),
                   content: catarotContent,
                 }),
             }),
@@ -923,11 +961,11 @@ const handleChatSubmitDraft =
     },
 
     {
-      label: "Liên hệ",
+      label: t("nav_contact"),
       bgColor: "rgba(30, 16, 50, 0.82)",
       textColor: "#ffffff",
       links: [
-        { label: "Thông tin thêm",
+        { label: t("nav_more_info"),
           onClick: () => playScene({ onCover: () => setShowContact(true) }),
         },
       ],
@@ -1068,6 +1106,7 @@ const handleChatSubmitDraft =
         setDailyInfoNote("");
         setShowChatUI(false);
         setShowSpreadGrid(false);
+        setShowDeepReadingPanel(false);
         setPendingInput(null);
         setCurrentSession(null);
         setIsBackendLoading(false);
@@ -1199,11 +1238,12 @@ const handleChatSubmitDraft =
 
             color: "#fff",
 
-            fontSize: "1.15rem",
+            fontSize: isMobile ? "1.18rem" : "1.32rem",
             fontWeight: 700,
+            lineHeight: 1.5,
           }}
         >
-          {selectedCard.text}
+          {truncatePreviewTitle(selectedCard.text)}
         </div>
       </div>
     )}
@@ -1338,12 +1378,12 @@ const handleChatSubmitDraft =
           card={revealedCards?.[0]}
           isLoading={isBackendLoading}
           infoNote={dailyInfoNote}
+          onOpenDeepReading={() =>
+            setShowDeepReadingPanel(true)
+          }
           onReflectSubmit={
             handleReflectSubmit
           }
-        />
-        <DeepReadingPanel
-          card={revealedCards?.[0]}
         />
         </>
 
@@ -1391,15 +1431,15 @@ const handleChatSubmitDraft =
   >
 
     {/* conversation */}
-    {showResult && (
+    {showResult && selectedCard?.mode !== "daily" && (
       <div
         style={{
-          marginBottom: "42px",
+          marginBottom: "26px",
 
           transform:
-            "translateY(-40px)",
+            "translateY(-68px)",
 
-          maxHeight: "62vh",
+          maxHeight: "70vh",
 
           overflowY: "auto",
 
@@ -1410,6 +1450,7 @@ const handleChatSubmitDraft =
             ? {
                 maxHeight: "none",
                 transform: "none",
+                marginBottom: "18px",
               }
             : null),
         }}
@@ -1457,6 +1498,16 @@ const handleChatSubmitDraft =
 
   </div>
 
+    )}
+
+    {selectedCard?.mode === "daily" && (
+      <DeepReadingPanel
+        card={revealedCards?.[0]}
+        isOpen={showDeepReadingPanel}
+        onClose={() =>
+          setShowDeepReadingPanel(false)
+        }
+      />
     )}
 
     {isBackendLoading && <MysticLoader />}

@@ -46,6 +46,7 @@ const ORIENTATION_LABELS = {
 export default function DailyResultPanel({
   card = null,
   onReflectSubmit = () => {},
+  onOpenDeepReading = () => {},
   isLoading = false,
   infoNote = "",
 }) {
@@ -303,6 +304,27 @@ export default function DailyResultPanel({
             {infoNote}
           </div>
         )}
+
+        <button
+          type="button"
+          onClick={onOpenDeepReading}
+          style={{
+            marginTop: "14px",
+            width: "100%",
+            padding: "12px 14px",
+            borderRadius: "16px",
+            border: "1px solid rgba(192,132,252,0.26)",
+            background: "rgba(168,85,247,0.14)",
+            color: "#f3d0ff",
+            fontSize: "0.92rem",
+            fontWeight: 700,
+            cursor: "pointer",
+            transition: "0.25s ease",
+            boxShadow: "0 0 16px rgba(168,85,247,0.12)",
+          }}
+        >
+          ✨ Luận giải sâu hôm nay
+        </button>
       </div>
 
       {/* PREVIEW & DETAILS MODAL */}
@@ -715,6 +737,41 @@ export default function DailyResultPanel({
               }}
             >
               {/* REFLECT BUTTON */}
+              <button
+                onClick={() => {
+                  onOpenDeepReading();
+                  setPreviewExpanded(false);
+                }}
+                style={{
+                  width: "100%",
+                  padding: "14px",
+                  borderRadius: "16px",
+                  border:
+                    "1px solid rgba(192,132,252,0.26)",
+                  background:
+                    "rgba(168,85,247,0.14)",
+                  color: "#f3d0ff",
+                  fontSize: "1rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "0.25s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background =
+                    "rgba(168,85,247,0.24)";
+                  e.currentTarget.style.boxShadow =
+                    "0 0 20px rgba(168,85,247,0.18)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background =
+                    "rgba(168,85,247,0.14)";
+                  e.currentTarget.style.boxShadow =
+                    "none";
+                }}
+              >
+                ✨ Luận giải sâu hôm nay
+              </button>
+
               <button
                 onClick={() => {
                   openReflectionModal();

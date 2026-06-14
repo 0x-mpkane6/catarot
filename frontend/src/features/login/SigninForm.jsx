@@ -4,11 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { register } from "../../services/authService";
 import GoogleLoginButton from "./GoogleLoginButton";
+import { useAppSettings } from "../../context/AppSettingsContext";
+import { isValidPassword } from "./passwordValidation";
 
 import toast from "react-hot-toast";
 
 export default function SigninForm() {
   const navigate = useNavigate();
+  const { t } = useAppSettings();
 
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -24,29 +27,29 @@ export default function SigninForm() {
 
       // validate
       if (!email || !password || !confirmPassword) {
-        toast.error("Vui lòng nhập đầy đủ thông tin");
+        toast.error(t("signup_missing"));
         return;
       }
 
-      if (password.length < 6) {
-        toast.error("Mật khẩu phải có ít nhất 6 ký tự");
+      if (!isValidPassword(password)) {
+        toast.error(t("auth_password_invalid"));
         return;
       }
 
       if (password !== confirmPassword) {
-        toast.error("Mật khẩu xác nhận không khớp");
+        toast.error(t("signup_password_mismatch"));
         return;
       }
 
       if (username.trim() && username.trim().length < 3) {
-        toast.error("Tên đăng nhập phải có ít nhất 3 ký tự");
+        toast.error(t("signup_username_short"));
         return;
       }
 
       // API — gửi cả username (tùy chọn) lên backend
       await register(email.trim(), password.trim(), username.trim());
 
-      toast.success("Tạo tài khoản thành công!");
+      toast.success(t("signup_success"));
 
       // redirect
       setTimeout(() => {
@@ -55,7 +58,7 @@ export default function SigninForm() {
     } catch (err) {
       console.error(err);
 
-      toast.error(err.response?.data?.detail || "Đăng ký thất bại");
+      toast.error(err.response?.data?.detail || t("signup_failed"));
     } finally {
       setLoading(false);
     }
@@ -72,7 +75,7 @@ export default function SigninForm() {
     });
     sessionStorage.setItem("token", res.token);
     sessionStorage.setItem("user", JSON.stringify(res.user));
-    toast.success("Chào mừng bạn!");
+    toast.success(t("signup_welcome"));
     navigate("/home");
   };
 
@@ -83,22 +86,22 @@ export default function SigninForm() {
 
       {/* RIGHT */}
       <div className={styles.right}>
-        <h2 className={styles.title}>Bắt đầu nào</h2>
+        <h2 className={styles.title}>{t("signup_title")}</h2>
 
         {/* GOOGLE */}
         <GoogleLoginButton
           text="signup_with"
           fallbackClassName={styles.googleBtn}
-          fallbackLabel="Đăng ký với Google"
+          fallbackLabel={t("signup_google")}
           onSuccess={handleGoogleSuccess}
         />
 
-        <div className={styles.divider}>Hoặc</div>
+        <div className={styles.divider}>{t("common_or")}</div>
 
         {/* EMAIL */}
         <input
           className={styles.input}
-          placeholder="Email của bạn"
+          placeholder={t("signup_email")}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -106,7 +109,7 @@ export default function SigninForm() {
         {/* USERNAME */}
         <input
           className={styles.input}
-          placeholder="Tên đăng nhập"
+          placeholder={t("signup_username")}
           value={username}
           onChange={(e) => setUsername(e.target.value)}
         />
@@ -115,7 +118,7 @@ export default function SigninForm() {
         <input
           type="password"
           className={styles.input}
-          placeholder="Mật khẩu"
+          placeholder={t("signup_password")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -124,7 +127,7 @@ export default function SigninForm() {
         <input
           type="password"
           className={styles.input}
-          placeholder="Xác nhận mật khẩu"
+          placeholder={t("signup_confirm_password")}
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           onKeyDown={(e) => {
@@ -144,7 +147,7 @@ export default function SigninForm() {
             cursor: loading ? "not-allowed" : "pointer",
           }}
         >
-          {loading ? "Đang tạo..." : "Đăng ký"}
+          {loading ? t("signup_submitting") : t("signup_submit")}
         </button>
 
         {/* BACK */}
@@ -156,7 +159,7 @@ export default function SigninForm() {
             textAlign: "center",
           }}
         >
-          Quay lại
+          {t("common_back")}
         </span>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
 import useIsMobile from "../../hooks/useIsMobile";
 import tarotBack from "../../assets/images/homepage/tarot-back-des-2.png";
@@ -207,114 +208,143 @@ export default function TarotResultPanel({ cards = [] }) {
       </div>
 
       {/* preview modal */}
-      {previewCard && (
-        <div
-          onClick={() => setPreviewCard(null)}
-          style={{
-            position: "fixed",
-            top: 0,
-            right: 0,
-            width: isMobile ? "100vw" : "380px",
-            height: "100vh",
-            zIndex: 999,
-            background:
-              "linear-gradient(180deg, rgba(12,8,24,0.96), rgba(7,5,16,0.98))",
-            borderLeft: "1px solid rgba(255,255,255,0.06)",
-            backdropFilter: "blur(24px)",
-            boxShadow: "-20px 0 60px rgba(192,132,252,0.14)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            padding: "42px 28px",
-            boxSizing: "border-box",
-            overflow: "hidden",
-            animation: "trp-slide 0.45s cubic-bezier(0.16,1,0.3,1) both",
-          }}
-        >
-          {/* close */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setPreviewCard(null);
-            }}
+      <AnimatePresence>
+        {previewCard && (
+          <motion.div
+            key="trp-preview-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            onClick={() => setPreviewCard(null)}
             style={{
-              position: "absolute",
-              top: "18px",
-              right: "18px",
-              width: "38px",
-              height: "38px",
-              borderRadius: "50%",
-              border: "none",
-              cursor: "pointer",
-              background: "rgba(255,255,255,0.05)",
-              color: "#fff",
-              fontSize: "1rem",
+              position: "fixed",
+              inset: 0,
+              zIndex: 999,
+              background: "rgba(5, 3, 12, 0.34)",
+              backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
+              display: "flex",
+              justifyContent: isMobile ? "center" : "flex-end",
             }}
           >
-            ✕
-          </button>
+            <motion.div
+              key="trp-preview-panel"
+              initial={
+                isMobile
+                  ? { opacity: 0, y: 28, scale: 0.98 }
+                  : { opacity: 0, x: 40, scale: 0.985 }
+              }
+              animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+              exit={
+                isMobile
+                  ? { opacity: 0, y: 22, scale: 0.985 }
+                  : { opacity: 0, x: 30, scale: 0.99 }
+              }
+              transition={{
+                duration: 0.34,
+                ease: [0.16, 1, 0.3, 1],
+              }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: "relative",
+                width: isMobile ? "100vw" : "380px",
+                height: "100vh",
+                background:
+                  "linear-gradient(180deg, rgba(12,8,24,0.96), rgba(7,5,16,0.98))",
+                borderLeft: "1px solid rgba(255,255,255,0.06)",
+                backdropFilter: "blur(24px)",
+                boxShadow: "-20px 0 60px rgba(192,132,252,0.14)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                padding: "42px 28px",
+                boxSizing: "border-box",
+                overflow: "hidden",
+              }}
+            >
+              {/* close */}
+              <button
+                onClick={() => setPreviewCard(null)}
+                style={{
+                  position: "absolute",
+                  top: "18px",
+                  right: "18px",
+                  width: "38px",
+                  height: "38px",
+                  borderRadius: "50%",
+                  border: "none",
+                  cursor: "pointer",
+                  background: "rgba(255,255,255,0.05)",
+                  color: "#fff",
+                  fontSize: "1rem",
+                }}
+              >
+                ✕
+              </button>
 
-          {/* glow */}
-          <div
-            style={{
-              position: "absolute",
-              top: "15%",
-              width: "240px",
-              height: "240px",
-              borderRadius: "50%",
-              background: "rgba(192,132,252,0.18)",
-              filter: "blur(90px)",
-              zIndex: 0,
-            }}
-          />
+              {/* glow */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: "15%",
+                  width: "240px",
+                  height: "240px",
+                  borderRadius: "50%",
+                  background: "rgba(192,132,252,0.18)",
+                  filter: "blur(90px)",
+                  zIndex: 0,
+                }}
+              />
 
-          {/* image */}
-          <img
-            src={getCardImageByName(previewCard.name)}
-            alt={previewCard.name}
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "270px",
-              marginTop: "70px",
-              borderRadius: "18px",
-              zIndex: 2,
-              transform:
-                previewCard.orientation === "reversed"
-                  ? "rotate(180deg)"
-                  : "rotate(0deg)",
-              boxShadow: "0 0 45px rgba(217,70,239,0.18)",
-            }}
-          />
+              {/* image */}
+              <img
+                src={getCardImageByName(previewCard.name)}
+                alt={previewCard.name}
+                style={{
+                  width: "270px",
+                  marginTop: "70px",
+                  borderRadius: "18px",
+                  zIndex: 2,
+                  transform:
+                    previewCard.orientation === "reversed"
+                      ? "rotate(180deg)"
+                      : "rotate(0deg)",
+                  boxShadow: "0 0 45px rgba(217,70,239,0.18)",
+                }}
+              />
 
-          {/* name */}
-          <div
-            style={{
-              marginTop: "36px",
-              color: "#fff",
-              fontSize: "1.7rem",
-              fontWeight: 700,
-              textAlign: "center",
-              zIndex: 2,
-            }}
-          >
-            {previewCard.name}
-          </div>
+              {/* name */}
+              <div
+                style={{
+                  marginTop: "36px",
+                  color: "#fff",
+                  fontSize: "1.7rem",
+                  fontWeight: 700,
+                  textAlign: "center",
+                  zIndex: 2,
+                }}
+              >
+                {previewCard.name}
+              </div>
 
-          {/* orientation */}
-          <div
-            style={{
-              marginTop: "10px",
-              color: "#d8b4fe",
-              textTransform: "uppercase",
-              letterSpacing: "0.12em",
-              fontSize: "0.95rem",
-              zIndex: 2,
-            }}
-          >
-            {previewCard.orientation === "reversed" ? "Lá ngược" : "Lá xuôi"}
-          </div>
-        </div>
-      )}
+              {/* orientation */}
+              <div
+                style={{
+                  marginTop: "10px",
+                  color: "#d8b4fe",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.12em",
+                  fontSize: "0.95rem",
+                  zIndex: 2,
+                }}
+              >
+                {previewCard.orientation === "reversed" ? "Lá ngược" : "Lá xuôi"}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

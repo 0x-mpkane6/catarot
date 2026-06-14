@@ -29,7 +29,9 @@ const CardNav = ({
   buttonLabel = "Bắt đầu",
   onButtonClick,
 }) => {
-
+  const handleBrandRefresh = () => {
+    window.location.reload();
+  };
   const [isHamburgerOpen, setIsHamburgerOpen] =
     useState(false);
 
@@ -344,22 +346,37 @@ const CardNav = ({
                 src={logo}
                 alt={logoAlt}
                 className="logo"
+                onClick={handleBrandRefresh}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (
+                    e.key === "Enter" ||
+                    e.key === " "
+                  ) {
+                    e.preventDefault();
+                    handleBrandRefresh();
+                  }
+                }}
               />
 
             ) : (
 
-              <span
+              <button
+                type="button"
                 style={{
                   color: "white",
-
+                  background: "transparent",
+                  border: "none",
                   fontWeight: 700,
-
+                  cursor: "pointer",
                   letterSpacing:
                     "0.15em",
                 }}
+                onClick={handleBrandRefresh}
               >
                 CATAROT
-              </span>
+              </button>
             )}
           </div>
 

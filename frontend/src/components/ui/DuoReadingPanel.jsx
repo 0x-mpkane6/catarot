@@ -7,14 +7,15 @@ import {
   useState,
 } from "react";
 import {
+  Check,
   Copy,
   RefreshCw,
   SquareArrowRightExit,
   Upload,
+  Volume2,
   X,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import ReactMarkdown from "react-markdown";
 
 import {
   createDuoSession,
@@ -22,6 +23,7 @@ import {
   joinDuoByInvite,
   uploadDuoCard,
 } from "../../services/duoService";
+import SpeechPlaybackMessage from "./SpeechPlaybackMessage";
 
 const ACTIVE_DUO_SESSION_KEY = "active_duo_session_id";
 
@@ -96,6 +98,14 @@ const getStatusMessage = (session) => {
   return "Đã tạo phòng.";
 };
 
+const stripReferenceSection = (content) =>
+  String(content ?? "")
+    .replace(
+      /\n{0,2}(?:#{1,6}\s*)?(?:Tư liệu tham khảo|Tài liệu tham khảo|Tham khảo|References?)\s*\n[\s\S]*$/i,
+      ""
+    )
+    .trim();
+
 const formatJoinedAt = (value) => {
   if (!value) return "Đã tham gia";
 
@@ -150,6 +160,8 @@ export default function DuoReadingPanel() {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [copiedResult, setCopiedResult] = useState(false);
+  const [replaySignal, setReplaySignal] = useState(0);
 
   const storedUser = useMemo(
     () => getStoredUser(),
@@ -182,6 +194,13 @@ export default function DuoReadingPanel() {
     currentUserId !== null &&
     currentUserId ===
       duoSession?.owner_user_id;
+  const duoReadingText = stripReferenceSection(
+    duoSession?.reading?.generated_text
+  );
+  const duoSpeechKey =
+    duoSession?.id && duoReadingText
+      ? `duo-${duoSession.id}-${duoReadingText.length}`
+      : "";
 
   const persistSession = (session) => {
     if (!session?.id) return;
@@ -442,6 +461,23 @@ export default function DuoReadingPanel() {
     setError("");
     clearSelectedImage();
     setView("landing");
+  };
+
+  const handleCopyReadingResult = async () => {
+    if (!duoReadingText) return;
+
+    try {
+      await navigator.clipboard.writeText(
+        duoReadingText
+      );
+      setCopiedResult(true);
+      window.setTimeout(() => {
+        setCopiedResult(false);
+      }, 1500);
+      toast.success("Đã sao chép kết quả");
+    } catch {
+      toast.error("Sao chép kết quả thất bại");
+    }
   };
 
   const renderLanding = () => (
@@ -707,14 +743,47 @@ export default function DuoReadingPanel() {
       {duoSession?.status === "completed" &&
         duoSession?.reading && (
           <div className="duo-reading-panel__result">
-            <div className="duo-reading-panel__field-label">
-              Kết quả Trải Bài Đôi
+            <div className="duo-reading-panel__result-header">
+              <div className="duo-reading-panel__field-label duo-reading-panel__field-label--tight">
+                Kết quả Trải Bài Đôi
+              </div>
+
+              <div className="duo-reading-panel__result-actions">
+                <button
+                  type="button"
+                  className="duo-reading-panel__icon-button"
+                  title="Đọc kết quả"
+                  onClick={() =>
+                    setReplaySignal(
+                      (prev) => prev + 1
+                    )
+                  }
+                >
+                  <Volume2 size={18} />
+                </button>
+
+                <button
+                  type="button"
+                  className="duo-reading-panel__icon-button"
+                  title="Sao chép kết quả"
+                  onClick={handleCopyReadingResult}
+                >
+                  {copiedResult ? (
+                    <Check size={18} />
+                  ) : (
+                    <Copy size={18} />
+                  )}
+                </button>
+              </div>
             </div>
 
             <div className="duo-reading-panel__result-text">
-              <ReactMarkdown>
-                {duoSession.reading.generated_text}
-              </ReactMarkdown>
+              <SpeechPlaybackMessage
+                text={duoReadingText}
+                autoPlay
+                speechKey={duoSpeechKey}
+                replaySignal={replaySignal}
+              />
             </div>
           </div>
         )}
@@ -723,7 +792,13 @@ export default function DuoReadingPanel() {
 
   return (
     <div className="duo-reading-panel-shell">
-      <div className="duo-reading-panel">
+      <div
+        className={`duo-reading-panel ${
+          view === "landing"
+            ? "duo-reading-panel--landing"
+            : ""
+        }`}
+      >
         <div className="duo-reading-panel__content">
           {view === "landing" && renderLanding()}
           {view === "joining" && renderJoining()}

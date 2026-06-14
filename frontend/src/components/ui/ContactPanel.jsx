@@ -1,10 +1,12 @@
 import ScrollVelocity
 from "./ScrollVelocity";
+import { useAppSettings } from "../../context/AppSettingsContext";
 
 export default function ContactPanel({
   isOpen,
   onClose,
 }) {
+  const { t } = useAppSettings();
 
   return (
     <>
@@ -71,13 +73,15 @@ export default function ContactPanel({
 
           boxSizing: "border-box",
 
-          overflow: "hidden",
+          overflowY: "auto",
+          overflowX: "hidden",
         }}
       >
 
         {/* TITLE */}
         <div
           style={{
+            fontFamily: '"Playfair Display", Georgia, serif',
             color: "#fff",
 
             fontSize: "2.2rem",
@@ -86,7 +90,7 @@ export default function ContactPanel({
             marginBottom: "24px",
           }}
         >
-          Liên Hệ
+          {t("contact_title")}
         </div>
 
         {/* SCROLL VELOCITY */}
@@ -145,7 +149,7 @@ export default function ContactPanel({
 
           <div style={cardStyle}>
             <div style={labelStyle}>
-              Github
+              {t("contact_github")}
             </div>
 
             <div style={valueStyle}>
@@ -155,22 +159,26 @@ export default function ContactPanel({
 
           <div style={cardStyle}>
             <div style={labelStyle}>
-              Discord
+              {t("contact_discord")}
             </div>
 
             <div style={valueStyle}>
-              0x-mpkane6 - horiz_06
+              0x_mpkane6 - horiz_06
             </div>
           </div>
 
           <div style={cardStyle}>
             <div style={labelStyle}>
-              Email
+              {t("contact_email")}
             </div>
 
             <div style={valueStyle}>
               24520758@gm.uit.edu.vn - 24520131@gm.uit.edu.vn
             </div>
+          </div>
+
+          <div style={advisorStyle}>
+            {t("contact_advisor")}
           </div>
 
         </div>
@@ -215,4 +223,12 @@ const valueStyle = {
   fontSize: "1.05rem",
 
   fontWeight: 600,
+};
+
+const advisorStyle = {
+  marginTop: "4px",
+  color: "#fde68a",
+  fontSize: "1rem",
+  fontStyle: "italic",
+  lineHeight: 1.6,
 };

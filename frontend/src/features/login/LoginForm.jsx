@@ -4,11 +4,13 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { login } from "../../services/authService";
 import GoogleLoginButton from "./GoogleLoginButton";
+import { useAppSettings } from "../../context/AppSettingsContext";
 
 import toast from "react-hot-toast";
 
 export default function LoginForm() {
   const navigate = useNavigate();
+  const { t } = useAppSettings();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,7 +40,7 @@ export default function LoginForm() {
 
       // validate empty fields
       if (!email || !password) {
-        toast.error("Vui lòng nhập đầy đủ thông tin");
+        toast.error(t("login_missing"));
         return;
       }
 
@@ -46,11 +48,11 @@ export default function LoginForm() {
 
       persistSession(res);
 
-      toast.success("Chào mừng trở lại!");
+      toast.success(t("login_success"));
 
       navigate("/home");
     } catch {
-      toast.error("Email hoặc mật khẩu không đúng");
+      toast.error(t("login_invalid"));
     } finally {
       setLoading(false);
     }
@@ -59,7 +61,7 @@ export default function LoginForm() {
   // Đăng nhập Google thành công → lưu phiên rồi chuyển vào trang chính.
   const handleGoogleSuccess = (res) => {
     persistSession(res);
-    toast.success("Chào mừng trở lại!");
+    toast.success(t("login_success"));
     navigate("/home");
   };
 
@@ -70,22 +72,22 @@ export default function LoginForm() {
 
       {/* RIGHT */}
       <div className={styles.right}>
-        <h2 className={styles.title}>Chào mừng trở lại!</h2>
+        <h2 className={styles.title}>{t("login_title")}</h2>
 
         {/* GOOGLE */}
         <GoogleLoginButton
           text="signin_with"
           fallbackClassName={styles.googleBtn}
-          fallbackLabel="Đăng nhập với Google"
+          fallbackLabel={t("login_google")}
           onSuccess={handleGoogleSuccess}
         />
 
-        <div className={styles.divider}>Hoặc</div>
+        <div className={styles.divider}>{t("common_or")}</div>
 
         {/* EMAIL */}
         <input
           className={styles.input}
-          placeholder="Email của bạn"
+          placeholder={t("login_email")}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -94,7 +96,7 @@ export default function LoginForm() {
         <input
           type="password"
           className={styles.input}
-          placeholder="Mật khẩu"
+          placeholder={t("login_password")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           onKeyDown={(e) => {
@@ -112,14 +114,14 @@ export default function LoginForm() {
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
             />
-            Ghi nhớ đăng nhập
+            {t("login_remember")}
           </label>
 
           <span
             className={styles.link}
             onClick={() => navigate("/forgot-password")}
           >
-            Quên mật khẩu?
+            {t("login_forgot")}
           </span>
         </div>
 
@@ -133,14 +135,14 @@ export default function LoginForm() {
             cursor: loading ? "not-allowed" : "pointer",
           }}
         >
-          {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+          {loading ? t("login_submitting") : t("login_submit")}
         </button>
 
         {/* SIGN UP */}
         <p className={styles.signup}>
-          Chưa có tài khoản?{" "}
+          {t("login_no_account")}{" "}
           <span className={styles.link} onClick={() => navigate("/signin")}>
-            Đăng ký
+            {t("login_signup")}
           </span>
         </p>
       </div>

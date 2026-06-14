@@ -38,7 +38,8 @@
 .duo-reading-panel--landing {
   width: fit-content;
   min-width: 0;
-  padding: 20px 24px;
+  max-width: min(580px, 92vw);
+  padding: 18px 20px;
 }
 
 .duo-reading-panel::before {
@@ -77,21 +78,24 @@
 .duo-reading-panel__actions--center {
   justify-content: center;
   align-items: center;
+  gap: 10px;
 }
 
 .duo-reading-panel--landing .duo-reading-panel__actions {
   flex-wrap: nowrap;
+  gap: 10px;
 }
 
 .duo-reading-panel__button {
   min-width: 0;
-  padding: 12px 17px;
+  padding: 12px 18px;
   border-radius: 15px;
   border: 1px solid rgba(192, 132, 252, 0.18);
   background: rgba(255, 255, 255, 0.05);
   color: #fff;
   font-size: 0.95rem;
   font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
   transition:
     transform 0.22s ease,
@@ -124,6 +128,10 @@
   background: rgba(255, 255, 255, 0.04);
 }
 
+.duo-reading-panel--landing .duo-reading-panel__button {
+  min-width: 170px;
+}
+
 .duo-reading-panel__join-box,
 .duo-reading-panel__section,
 .duo-reading-panel__result {
@@ -141,6 +149,10 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: rgba(243, 208, 255, 0.62);
+}
+
+.duo-reading-panel__field-label--tight {
+  margin-bottom: 0;
 }
 
 .duo-reading-panel__input {
@@ -416,6 +428,19 @@
   margin-top: 10px;
   color: rgba(255, 255, 255, 0.84);
   line-height: 1.75;
+}
+
+.duo-reading-panel__result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.duo-reading-panel__result-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 /* Nội dung luận giải là Markdown (Gemini trả về **đậm**, tiêu đề, danh sách...).

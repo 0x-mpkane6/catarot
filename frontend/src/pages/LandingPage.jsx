@@ -7,10 +7,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import whatIsTarotContent from "../assets/text/what_is_tarot.md?raw";
 import catarotContent from "../assets/text/catarot.md?raw";
+import { useAppSettings } from "../context/AppSettingsContext";
 
 export default function LandingPage() {
 
   const navigate = useNavigate();
+  const { t } = useAppSettings();
   const [showContact, setShowContact] =
     useState(false);
   const [activeMarkdownDoc, setActiveMarkdownDoc] =
@@ -18,42 +20,42 @@ export default function LandingPage() {
 
   const items = [
     {
-      label: "Xem Bài",
+      label: t("nav_reading"),
       bgColor: "rgba(25, 18, 40, 0.82)",
       textColor: "#ffffff",
       links: [
         {
-          label: "Lịch sử chiêm nghiệm",
+          label: t("nav_reflection_history"),
           onClick: () => navigate("/login"),
         },
         {
-          label: "Lịch sử trải bài",
+          label: t("nav_reading_history"),
           onClick: () => navigate("/login"),
         },
       ],
     },
 
     {
-      label: "Tarot",
+      label: t("nav_tarot"),
       bgColor: "rgba(40, 22, 60, 0.82)",
       textColor: "#ffffff",
       links: [
         {
-          label: "Tarot là gì?",
+          label: t("nav_what_is_tarot"),
           onClick: () =>
             setActiveMarkdownDoc({
               title:
-                "TAROT LÀ GÌ?",
+                t("overlay_what_is_tarot"),
               content:
                 whatIsTarotContent,
             }),
         },
         {
-          label: "Catarot",
+          label: t("nav_catarot"),
           onClick: () =>
             setActiveMarkdownDoc({
               title:
-                "CATAROT",
+                t("overlay_catarot"),
               content:
                 catarotContent,
             }),
@@ -62,12 +64,12 @@ export default function LandingPage() {
     },
 
     {
-      label: "Liên hệ",
+      label: t("nav_contact"),
       bgColor: "rgba(30, 16, 50, 0.82)",
       textColor: "#ffffff",
       links: [
         {
-          label: "Thông tin thêm",
+          label: t("nav_more_info"),
           onClick: () =>
             setShowContact(true),
         },
@@ -118,7 +120,7 @@ export default function LandingPage() {
         logo=""
         items={items}
 
-        buttonLabel="Bắt đầu"
+        buttonLabel={t("signup_submit")}
 
         onButtonClick={() => navigate("/login")}
 
