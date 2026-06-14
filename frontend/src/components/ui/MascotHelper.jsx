@@ -1,12 +1,15 @@
 import {
   CircleHelp,
   Download,
+  Settings,
   RotateCcw,
   Sparkles,
   X,
 } from "lucide-react";
 import {
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import toast from "react-hot-toast";
@@ -16,6 +19,7 @@ import { getCardImageByFile } from "../../lib/cardImages";
 import guidelineContent from "../../assets/text/guideline.md?raw";
 import MagicCat from "./MagicCat";
 import MarkdownOverlay from "./MarkdownOverlay";
+import { useAppSettings } from "../../context/AppSettingsContext";
 
 import "./MascotHelper.css";
 
@@ -43,7 +47,11 @@ const drawRandomCard = (
   return deck[index];
 };
 
+const MENU_CLOSE_DURATION_MS = 220;
+
 export default function MascotHelper() {
+  const { settings, updateSettings, t } = useAppSettings();
+  const helperRef = useRef(null);
   const deck = useMemo(
     () => buildDeck(),
     []
@@ -51,12 +59,61 @@ export default function MascotHelper() {
 
   const [menuOpen, setMenuOpen] =
     useState(false);
+  const [menuMounted, setMenuMounted] =
+    useState(false);
   const [drawnCard, setDrawnCard] =
     useState(null);
   const [drawKey, setDrawKey] =
     useState(0);
   const [showGuide, setShowGuide] =
     useState(false);
+  const [showSettings, setShowSettings] =
+    useState(false);
+
+  const closeMenu = () => {
+    setMenuOpen(false);
+    setShowSettings(false);
+  };
+
+  const toggleMenu = () => {
+    setMenuOpen((prev) => !prev);
+    setShowSettings(false);
+  };
+
+  useEffect(() => {
+    if (menuOpen) {
+      setMenuMounted(true);
+      return undefined;
+    }
+
+    if (!menuMounted) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setMenuMounted(false);
+    }, MENU_CLOSE_DURATION_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [menuMounted, menuOpen]);
+
+  useEffect(() => {
+    if (!menuMounted) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (!helperRef.current?.contains(event.target)) {
+        closeMenu();
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, [menuMounted]);
 
   const openDrawOverlay = () => {
     const card =
@@ -64,14 +121,14 @@ export default function MascotHelper() {
 
     if (!card) {
       toast.error(
-        "Không có lá bài tarot nào khả dụng."
+        t("mascot_no_cards")
       );
       return;
     }
 
     setDrawnCard(card);
     setDrawKey((prev) => prev + 1);
-    setMenuOpen(false);
+    closeMenu();
   };
 
   const handleDrawAgain = () => {
@@ -80,7 +137,7 @@ export default function MascotHelper() {
 
     if (!nextCard) {
       toast.error(
-        "Không có lá bài tarot nào khả dụng."
+        t("mascot_no_cards")
       );
       return;
     }
@@ -111,42 +168,110 @@ export default function MascotHelper() {
 
   return (
     <>
-      <div className="mascot-helper">
-        {menuOpen && (
+      <div
+        ref={helperRef}
+        className="mascot-helper"
+      >
+        {menuMounted && (
           <div className="mascot-helper__menu">
             <button
               type="button"
-              className="mascot-helper__bubble"
+              className={`mascot-helper__bubble ${menuOpen ? "is-open" : "is-closing"}`}
               onClick={(event) => {
                 event.stopPropagation();
                 setShowGuide(true);
-                setMenuOpen(false);
+                closeMenu();
               }}
-              title="Công cụ hỗ trợ"
+              title={t("mascot_tools")}
             >
               <CircleHelp size={18} />
             </button>
 
             <button
               type="button"
-              className="mascot-helper__bubble mascot-helper__bubble--card"
+              className={`mascot-helper__bubble mascot-helper__bubble--card ${menuOpen ? "is-open" : "is-closing"}`}
               onClick={(event) => {
                 event.stopPropagation();
                 openDrawOverlay();
               }}
-              title="Rút một lá bài hỗ trợ"
+              title={t("mascot_draw")}
             >
               <Sparkles size={18} />
             </button>
+
+            <button
+              type="button"
+              className={`mascot-helper__bubble mascot-helper__bubble--settings ${menuOpen ? "is-open" : "is-closing"}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                setShowSettings((prev) => !prev);
+              }}
+              title={t("mascot_settings")}
+            >
+              <Settings size={18} />
+            </button>
+
+            {showSettings && (
+              <div
+                className={`mascot-helper__settings ${menuOpen ? "is-open" : "is-closing"}`}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="mascot-helper__settings-title">
+                  {t("settings_title")}
+                </div>
+
+                <div className="mascot-helper__settings-row">
+                  <span>{t("settings_sound")}</span>
+                  <button
+                    type="button"
+                    className={`mascot-helper__toggle ${settings.mascotSoundEnabled ? "is-on" : ""}`}
+                    onClick={() =>
+                      updateSettings({
+                        mascotSoundEnabled: !settings.mascotSoundEnabled,
+                      })
+                    }
+                  >
+                    {settings.mascotSoundEnabled ? "ON" : "OFF"}
+                  </button>
+                </div>
+
+                <div className="mascot-helper__settings-row">
+                  <span>{t("settings_cursor")}</span>
+                  <button
+                    type="button"
+                    className={`mascot-helper__toggle ${settings.cursorEffectsEnabled ? "is-on" : ""}`}
+                    onClick={() =>
+                      updateSettings({
+                        cursorEffectsEnabled: !settings.cursorEffectsEnabled,
+                      })
+                    }
+                  >
+                    {settings.cursorEffectsEnabled ? "ON" : "OFF"}
+                  </button>
+                </div>
+
+                <div className="mascot-helper__settings-row">
+                  <span>{t("settings_speech")}</span>
+                  <button
+                    type="button"
+                    className={`mascot-helper__toggle ${settings.speechPlaybackEnabled ? "is-on" : ""}`}
+                    onClick={() =>
+                      updateSettings({
+                        speechPlaybackEnabled: !settings.speechPlaybackEnabled,
+                      })
+                    }
+                  >
+                    {settings.speechPlaybackEnabled ? "ON" : "OFF"}
+                  </button>
+                </div>
+
+              </div>
+            )}
           </div>
         )}
 
         <MagicCat
-          onClick={() =>
-            setMenuOpen(
-              (prev) => !prev
-            )
-          }
+          onClick={toggleMenu}
         />
       </div>
 
@@ -196,7 +321,7 @@ export default function MascotHelper() {
               >
                 <RotateCcw size={16} />
                 <span>
-                  Rút lại
+                  {t("mascot_redraw")}
                 </span>
               </button>
 
@@ -207,7 +332,7 @@ export default function MascotHelper() {
               >
                 <Download size={16} />
                 <span>
-                  Tải xuống
+                  {t("mascot_download")}
                 </span>
               </button>
             </div>
@@ -217,7 +342,7 @@ export default function MascotHelper() {
 
       <MarkdownOverlay
         isOpen={showGuide}
-        title="HƯỚNG DẪN SỬ DỤNG CATAROT"
+        title={t("guide_title")}
         content={guidelineContent}
         onClose={() =>
           setShowGuide(false)

@@ -1,7 +1,7 @@
 .mascot-helper {
   position: fixed;
   left: var(--mascot-left, 24px);
-  bottom: var(--mascot-bottom, 24px);
+  bottom: var(--mascot-bottom, 42px);
   z-index: 26;
 }
 
@@ -16,16 +16,17 @@
   position: fixed;
   left: calc(
     var(--mascot-left, 24px) +
-    var(--mascot-size, 230px) - 44px
+    var(--mascot-size, 230px) - 12px
   );
   bottom: calc(
     var(--mascot-bottom, 24px) +
-    var(--mascot-size, 230px) - 40px
+    128px
   );
   display: flex;
   flex-direction: column;
   gap: 12px;
   z-index: 27;
+  pointer-events: none;
 }
 
 .mascot-helper__bubble {
@@ -48,6 +49,10 @@
     transform 0.22s ease,
     box-shadow 0.22s ease,
     border-color 0.22s ease;
+  opacity: 0;
+  pointer-events: auto;
+  transform: translate(-56px, 10px) scale(0.68);
+  transform-origin: -56px 50%;
 }
 
 .mascot-helper__bubble:hover {
@@ -58,10 +63,137 @@
     0 0 28px rgba(168, 85, 247, 0.2);
 }
 
+.mascot-helper__bubble.is-open {
+  animation: mascot-bubble-open 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.mascot-helper__bubble.is-closing {
+  animation: mascot-bubble-close 0.2s ease forwards;
+}
+
+.mascot-helper__bubble:nth-child(1).is-open,
+.mascot-helper__bubble:nth-child(1).is-closing {
+  animation-delay: 0ms;
+}
+
+.mascot-helper__bubble:nth-child(2).is-open,
+.mascot-helper__bubble:nth-child(2).is-closing {
+  animation-delay: 26ms;
+}
+
+.mascot-helper__bubble:nth-child(3).is-open,
+.mascot-helper__bubble:nth-child(3).is-closing {
+  animation-delay: 52ms;
+}
+
 .mascot-helper__bubble--card {
   background:
     linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(232, 121, 249, 0.16)),
     linear-gradient(180deg, rgba(28, 18, 46, 0.96), rgba(12, 8, 24, 0.98));
+}
+
+.mascot-helper__bubble--settings {
+  background:
+    linear-gradient(135deg, rgba(250, 204, 21, 0.12), rgba(192, 132, 252, 0.16)),
+    linear-gradient(180deg, rgba(28, 18, 46, 0.96), rgba(12, 8, 24, 0.98));
+}
+
+.mascot-helper__settings {
+  position: absolute;
+  left: 74px;
+  bottom: 0;
+  width: 260px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(192, 132, 252, 0.18);
+  background:
+    linear-gradient(180deg, rgba(22, 14, 38, 0.98), rgba(10, 7, 22, 0.98));
+  box-shadow:
+    0 16px 36px rgba(0, 0, 0, 0.32),
+    0 0 24px rgba(168, 85, 247, 0.18);
+  backdrop-filter: blur(18px);
+  pointer-events: auto;
+  transform-origin: left bottom;
+}
+
+.mascot-helper__settings.is-open {
+  animation: mascot-settings-open 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.mascot-helper__settings.is-closing {
+  animation: mascot-settings-close 0.18s ease forwards;
+}
+
+.mascot-helper__settings-title {
+  font-family: "Playfair Display", Georgia, serif;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.mascot-helper__settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #f3d0ff;
+  font-size: 0.96rem;
+  padding: 10px 0;
+}
+
+.mascot-helper__settings-row + .mascot-helper__settings-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.mascot-helper__settings-row--stack {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.mascot-helper__toggle,
+.mascot-helper__lang-button {
+  border: 1px solid rgba(192, 132, 252, 0.18);
+  background: rgba(255, 255, 255, 0.05);
+  color: #f8ecff;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.mascot-helper__toggle {
+  min-width: 64px;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.mascot-helper__toggle.is-on,
+.mascot-helper__lang-button.is-active {
+  background: linear-gradient(135deg, #c084fc, #e879f9);
+  border-color: transparent;
+  color: #fff;
+}
+
+.mascot-helper__lang-switch {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.mascot-helper__lang-button {
+  flex: 1 1 0;
+  padding: 10px 12px;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.mascot-helper__toggle:hover,
+.mascot-helper__lang-button:hover {
+  transform: translateY(-1px);
 }
 
 .mascot-helper__overlay {
@@ -208,5 +340,53 @@
   100% {
     opacity: 1;
     transform: translateY(0) scale(1) rotateY(0deg);
+  }
+}
+
+@keyframes mascot-bubble-open {
+  0% {
+    opacity: 0;
+    transform: translate(-56px, 10px) scale(0.68);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes mascot-bubble-close {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-44px, 8px) scale(0.72);
+  }
+}
+
+@keyframes mascot-settings-open {
+  0% {
+    opacity: 0;
+    transform: translateX(-10px) scale(0.94);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes mascot-settings-close {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(-10px) scale(0.96);
   }
 }

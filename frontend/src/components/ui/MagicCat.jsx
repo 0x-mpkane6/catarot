@@ -7,15 +7,17 @@ import magicCat from "../../assets/images/homepage/magic-cat.png";
 import catSound from "../../assets/sounds/homepage/magic-cat.mp3";
 
 import SpeechBubble from "./SpeechBubble";
+import { useAppSettings } from "../../context/AppSettingsContext";
 
 import "./MagicCat.css";
 
 export default function MagicCat({
   onClick,
 }) {
+  const { settings, t } = useAppSettings();
 
-  const [message] =
-    useState("Chào mừng bạn trở lại.");
+  const message =
+    t("mascot_message");
 
   const [visible, setVisible] =
     useState(true);
@@ -25,7 +27,7 @@ export default function MagicCat({
   const handleCatClick = () => {
     onClick?.();
 
-    if (!canMeow) return;
+    if (!canMeow || !settings.mascotSoundEnabled) return;
 
     setCanMeow(false);
 
@@ -65,7 +67,7 @@ export default function MagicCat({
 
       <img
         src={magicCat}
-        alt="Mèo Phép Thuật"
+        alt={t("mascot_message")}
         className="magic-cat-image"
       />
     </div>

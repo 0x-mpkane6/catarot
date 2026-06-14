@@ -1,12 +1,24 @@
 import {
   Copy,
   Check,
+  Volume2,
 } from "lucide-react";
 
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 import useIsMobile from "../../hooks/useIsMobile";
+import SpeechPlaybackMessage from "./SpeechPlaybackMessage";
+
+function stripReferenceSection(content) {
+  const text = String(content ?? "");
+  return text
+    .replace(
+      /\n{0,2}(?:#{1,6}\s*)?(?:Tư liệu tham khảo|Tài liệu tham khảo|Tham khảo|References?)\s*\n[\s\S]*$/i,
+      ""
+    )
+    .trim();
+}
 
 export default function ChatConversation({
   messages = [],
@@ -17,6 +29,9 @@ export default function ChatConversation({
   const [copiedIndex,
     setCopiedIndex] =
     useState(null);
+  const [replaySignalByIndex,
+    setReplaySignalByIndex] =
+    useState({});
 
   const handleCopy = async (
     text,
@@ -36,6 +51,18 @@ export default function ChatConversation({
     } catch {
       /* clipboard khong kha dung: bo qua, khong lam vo UI */
     }
+  };
+
+  const handleReplay = (
+    index
+  ) => {
+    setReplaySignalByIndex(
+      (prev) => ({
+        ...prev,
+        [index]:
+          (prev[index] || 0) + 1,
+      })
+    );
   };
 
   return (
@@ -59,6 +86,14 @@ export default function ChatConversation({
 
           const isUser =
             message.role === "user";
+          const messageContent = isUser
+            ? String(message.content ?? "")
+            : stripReferenceSection(
+                message.content
+              );
+          const speechKey =
+            message.speechKey ||
+            `assistant-${index}-${messageContent.length}`;
 
           return (
 
@@ -122,7 +157,7 @@ export default function ChatConversation({
 
                   lineHeight: 1.7,
 
-                  fontSize: "1rem",
+                  fontSize: isMobile ? "1.06rem" : "1.14rem",
 
                   boxShadow:
                     isUser
@@ -158,21 +193,30 @@ export default function ChatConversation({
                   }}
                 >
                   {isUser ? (
-                    message.content
+                    messageContent
                   ) : (
-                    <ReactMarkdown
-                      components={{
-                        a: (props) => (
-                          <a
-                            {...props}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          />
-                        ),
-                      }}
-                    >
-                      {String(message.content ?? "")}
-                    </ReactMarkdown>
+                    !isUser ? (
+                      <SpeechPlaybackMessage
+                        text={messageContent}
+                        autoPlay={message.speechPlaybackEnabled}
+                        speechKey={speechKey}
+                        replaySignal={replaySignalByIndex[index] || 0}
+                      />
+                    ) : (
+                      <ReactMarkdown
+                        components={{
+                          a: (props) => (
+                            <a
+                              {...props}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            />
+                          ),
+                        }}
+                      >
+                        {String(message.content ?? "")}
+                      </ReactMarkdown>
+                    )
                   )}
                 </div>
 
@@ -180,7 +224,7 @@ export default function ChatConversation({
                 <button
                   onClick={() =>
                     handleCopy(
-                      message.content,
+                      messageContent,
                       index
                     )
                   }
@@ -230,6 +274,52 @@ export default function ChatConversation({
                     <Copy size={16} />
                   )}
                 </button>
+
+                {!isUser ? (
+                  <button
+                    onClick={() =>
+                      handleReplay(index)
+                    }
+                    style={{
+                      position: "absolute",
+
+                      top: "12px",
+
+                      right: "52px",
+
+                      width: "32px",
+
+                      height: "32px",
+
+                      borderRadius: "50%",
+
+                      border: "none",
+
+                      background:
+                        "rgba(255,255,255,0.08)",
+
+                      color: "#fff",
+
+                      opacity: isMobile ? 0.6 : 0,
+
+                      cursor: "pointer",
+
+                      transition:
+                        "0.25s ease",
+
+                      display: "flex",
+
+                      alignItems: "center",
+
+                      justifyContent:
+                        "center",
+                    }}
+                    className="copy-btn"
+                    title="Replay speech"
+                  >
+                    <Volume2 size={16} />
+                  </button>
+                ) : null}
 
               </div>
 

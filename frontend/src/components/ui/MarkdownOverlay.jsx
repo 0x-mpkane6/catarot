@@ -69,6 +69,7 @@ export default function MarkdownOverlay({
         >
           <div
             style={{
+              fontFamily: '"Playfair Display", Georgia, serif',
               color: "#fff",
               fontSize: "1.45rem",
               fontWeight: 800,

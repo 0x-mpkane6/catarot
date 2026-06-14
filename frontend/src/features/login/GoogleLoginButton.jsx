@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 import { loginWithGoogle } from "../../services/authService";
+import { useAppSettings } from "../../context/AppSettingsContext";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const GIS_SRC = "https://accounts.google.com/gsi/client";
@@ -58,6 +59,7 @@ export default function GoogleLoginButton({
   fallbackClassName,
   fallbackLabel = "Google",
 }) {
+  const { t } = useAppSettings();
   const containerRef = useRef(null);
   // Giu onSuccess trong ref: LoginForm/SigninForm truyen handler inline (doi identity moi
   // lan render). Neu de onSuccess trong deps cua effect ben duoi thi MOI lan go phim se
@@ -90,7 +92,7 @@ export default function GoogleLoginButton({
             } catch (err) {
               console.error(err);
               toast.error(
-                err?.response?.data?.detail || "Đăng nhập Google thất bại"
+                err?.response?.data?.detail || t("login_google")
               );
             }
           },
@@ -130,7 +132,7 @@ export default function GoogleLoginButton({
           toast.error(
             GOOGLE_CLIENT_ID
               ? "Không tải được Google. Vui lòng thử lại sau."
-              : "Đăng nhập Google chưa được cấu hình (thiếu VITE_GOOGLE_CLIENT_ID)."
+              : t("login_google")
           )
         }
         title={

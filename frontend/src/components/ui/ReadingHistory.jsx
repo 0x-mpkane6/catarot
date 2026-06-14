@@ -3,6 +3,16 @@ import toast from "react-hot-toast";
 
 import { getReadingHistory } from "../../services/historyService";
 import AnimatedList from "./AnimatedList";
+import { useAppSettings } from "../../context/AppSettingsContext";
+
+const MAX_HISTORY_TITLE_LENGTH = 72;
+
+function truncateHistoryTitle(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (text.length <= MAX_HISTORY_TITLE_LENGTH) return text;
+  return `${text.slice(0, MAX_HISTORY_TITLE_LENGTH).trimEnd()}...`;
+}
 
 export default function ReadingHistory({
   isOpen,
@@ -11,6 +21,7 @@ export default function ReadingHistory({
   loadHistory,
   refreshKey = 0,
 }) {
+  const { t } = useAppSettings();
   const [sessions, setSessions] = useState([]);
   const [isLoading, setIsLoading] =
     useState(false);
@@ -32,7 +43,7 @@ export default function ReadingHistory({
       } catch (error) {
         // Không nuốt lỗi âm thầm: báo người dùng + đưa danh sách về rỗng rõ ràng.
         console.error("Không tải được lịch sử xem bài", error);
-        toast.error("Không tải được lịch sử xem bài");
+        toast.error(t("history_load_failed"));
         setSessions([]);
       } finally {
         setIsLoading(false);
@@ -112,6 +123,7 @@ export default function ReadingHistory({
         {/* TITLE */}
         <div
           style={{
+            fontFamily: '"Playfair Display", Georgia, serif',
             color: "#fff",
 
             fontSize: "2.2rem",
@@ -120,7 +132,7 @@ export default function ReadingHistory({
             marginBottom: "26px",
           }}
         >
-          Lịch Sử Xem Bài
+          {t("history_title")}
         </div>
 
         {/* SESSION LIST */}
@@ -137,12 +149,12 @@ export default function ReadingHistory({
               marginBottom: "14px",
             }}
           >
-            Đang tải các phiên...
+            {t("history_loading")}
           </div>
         )}
         <AnimatedList
             items={sessions.map(
-            (s) => s.title
+            (s) => truncateHistoryTitle(s.title) || t("history_untitled")
             )}
 
           onItemSelect={(item, index) => {

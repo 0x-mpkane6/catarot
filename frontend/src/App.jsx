@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import SplashCursor from "./components/common/SplashCursor";
 import RouteTransition from "./components/transition/RouteTransition";
 import MysticLoader from "./components/ui/MysticLoader";
+import { useAppSettings } from "./context/AppSettingsContext";
 
 import { Toaster } from "react-hot-toast";
 
@@ -34,20 +35,24 @@ function RequireAuth({ children }) {
 }
 
 function App() {
+  const { settings } = useAppSettings();
+
   return (
     <>
-      <SplashCursor
-        DENSITY_DISSIPATION={3.5}
-        VELOCITY_DISSIPATION={2}
-        PRESSURE={0.1}
-        CURL={3}
-        SPLAT_RADIUS={0.2}
-        SPLAT_FORCE={10000}
-        COLOR_UPDATE_SPEED={10}
-        SHADING
-        RAINBOW_MODE={false}
-        COLOR="#A855F7"
-      />
+      {settings.cursorEffectsEnabled && (
+        <SplashCursor
+          DENSITY_DISSIPATION={3.5}
+          VELOCITY_DISSIPATION={2}
+          PRESSURE={0.1}
+          CURL={3}
+          SPLAT_RADIUS={0.2}
+          SPLAT_FORCE={10000}
+          COLOR_UPDATE_SPEED={10}
+          SHADING
+          RAINBOW_MODE={false}
+          COLOR="#A855F7"
+        />
+      )}
 
       <Toaster
         position="top-center"

@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 
 import { useState } from "react";
 import { requestPasswordReset } from "../../services/authService";
+import { useAppSettings } from "../../context/AppSettingsContext";
 
 import toast from "react-hot-toast";
 
 export default function ForgotPasswordForm() {
   const navigate = useNavigate();
+  const { t } = useAppSettings();
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,16 +20,16 @@ export default function ForgotPasswordForm() {
       setLoading(true);
 
       if (!email.trim()) {
-        toast.error("Vui lòng nhập email của bạn");
+        toast.error(t("forgot_missing"));
         return;
       }
 
       await requestPasswordReset(email.trim());
 
       // Phản hồi giống nhau dù email tồn tại hay không (chống dò email).
-      toast.success("Nếu email tồn tại, hướng dẫn đặt lại đã được gửi.");
+      toast.success(t("forgot_success"));
     } catch {
-      toast.error("Đã có lỗi xảy ra. Vui lòng thử lại.");
+      toast.error(t("forgot_failed"));
     } finally {
       setLoading(false);
     }
@@ -40,16 +42,16 @@ export default function ForgotPasswordForm() {
 
       {/* RIGHT */}
       <div className={styles.right}>
-        <h2 className={styles.title}>Quên mật khẩu</h2>
+        <h2 className={styles.title}>{t("forgot_title")}</h2>
 
         <p style={{ fontSize: "12px", opacity: 0.7, textAlign: "center" }}>
-          Đừng lo, chúng tôi sẽ gửi hướng dẫn đặt lại mật khẩu cho bạn
+          {t("forgot_desc")}
         </p>
 
         {/* INPUT */}
         <input
           className={styles.input}
-          placeholder="Nhập email"
+          placeholder={t("forgot_email")}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           onKeyDown={(e) => {
@@ -69,7 +71,7 @@ export default function ForgotPasswordForm() {
             cursor: loading ? "not-allowed" : "pointer",
           }}
         >
-          {loading ? "Đang gửi..." : "Gửi"}
+          {loading ? t("forgot_submitting") : t("forgot_submit")}
         </button>
 
         {/* BACK */}
@@ -78,7 +80,7 @@ export default function ForgotPasswordForm() {
           onClick={() => navigate("/login")}
           style={{ marginTop: "20px" }}
         >
-          Quay lại
+          {t("common_back")}
         </span>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 // eslint-disable-next-line no-unused-vars -- dùng dưới dạng <motion.div>
 import { motion, AnimatePresence } from "motion/react";
+import { useAppSettings } from "../../context/AppSettingsContext";
 
 const MOOD_LABELS = {
   calm: "Bình thản",
@@ -63,6 +64,7 @@ export default function ReflectionHistory({
   refreshKey = 0,
   loadHistory,
 }) {
+  const { t } = useAppSettings();
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] =
     useState(false);
@@ -106,13 +108,13 @@ export default function ReflectionHistory({
   const headerText = useMemo(
     () =>
       isLoading
-        ? "Đang tải chiêm nghiệm..."
+        ? t("reflection_loading")
         : `${items.length} chiêm nghiệm${
             items.length === 1
               ? ""
               : ""
           }`,
-    [isLoading, items.length]
+    [isLoading, items.length, t]
   );
 
   return (
@@ -160,13 +162,14 @@ export default function ReflectionHistory({
       >
         <div
           style={{
+            fontFamily: '"Playfair Display", Georgia, serif',
             color: "#fff",
             fontSize: "2.2rem",
             fontWeight: 700,
             marginBottom: "8px",
           }}
         >
-          Lịch sử chiêm nghiệm
+          {t("reflection_title")}
         </div>
 
         <div
@@ -319,9 +322,7 @@ export default function ReflectionHistory({
                   lineHeight: 1.7,
                 }}
               >
-                Chưa có chiêm nghiệm nào.
-                <br />
-                Hãy lưu một chiêm nghiệm từ kết quả Tarot Hằng Ngày của bạn để xem tại đây.
+                {t("reflection_empty")}
               </div>
             )}
         </div>
