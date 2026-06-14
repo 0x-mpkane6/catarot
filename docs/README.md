@@ -1,4 +1,4 @@
-# 📚 Tài liệu dự án — Tarot Multimodal Web App
+# 📚 Tài liệu dự án — CATAROT
 
 Thư mục này chứa toàn bộ tài liệu báo cáo, thuyết trình và vận hành của đồ án.
 

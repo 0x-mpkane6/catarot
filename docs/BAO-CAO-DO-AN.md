@@ -24,7 +24,7 @@
 
 ## 1. Tổng quan dự án
 
-**Tên hệ thống:** Tarot Multimodal Web App (API tự đặt tiêu đề `Tarot Multimodal API`, version `0.2.0`).
+**Tên hệ thống:** CATAROT (API tự đặt tiêu đề `Tarot Multimodal API`, version `0.2.0`).
 
 **Mô tả:** Ứng dụng web cho phép người dùng đặt câu hỏi bằng **văn bản**, **giọng nói**, hoặc **ảnh chụp lá bài thật**; hệ thống nhận diện lá bài, tra cứu ý nghĩa và sinh **luận giải tiếng Việt** bằng mô hình ngôn ngữ lớn (LLM), kèm tuỳ chọn **nghe luận giải bằng giọng đọc tiếng Việt** (TTS). Ngoài luồng đọc bài lõi, hệ thống còn có một hệ sinh thái tính năng tăng tương tác và giữ chân người dùng: lá bài hằng ngày + streak, viên nang thời gian, nhật ký giấc mơ, đọc bài đôi thời gian thực, phòng cộng đồng có kiểm duyệt (kèm bot tự động), hồ sơ nguyên mẫu (archetype), báo cáo Oracle định kỳ, thông báo và phân tích hành vi.
 
