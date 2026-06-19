@@ -11,6 +11,9 @@ from src.auth.security import create_access_token, hash_password, verify_passwor
 from src.db.models import User
 from src.db.session import session_scope
 from src.utils.validators import is_valid_email, normalize_email
+from src.utils.logging import get_logger
+
+LOGGER = get_logger(__name__)
 
 
 @dataclass
@@ -148,6 +151,54 @@ def get_user_by_id(user_id: int) -> AuthUser | None:
 _RESET_TOKEN_TTL_MIN = int(os.getenv("RESET_TOKEN_TTL_MIN", "30"))
 
 
+def _frontend_base_url() -> str:
+    """URL gốc của frontend để dựng link đặt lại mật khẩu: lấy FRONTEND_BASE_URL; nếu trống
+    thì dùng origin đầu tiên trong API_ALLOWED_ORIGINS. Trả "" nếu không có cấu hình nào."""
+    explicit = os.getenv("FRONTEND_BASE_URL", "").strip()
+    if explicit:
+        return explicit.rstrip("/")
+    for origin in (os.getenv("API_ALLOWED_ORIGINS", "") or "").split(","):
+        candidate = origin.strip().rstrip("/")
+        if candidate:
+            return candidate
+    return ""
+
+
+def _send_reset_email(*, to_email: str, token: str, expires_at: datetime) -> None:
+    """Gửi email link đặt lại mật khẩu. BEST-EFFORT: nuốt mọi lỗi (kể cả SMTP chưa cấu hình)
+    để KHÔNG lộ email có tồn tại hay không và không làm hỏng luồng forgot-password.
+    Có link nếu biết FRONTEND_BASE_URL; nếu không thì gửi mã token để dán vào trang đặt lại."""
+    try:
+        from src.utils.email import send_email, smtp_configured
+
+        if not smtp_configured():
+            LOGGER.info("Bỏ qua gửi email đặt lại mật khẩu: SMTP chưa cấu hình.")
+            return
+
+        minutes = _RESET_TOKEN_TTL_MIN
+        base = _frontend_base_url()
+        if base:
+            link = f"{base}/reset-password?token={token}"
+            body = (
+                "Bạn vừa yêu cầu đặt lại mật khẩu cho tài khoản CATAROT.\n\n"
+                f"Nhấp vào liên kết sau để đặt mật khẩu mới (hết hạn sau {minutes} phút):\n{link}\n\n"
+                "Nếu không phải bạn yêu cầu, hãy bỏ qua email này — mật khẩu sẽ không thay đổi."
+            )
+        else:
+            body = (
+                "Bạn vừa yêu cầu đặt lại mật khẩu cho tài khoản CATAROT.\n\n"
+                f"Mã đặt lại (hết hạn sau {minutes} phút):\n{token}\n\n"
+                "Nhập mã này vào trang đặt lại mật khẩu. Nếu không phải bạn, hãy bỏ qua email này."
+            )
+        send_email(
+            to_email=to_email,
+            subject="Đặt lại mật khẩu CATAROT",
+            body=body,
+        )
+    except Exception as exc:  # best-effort: không để lỗi SMTP nổi ra ngoài
+        LOGGER.warning("Gửi email đặt lại mật khẩu thất bại: %s", str(exc))
+
+
 def request_password_reset(*, email: str) -> tuple[bool, str | None, datetime | None]:
     """Sinh reset token cho email. Trả (found, token_if_dev, expires_at).
 
@@ -169,6 +220,9 @@ def request_password_reset(*, email: str) -> tuple[bool, str | None, datetime | 
             return False, None, None
         user.reset_token = token
         user.reset_token_expires_at = expires
+
+    # Gửi email chứa link đặt lại (best-effort; degrade an toàn nếu chưa cấu hình SMTP).
+    _send_reset_email(to_email=clean_email, token=token, expires_at=expires)
 
     expose = os.getenv("EXPOSE_RESET_TOKEN_IN_RESPONSE", "false").strip().lower() in {
         "1",

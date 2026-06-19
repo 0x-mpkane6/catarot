@@ -85,6 +85,15 @@ const STRINGS = {
   forgot_missing: "Vui lòng nhập email của bạn",
   forgot_success: "Nếu email tồn tại, hướng dẫn đặt lại đã được gửi.",
   forgot_failed: "Đã có lỗi xảy ra. Vui lòng thử lại.",
+  reset_title: "Đặt lại mật khẩu",
+  reset_desc: "Nhập mật khẩu mới cho tài khoản của bạn",
+  reset_new_password: "Mật khẩu mới",
+  reset_submit: "Đặt lại mật khẩu",
+  reset_submitting: "Đang đặt lại...",
+  reset_success: "Đặt lại mật khẩu thành công! Hãy đăng nhập lại.",
+  reset_failed: "Liên kết không hợp lệ hoặc đã hết hạn. Vui lòng thử lại.",
+  reset_missing: "Vui lòng nhập mật khẩu mới",
+  reset_no_token: "Thiếu mã đặt lại. Hãy mở liên kết trong email đặt lại mật khẩu.",
 };
 
 const AppSettingsContext = createContext(null);

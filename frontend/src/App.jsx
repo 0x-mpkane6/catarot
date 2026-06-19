@@ -14,6 +14,7 @@ const LoginPage = lazy(() => import("./pages/LoginPage"));
 const HomePage = lazy(() => import("./pages/HomePage"));
 const SigninPage = lazy(() => import("./pages/SigninPage"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 
 // Đọc token đăng nhập từ cả localStorage (ghi nhớ) lẫn sessionStorage (phiên), cùng thứ tự
 // với services/api.js để tránh lệch.
@@ -85,6 +86,7 @@ function App() {
                 }
               />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
             </Routes>
           </Suspense>
         </RouteTransition>
