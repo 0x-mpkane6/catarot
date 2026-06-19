@@ -507,12 +507,12 @@ def generate_dream_interpretation(
     user_prompt = _build_interpret_user_prompt(combined_text, mapped, recent_sessions)
     fallback_json = json.dumps(deterministic, ensure_ascii=False)
 
-    text, _raw_warnings = reader.generate_custom(
+    text, model_name, _raw_warnings = reader.generate_custom(
         system_prompt=_INTERPRET_SYSTEM_PROMPT,
         user_prompt=user_prompt,
         fallback_text=fallback_json,
     )
-    model = reader.last_used_model or "deterministic-fallback"
+    model = model_name or "deterministic-fallback"
 
     result = deterministic
     warnings: list[str] = []

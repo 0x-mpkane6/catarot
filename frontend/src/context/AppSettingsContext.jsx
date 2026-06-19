@@ -134,6 +134,9 @@ export function AppSettingsProvider({ children }) {
   );
 }
 
+// Provider + hook cố ý ở chung file (mọi nơi import `useAppSettings` từ đây). Đây là cảnh
+// báo về Fast Refresh trong dev, không ảnh hưởng production build — bỏ qua có chủ đích.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAppSettings() {
   const context = useContext(AppSettingsContext);
   if (!context) {

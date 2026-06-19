@@ -77,15 +77,22 @@ def _recent_card_for_user(user_id: int | None) -> str | None:
     if user_id is None:
         return None
 
-    with session_scope() as session:
-        row = session.execute(
-            select(TarotCard.name)
-            .join(RecognizedCard, RecognizedCard.card_id == TarotCard.id)
-            .join(ReadingSession, ReadingSession.id == RecognizedCard.session_id)
-            .where(ReadingSession.user_id == user_id)
-            .order_by(ReadingSession.created_at.desc(), RecognizedCard.order_index.asc())
-            .limit(1)
-        ).first()
+    try:
+        with session_scope() as session:
+            row = session.execute(
+                select(TarotCard.name)
+                .join(RecognizedCard, RecognizedCard.card_id == TarotCard.id)
+                .join(ReadingSession, ReadingSession.id == RecognizedCard.session_id)
+                .where(ReadingSession.user_id == user_id)
+                .order_by(ReadingSession.created_at.desc(), RecognizedCard.order_index.asc())
+                .limit(1)
+            ).first()
+    except Exception as exc:
+        # Endpoint /api/question_suggestions là public, không cần auth. Nếu DB tạm lỗi
+        # (Neon idle-disconnect, schema chưa có...) thì coi như "chưa có lá gần đây" và
+        # trả gợi ý mặc định — không bao giờ để lỗi DB nổi thành HTTP 500.
+        LOGGER.warning("Bỏ qua lá gần đây cho gợi ý câu hỏi do lỗi DB: %s", exc)
+        return None
     if row is None:
         return None
     return row[0]

@@ -7,6 +7,7 @@ from typing import Any
 
 from fastapi import WebSocket
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from src.db.models import DuoCard, DuoParticipant, DuoReading, DuoSession
 from src.db.session import session_scope
@@ -268,7 +269,12 @@ def submit_duo_card(
                 image_path=image_path,
             )
         )
-        session.flush()
+        try:
+            session.flush()
+        except IntegrityError as exc:
+            # Đua/đúp request: UniqueConstraint(duo_session_id, participant_id) đã chặn lá
+            # thứ 2. Quy về cùng lỗi nghiệp vụ với check ở trên → endpoint trả 400 (không 500).
+            raise ValueError("participant already uploaded a card") from exc
 
         cards = session.scalars(select(DuoCard).where(DuoCard.duo_session_id == duo_session_id)).all()
         participants = session.scalars(
@@ -301,25 +307,42 @@ def submit_duo_card(
         proxy_cards = [_CardProxy(n, o) for n, o in cards_for_reading]
         narrative, llm_model = _generate_duo_reading(proxy_cards)  # type: ignore[arg-type]
 
-        with session_scope() as session:
-            duo = session.scalar(select(DuoSession).where(DuoSession.id == duo_session_id))
-            if duo is not None:
-                duo.status = "completed"
-                duo.updated_at = datetime.now(timezone.utc)
-            existing_reading = session.scalar(
-                select(DuoReading).where(DuoReading.duo_session_id == duo_session_id)
-            )
-            if existing_reading is None:
-                session.add(
-                    DuoReading(
-                        duo_session_id=duo_session_id,
-                        generated_text=narrative,
-                        llm_model=llm_model,
-                    )
+        try:
+            with session_scope() as session:
+                duo = session.scalar(select(DuoSession).where(DuoSession.id == duo_session_id))
+                if duo is not None:
+                    duo.status = "completed"
+                    duo.updated_at = datetime.now(timezone.utc)
+                existing_reading = session.scalar(
+                    select(DuoReading).where(DuoReading.duo_session_id == duo_session_id)
                 )
-            else:
-                existing_reading.generated_text = narrative
-                existing_reading.llm_model = llm_model
+                if existing_reading is None:
+                    session.add(
+                        DuoReading(
+                            duo_session_id=duo_session_id,
+                            generated_text=narrative,
+                            llm_model=llm_model,
+                        )
+                    )
+                    session.flush()
+                else:
+                    existing_reading.generated_text = narrative
+                    existing_reading.llm_model = llm_model
+        except IntegrityError:
+            # Đua: 2 người nộp lá cuối gần như cùng lúc, cả hai cùng INSERT DuoReading
+            # (bảng unique theo duo_session_id). Bản thua → đọc lại bản đã tồn tại và UPDATE,
+            # thay vì để IntegrityError lọt thành HTTP 500 (đồng nhất daily_deep_reading.py).
+            with session_scope() as session:
+                duo = session.scalar(select(DuoSession).where(DuoSession.id == duo_session_id))
+                if duo is not None:
+                    duo.status = "completed"
+                    duo.updated_at = datetime.now(timezone.utc)
+                existing_reading = session.scalar(
+                    select(DuoReading).where(DuoReading.duo_session_id == duo_session_id)
+                )
+                if existing_reading is not None:
+                    existing_reading.generated_text = narrative
+                    existing_reading.llm_model = llm_model
 
     reloaded = _load_duo_session(duo_session_id)
     assert reloaded is not None

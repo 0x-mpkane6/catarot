@@ -66,6 +66,19 @@ export default function SpeechPlaybackMessage({
   const [displayText, setDisplayText] = useState(shouldPlay ? "" : safeText);
   const [isStreaming, setIsStreaming] = useState(Boolean(shouldPlay && safeText));
 
+  // Định danh một "phiên phát": đổi khi đổi nội dung hoặc khi người dùng bấm phát lại.
+  const playbackToken = `${speechKey}|${replaySignal}|${safeText.length}`;
+  const [activeToken, setActiveToken] = useState(playbackToken);
+
+  // Đặt lại trạng thái "gõ dần" NGAY TRONG RENDER khi mở một phiên phát mới — đây là mẫu
+  // React khuyến nghị cho "reset state khi prop đổi" (KHÔNG đặt state đồng bộ trong effect).
+  // Guard playbackToken !== activeToken đảm bảo không lặp render vô hạn.
+  if (shouldPlay && playbackToken !== activeToken) {
+    setActiveToken(playbackToken);
+    setDisplayText("");
+    setIsStreaming(true);
+  }
+
   useEffect(() => {
     const previousAudio = audioRef.current;
     if (previousAudio) {
@@ -79,8 +92,9 @@ export default function SpeechPlaybackMessage({
     }
 
     if (!shouldPlay) {
-      setDisplayText(safeText);
-      setIsStreaming(false);
+      // Không phát: chỉ dọn audio (đã làm ở trên) rồi thoát. KHÔNG gọi setState đồng bộ ở
+      // đây — trạng thái hiển thị được SUY RA từ prop qua `streaming` bên dưới, nên không
+      // cần đặt lại state (tránh cascade render & lỗi react-hooks/set-state-in-effect).
       return undefined;
     }
 
@@ -93,9 +107,6 @@ export default function SpeechPlaybackMessage({
       MIN_FALLBACK_DURATION_MS,
       tokenCount * FALLBACK_MS_PER_TOKEN
     );
-
-    setDisplayText("");
-    setIsStreaming(true);
 
     const finishPlayback = () => {
       if (isCancelled) return;
@@ -194,7 +205,10 @@ export default function SpeechPlaybackMessage({
     };
   }, [replaySignal, safeText, shouldPlay, speechKey]);
 
-  if (!isStreaming) {
+  // Chỉ "gõ dần" khi thực sự đang phát; mọi trường hợp khác hiện full text. Suy ra từ prop
+  // (shouldPlay) thay vì lệ thuộc state isStreaming có thể còn sót lại từ lần phát trước.
+  const streaming = shouldPlay && isStreaming;
+  if (!streaming) {
     return (
       <ReactMarkdown
         components={{

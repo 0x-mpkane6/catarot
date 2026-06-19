@@ -782,34 +782,30 @@ async def list_sessions(
             or 0
         )
 
-        rows = (
-            session.scalars(
-                sa.select(ReadingSession)
-                .where(ReadingSession.user_id == current_user.id)
-                .order_by(ReadingSession.created_at.desc())
-                .limit(limit)
-                .offset(offset)
+        # Đếm số lá của từng session ngay trong 1 query bằng LEFT JOIN + GROUP BY,
+        # tránh N+1 (trước đây chạy 1 COUNT riêng cho mỗi session → tới 100 query/trang).
+        rows = session.execute(
+            sa.select(
+                ReadingSession,
+                sa_func.count(RecognizedCard.id).label("card_count"),
             )
-            .all()
-        )
+            .outerjoin(RecognizedCard, RecognizedCard.session_id == ReadingSession.id)
+            .where(ReadingSession.user_id == current_user.id)
+            .group_by(ReadingSession.id)
+            .order_by(ReadingSession.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        ).all()
 
         items: list[dict] = []
-        for row in rows:
-            card_count = (
-                session.scalar(
-                    sa.select(sa_func.count())
-                    .select_from(RecognizedCard)
-                    .where(RecognizedCard.session_id == row.id)
-                )
-                or 0
-            )
+        for row, card_count in rows:
             items.append(
                 {
                     "id": row.id,
                     "question_text": row.question_text,
                     "status": row.status,
                     "created_at": row.created_at.isoformat() if row.created_at else None,
-                    "card_count": int(card_count),
+                    "card_count": int(card_count or 0),
                 }
             )
 
@@ -1093,7 +1089,9 @@ async def community_resonate(interpretation_id: int, current_user: CurrentUser =
     try:
         return resonate_interpretation(user_id=current_user.id, interpretation_id=interpretation_id)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        # "not found" → 404 (đồng nhất với endpoint vote); các lỗi nghiệp vụ khác → 400.
+        status_code = 404 if "not found" in str(exc).lower() else 400
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
 
 
 @app.get("/api/admin/community/moderation_queue")

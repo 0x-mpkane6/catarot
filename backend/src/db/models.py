@@ -367,6 +367,13 @@ class DuoParticipant(Base):
 
 class DuoCard(Base):
     __tablename__ = "duo_cards"
+    __table_args__ = (
+        # Mỗi người chơi chỉ được nộp 1 lá trong 1 phiên — chặn double-click ở tầng DB
+        # (trước đây chỉ chặn ở tầng ứng dụng nên đua/đúp request có thể chèn 2 lá).
+        UniqueConstraint(
+            "duo_session_id", "participant_id", name="uq_duo_card_session_participant"
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     duo_session_id: Mapped[int] = mapped_column(

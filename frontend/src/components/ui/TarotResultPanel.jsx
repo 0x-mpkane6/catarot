@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion as Motion } from "framer-motion";
 
 import useIsMobile from "../../hooks/useIsMobile";
 import tarotBack from "../../assets/images/homepage/tarot-back-des-2.png";
@@ -210,7 +210,7 @@ export default function TarotResultPanel({ cards = [] }) {
       {/* preview modal */}
       <AnimatePresence>
         {previewCard && (
-          <motion.div
+          <Motion.div
             key="trp-preview-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -228,7 +228,7 @@ export default function TarotResultPanel({ cards = [] }) {
               justifyContent: isMobile ? "center" : "flex-end",
             }}
           >
-            <motion.div
+            <Motion.div
               key="trp-preview-panel"
               initial={
                 isMobile
@@ -341,8 +341,8 @@ export default function TarotResultPanel({ cards = [] }) {
               >
                 {previewCard.orientation === "reversed" ? "Lá ngược" : "Lá xuôi"}
               </div>
-            </motion.div>
-          </motion.div>
+            </Motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
     </>

@@ -340,12 +340,11 @@ def get_or_create_deep_reading(
     )
 
     # 5) Gọi ĐÚNG chuỗi LLM hiện có (không gọi thẳng provider đơn lẻ).
-    deep_reading, warnings = reader.generate_custom(
+    deep_reading, llm_model, warnings = reader.generate_custom(
         system_prompt=system_prompt,
         user_prompt=user_prompt,
         fallback_text=fallback_text,
     )
-    llm_model = reader.last_used_model
     client_warnings = _sanitize_warnings(warnings, llm_model)
 
     # 6) Lưu lại — race-safe theo unique (user_id, draw_date, topic).

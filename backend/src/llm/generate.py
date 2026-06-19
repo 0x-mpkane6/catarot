@@ -749,13 +749,18 @@ class ReadingGenerator:
         system_prompt: str,
         user_prompt: str,
         fallback_text: str,
-    ) -> tuple[str, list[str]]:
+    ) -> tuple[str, str | None, list[str]]:
         """Chạy ĐÚNG chuỗi fallback hiện có cho một cặp (system, user) prompt tuỳ biến.
 
         Thứ tự: Gemini (xoay nhiều key) → OpenAI → Groq → Ollama → fallback_text
         (deterministic do caller dựng sẵn). KHÔNG gọi thẳng một provider đơn lẻ; tái
-        dùng nguyên các method _generate_* của chuỗi chính. Set self.last_used_model
-        đồng nhất với generate()/generate_followup().
+        dùng nguyên các method _generate_* của chuỗi chính.
+
+        Trả về tuple ``(text, model_name, warnings)``. Tên model được chốt vào BIẾN CỤC BỘ
+        ngay tại nhánh trả về (đồng thời gán self.last_used_model để tương thích ngược).
+        Caller PHẢI dùng ``model_name`` trả về — KHÔNG đọc lại self.last_used_model sau khi
+        hàm return, vì reader là singleton dùng chung: request khác có thể ghi đè thuộc tính
+        giữa lúc hàm trả về và lúc caller đọc, làm lưu sai tên model.
         """
         self.last_used_model = None
         extra_warnings: list[str] = []
@@ -769,16 +774,18 @@ class ReadingGenerator:
             extra_warnings.append(
                 "Chưa cấu hình mô hình ngôn ngữ (LLM); dùng luận giải dự phòng tự động."
             )
-            self.last_used_model = "deterministic-fallback"
-            return fallback_text, extra_warnings
+            model = "deterministic-fallback"
+            self.last_used_model = model
+            return fallback_text, model, extra_warnings
 
         # Tier 1: Gemini — xoay vòng nhiều key khi lỗi/hết quota.
         for _idx, _key in enumerate(self.gemini_api_keys):
             try:
                 answer = self._generate_gemini(system_prompt, user_prompt, api_key=_key)
                 if answer.strip():
-                    self.last_used_model = f"gemini:{self.gemini_model}"
-                    return answer.strip(), extra_warnings
+                    model = f"gemini:{self.gemini_model}"
+                    self.last_used_model = model
+                    return answer.strip(), model, extra_warnings
                 extra_warnings.append("Gemini trả về nội dung rỗng; thử backend kế tiếp.")
                 break
             except Exception as exc:
@@ -802,8 +809,9 @@ class ReadingGenerator:
             try:
                 answer = self._generate_openai(system_prompt, user_prompt)
                 if answer.strip():
-                    self.last_used_model = f"openai:{self.model}"
-                    return answer.strip(), extra_warnings
+                    model = f"openai:{self.model}"
+                    self.last_used_model = model
+                    return answer.strip(), model, extra_warnings
             except Exception as exc:
                 LOGGER.warning("OpenAI deep-reading generation failed: %s", exc)
                 extra_warnings.append("OpenAI lỗi; thử backend kế tiếp.")
@@ -813,8 +821,9 @@ class ReadingGenerator:
             try:
                 answer = self._generate_groq(system_prompt, user_prompt)
                 if answer.strip():
-                    self.last_used_model = f"groq:{self.groq_model}"
-                    return answer.strip(), extra_warnings
+                    model = f"groq:{self.groq_model}"
+                    self.last_used_model = model
+                    return answer.strip(), model, extra_warnings
             except Exception as exc:
                 LOGGER.warning("Groq deep-reading generation failed: %s", exc)
                 extra_warnings.append("Groq lỗi; thử backend kế tiếp.")
@@ -824,8 +833,9 @@ class ReadingGenerator:
             try:
                 answer = self._generate_ollama(system_prompt, user_prompt)
                 if answer.strip():
-                    self.last_used_model = f"ollama:{self.ollama_model}"
-                    return answer.strip(), extra_warnings
+                    model = f"ollama:{self.ollama_model}"
+                    self.last_used_model = model
+                    return answer.strip(), model, extra_warnings
                 extra_warnings.append("Ollama trả về nội dung rỗng; dùng luận giải dự phòng tự động.")
             except Exception as exc:
                 LOGGER.warning("Ollama deep-reading generation failed: %s", exc)
@@ -833,8 +843,9 @@ class ReadingGenerator:
                     "Không kết nối được Ollama; chuyển sang luận giải dự phòng tự động."
                 )
 
-        self.last_used_model = "deterministic-fallback"
-        return fallback_text, extra_warnings
+        model = "deterministic-fallback"
+        self.last_used_model = model
+        return fallback_text, model, extra_warnings
 
     def _generate_followup_fallback(
         self,

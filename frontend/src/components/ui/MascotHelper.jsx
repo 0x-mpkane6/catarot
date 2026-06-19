@@ -76,13 +76,17 @@ export default function MascotHelper() {
   };
 
   const toggleMenu = () => {
+    // Mount NGAY khi mở (đặt state trong event handler, không phải trong effect) — khi đóng
+    // thì effect bên dưới mới hẹn giờ unmount sau hiệu ứng. Tránh setState đồng bộ trong effect.
+    if (!menuOpen) {
+      setMenuMounted(true);
+    }
     setMenuOpen((prev) => !prev);
     setShowSettings(false);
   };
 
   useEffect(() => {
     if (menuOpen) {
-      setMenuMounted(true);
       return undefined;
     }
 

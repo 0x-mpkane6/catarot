@@ -107,14 +107,25 @@ def load_session_reading_context(session_id: int) -> SessionReadingContext | Non
 
 def get_conversation_turns(session_id: int, limit: int = 20) -> list[dict[str, Any]]:
     with session_scope() as session:
-        rows = session.scalars(
-            select(ConversationTurn)
-            .where(ConversationTurn.session_id == session_id)
-            .order_by(ConversationTurn.turn_index.asc())
-        ).all()
+        if limit > 0:
+            # Đẩy LIMIT xuống SQL: lấy `limit` turn mới nhất (desc) rồi đảo lại thứ tự
+            # tăng dần. Tránh tải toàn bộ lịch sử vào RAM rồi mới cắt (hội thoại dài).
+            rows = list(
+                session.scalars(
+                    select(ConversationTurn)
+                    .where(ConversationTurn.session_id == session_id)
+                    .order_by(ConversationTurn.turn_index.desc())
+                    .limit(limit)
+                ).all()
+            )
+            rows.reverse()
+        else:
+            rows = session.scalars(
+                select(ConversationTurn)
+                .where(ConversationTurn.session_id == session_id)
+                .order_by(ConversationTurn.turn_index.asc())
+            ).all()
 
-    if limit > 0:
-        rows = rows[-limit:]
     return [
         {
             "id": row.id,
@@ -156,26 +167,26 @@ def add_followup_turn(
         raise ValueError("reading session not found")
 
     next_idx = _next_turn_index(session_id)
-    user_turn = ConversationTurn(
-        session_id=session_id,
-        role="user",
-        content=clean_message,
-        turn_index=next_idx,
-    )
 
+    # Đọc lịch sử ĐÃ lưu (chưa gồm lượt hỏi mới này).
     with session_scope() as session:
-        session.add(user_turn)
-        session.flush()
-
-    all_turn_rows: list[ConversationTurn]
-    with session_scope() as session:
-        all_turn_rows = session.scalars(
+        existing_rows = session.scalars(
             select(ConversationTurn)
             .where(ConversationTurn.session_id == session_id)
             .order_by(ConversationTurn.turn_index.asc())
         ).all()
 
-    context_window = build_context_window(all_turn_rows, max_recent=MAX_RECENT_TURNS)
+    # Lượt hỏi của user được dựng trong bộ nhớ và đưa vào context window NHƯNG CHƯA commit,
+    # để nếu LLM ném lỗi bất ngờ thì DB không bị bỏ lại user-turn mồ côi (không có câu trả lời).
+    pending_user_turn = ConversationTurn(
+        session_id=session_id,
+        role="user",
+        content=clean_message,
+        turn_index=next_idx,
+    )
+    context_window = build_context_window(
+        [*existing_rows, pending_user_turn], max_recent=MAX_RECENT_TURNS
+    )
     reader = _get_followup_generator()
     assistant_answer, warnings = reader.generate_followup(
         session_context={
@@ -189,6 +200,9 @@ def add_followup_turn(
         recent_messages=context_window["recent_messages"],
         user_message=clean_message,
     )
+    # Chốt tên model NGAY sau lời gọi (reader là singleton dùng chung — đọc trễ có thể
+    # lấy nhầm giá trị do request khác ghi đè).
+    llm_model = reader.last_used_model
 
     assistant_idx = next_idx + 1
     assistant_turn = ConversationTurn(
@@ -197,14 +211,15 @@ def add_followup_turn(
         content=assistant_answer,
         turn_index=assistant_idx,
     )
+    # Chỉ khi LLM đã sinh xong mới ghi cả user-turn + assistant-turn trong CÙNG 1 transaction.
     with session_scope() as session:
-        session.add(assistant_turn)
+        session.add_all([pending_user_turn, assistant_turn])
         session.flush()
 
     return {
         "session_id": session_id,
         "assistant_answer": assistant_answer,
-        "llm_model": reader.last_used_model,
+        "llm_model": llm_model,
         "turn_index": assistant_idx,
         "context_window": {
             "total_turns": context_window["total_turns"],
