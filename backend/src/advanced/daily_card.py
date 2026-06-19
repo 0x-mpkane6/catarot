@@ -258,6 +258,7 @@ def add_reflection(
     daily_card_id: int,
     reflection: str | None,
     mood_post: Any = None,
+    reflection_provided: bool = True,
 ) -> dict[str, Any]:
     clean_reflection = (reflection or "").strip()
     clean_mood_post = _safe_mood(mood_post)
@@ -274,8 +275,10 @@ def add_reflection(
         if record is None:
             raise ValueError("daily card not found")
 
-        if clean_reflection:
-            record.reflection = clean_reflection
+        # Khi client CÓ gửi field `reflection`, ghi đúng giá trị đó: chuỗi rỗng → XOÁ chiêm
+        # nghiệm cũ (đặt NULL). Nếu không gửi field này thì giữ nguyên (chỉ cập nhật mood_post).
+        if reflection_provided:
+            record.reflection = clean_reflection or None
         if clean_mood_post is not None:
             record.mood_post = clean_mood_post
 

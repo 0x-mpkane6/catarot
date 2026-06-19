@@ -1,6 +1,8 @@
 import { useNavigate }
 from "react-router-dom";
 
+import { clearCachedSessions } from "../../services/sessionCache";
+
 const getDisplayName = (
   user
 ) =>
@@ -94,6 +96,9 @@ export default function UserProfile({
     sessionStorage.removeItem(
       "user"
     );
+
+    // Xoá cache lịch sử trải bài để user kế tiếp trên cùng máy không thấy phiên của user trước.
+    clearCachedSessions();
 
     navigate("/");
   };

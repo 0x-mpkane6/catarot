@@ -47,6 +47,7 @@ from "../components/ui/ChatConversation";
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -227,6 +228,94 @@ export default function HomePage() {
 
   // eslint-disable-next-line no-unused-vars -- TODO: hook up session reuse
   const [currentSession, setCurrentSession] = useState(null);
+
+  // --- Đồng bộ nút Back của TRÌNH DUYỆT với điều hướng nội bộ của HomePage ---
+  // HomePage là MỘT route (/home) nhưng có nhiều "màn hình" chạy bằng state (chọn lá/mode,
+  // hồ sơ, lịch sử, chiêm nghiệm, liên hệ, tài liệu). Mặc định nút Back của trình duyệt sẽ
+  // RỜI khỏi /home và nhảy thẳng về /login. Khối dưới "bẫy" nút Back: khi còn màn hình nội bộ
+  // đang mở, Back sẽ đóng lần lượt từng lớp (giống nút quay lại trên giao diện) thay vì thoát /home.
+
+  // Snapshot cờ màn hình vào ref để handler popstate (đăng ký 1 lần/phiên) luôn đọc giá trị mới nhất.
+  const screenFlagsRef = useRef(null);
+  screenFlagsRef.current = {
+    showProfile,
+    activeMarkdownDoc,
+    showContact,
+    showReflectionHistory,
+    showHistory,
+    selectedCard,
+  };
+
+  // Đưa toàn bộ màn trải bài/daily về lại gallery (dùng chung cho nút quay lại trên giao diện
+  // và nút Back trình duyệt) — giữ nguyên hành vi cũ của nút <Undo2>.
+  const resetReadingToGallery = useCallback(() => {
+    setMessages([]);
+    setRevealedCards([]);
+    setShowResult(false);
+    setHasTodayDailyReading(false);
+    setDailyInfoNote("");
+    setShowChatUI(false);
+    setShowSpreadGrid(false);
+    setShowDeepReadingPanel(false);
+    setPendingInput(null);
+    setCurrentSession(null);
+    setIsBackendLoading(false);
+    setTimeout(() => {
+      setSelectedCard(null);
+      setHideGallery(false);
+    }, 250);
+  }, []);
+
+  // Đóng đúng MỘT màn hình trên cùng (ưu tiên overlay trước, rồi tới màn trải bài).
+  const closeTopScreen = useCallback(() => {
+    const flags = screenFlagsRef.current;
+    if (flags.showProfile) return setShowProfile(false);
+    if (flags.activeMarkdownDoc) return setActiveMarkdownDoc(null);
+    if (flags.showContact) return setShowContact(false);
+    if (flags.showReflectionHistory) return setShowReflectionHistory(false);
+    if (flags.showHistory) return setShowHistory(false);
+    if (flags.selectedCard) return resetReadingToGallery();
+  }, [resetReadingToGallery]);
+
+  const anyScreenOpen =
+    showProfile ||
+    Boolean(activeMarkdownDoc) ||
+    showContact ||
+    showReflectionHistory ||
+    showHistory ||
+    Boolean(selectedCard);
+
+  useEffect(() => {
+    if (!anyScreenOpen) return undefined;
+
+    // Đẩy 1 "chốt" lịch sử để nút Back có cái để tiêu thụ mà KHÔNG rời khỏi /home.
+    window.history.pushState({ __homeScreen: true }, "");
+
+    const handlePopState = () => {
+      const flags = screenFlagsRef.current;
+      const openCount = [
+        flags.showProfile,
+        flags.activeMarkdownDoc,
+        flags.showContact,
+        flags.showReflectionHistory,
+        flags.showHistory,
+        flags.selectedCard,
+      ].filter(Boolean).length;
+      // Chốt "treo" (màn hình đã đóng bằng thao tác trong app) → để Back rời trang bình thường.
+      if (openCount === 0) return;
+      closeTopScreen();
+      if (openCount - 1 > 0) {
+        // Vẫn còn lớp khác → đẩy lại chốt để lần Back kế tiếp tiếp tục đóng từng lớp.
+        window.history.pushState({ __homeScreen: true }, "");
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+
+    // CHỦ Ý không gọi history.back() trong cleanup: tránh tự đóng màn hình dưới StrictMode (dev)
+    // và tránh đua với listener mới. Nếu đóng bằng thao tác trong app, "chốt" còn treo sẽ bị
+    // Back kế tiếp tiêu thụ vô hại (nhánh openCount===0) thay vì nhảy về /login.
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [anyScreenOpen, closeTopScreen]);
 
   const buildAssistantMessage = (
     content,
@@ -451,7 +540,6 @@ export default function HomePage() {
   const handleDailySubmit =
   async ({
     mood_pre,
-    question,
   }) => {
     if (hasTodayDailyReading) {
       toast.error(
@@ -467,7 +555,6 @@ export default function HomePage() {
       const response =
         await askDailyQuestion({
           mood_pre,
-          question,
         });
 
       const dailyItem =
@@ -486,9 +573,7 @@ export default function HomePage() {
         {
           role: "user",
 
-          content:
-            question ||
-            mood_pre,
+          content: mood_pre,
         },
 
         {
@@ -1098,27 +1183,7 @@ const handleChatSubmitDraft =
 
     {selectedCard && (
       <Undo2
-      onClick={() => {
-        setMessages([]);
-        setRevealedCards([]);
-        setShowResult(false);
-        setHasTodayDailyReading(false);
-        setDailyInfoNote("");
-        setShowChatUI(false);
-        setShowSpreadGrid(false);
-        setShowDeepReadingPanel(false);
-        setPendingInput(null);
-        setCurrentSession(null);
-        setIsBackendLoading(false);
-
-        setTimeout(() => {
-
-          setSelectedCard(null);
-
-          setHideGallery(false);
-
-        }, 250);
-      }}
+      onClick={resetReadingToGallery}
 
         size={isMobile ? 28 : 34}
 

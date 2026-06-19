@@ -50,7 +50,9 @@ export default function LoginForm() {
 
       toast.success(t("login_success"));
 
-      navigate("/home");
+      // replace: thay /login bằng /home trong lịch sử → khi ở gallery bấm Back sẽ về landing,
+      // KHÔNG quay lại trang đăng nhập (người đã đăng nhập không nên thấy lại form login).
+      navigate("/home", { replace: true });
     } catch {
       toast.error(t("login_invalid"));
     } finally {
@@ -62,7 +64,7 @@ export default function LoginForm() {
   const handleGoogleSuccess = (res) => {
     persistSession(res);
     toast.success(t("login_success"));
-    navigate("/home");
+    navigate("/home", { replace: true });
   };
 
   return (

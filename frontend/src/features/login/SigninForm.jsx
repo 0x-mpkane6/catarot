@@ -76,7 +76,7 @@ export default function SigninForm() {
     sessionStorage.setItem("token", res.token);
     sessionStorage.setItem("user", JSON.stringify(res.user));
     toast.success(t("signup_welcome"));
-    navigate("/home");
+    navigate("/home", { replace: true });
   };
 
   return (

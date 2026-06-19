@@ -81,6 +81,13 @@ getReadingHistory(
     ).map(mapSessionSummary);
   } catch (error) {
 
+    // 401/403: phiên hết hạn hoặc không có quyền → KHÔNG trả cache (tránh hiện lịch sử cũ của
+    // user trước sau khi đăng xuất / đổi tài khoản). Chỉ fallback cache khi lỗi mạng/khác.
+    const status = error?.response?.status;
+    if (status === 401 || status === 403) {
+      return [];
+    }
+
     console.error(
       "Failed to load sessions from API, falling back to cache.",
       error

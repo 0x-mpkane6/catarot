@@ -7,8 +7,6 @@ import {
 } from "../../services/dailyService";
 
 import {
-  useEffect,
-  useRef,
   useState,
 } from "react";
 
@@ -37,97 +35,43 @@ const MOOD_LABELS = {
   inspired: "Cảm hứng",
 };
 
+// Lá bài hằng ngày = 1 lá NGẪU NHIÊN theo tâm trạng (mỗi ngày 1 lá). Nghi thức chỉ cần chọn
+// tâm trạng — KHÔNG có ô nhập câu hỏi vì lá hằng ngày không nhận câu hỏi tự do (muốn hỏi theo
+// chủ đề thì dùng nút "Luận giải sâu"). Trước đây có ô câu hỏi nhưng backend bỏ qua → gây hiểu
+// nhầm, nay đã lược bỏ cho đúng bản chất.
 export default function DailyChatBox({
   disabled = false,
   onSubmit,
 }) {
   const isMobile = useIsMobile();
-  const baseHeight = 28;
-  const maxHeight = 180;
 
   const [mood, setMood] =
     useState("");
-
-  const [question, setQuestion] =
-    useState("");
-  const [isMultiline, setIsMultiline] =
-    useState(false);
-  const textareaRef = useRef(null);
 
   const [showMoodMenu,
     setShowMoodMenu] =
     useState(false);
 
-  useEffect(() => {
-    const textarea =
-      textareaRef.current;
-
-    if (!textarea) return;
-
-    textarea.style.height =
-      `${baseHeight}px`;
-
-    const nextHeight =
-      Math.min(
-        Math.max(
-          textarea.scrollHeight,
-          baseHeight
-        ),
-        maxHeight
-      );
-
-    textarea.style.height =
-      `${nextHeight}px`;
-    textarea.style.overflowY =
-      textarea.scrollHeight > maxHeight
-        ? "auto"
-        : "hidden";
-
-    setIsMultiline(
-      textarea.scrollHeight >
-        baseHeight + 4
-    );
-  }, [question, baseHeight, maxHeight]);
-
   const handleSubmit = async () => {
-
     if (disabled) return;
 
-    const trimmedMood =
-      mood.trim();
+    const trimmedMood = mood.trim();
 
-    const trimmedQuestion =
-      question.trim();
-
-    if (
-      !trimmedMood &&
-      !trimmedQuestion
-    ) {
-
+    if (!trimmedMood) {
       toast.error(
-        "Vui lòng nhập tâm trạng hoặc câu hỏi"
+        "Vui lòng chọn tâm trạng để rút lá hôm nay"
       );
-
       return;
     }
 
     await Promise.resolve(
       onSubmit?.({
-        mood_pre:
-          trimmedMood,
-
-        question:
-          trimmedQuestion,
+        mood_pre: trimmedMood,
       })
     );
 
     setMood("");
-    setQuestion("");
-    setIsMultiline(false);
-
-    setShowMoodMenu(
-      false
-    );
+    setShowMoodMenu(false);
   };
 
   return (
@@ -162,10 +106,7 @@ export default function DailyChatBox({
 
           display: "flex",
 
-          alignItems:
-            isMultiline
-              ? "flex-end"
-              : "center",
+          alignItems: "center",
 
           gap: "0px",
 
@@ -343,59 +284,19 @@ export default function DailyChatBox({
           }}
         />
 
-        {/* question input */}
-        <textarea
-          ref={textareaRef}
-          rows={1}
-          value={question}
-
-          onChange={(e) =>
-            setQuestion(
-              e.target.value
-            )
-          }
-
-          placeholder="Hôm nay tôi nên tập trung vào điều gì?"
-
-          onKeyDown={async (e) => {
-            if (
-              e.key === "Enter" &&
-              !e.shiftKey
-            ) {
-              e.preventDefault();
-              await handleSubmit();
-            }
-          }}
-
+        {/* hint (không phải ô nhập — lá hằng ngày rút theo tâm trạng) */}
+        <div
           style={{
             flex: 1,
-
-            background:
-              "transparent",
-
-            border: "none",
-
-            outline: "none",
-
-            color: "#ffffff",
-
-            fontSize: "1rem",
-
+            padding: "0 14px",
+            color: "rgba(255,255,255,0.55)",
+            fontSize: "0.95rem",
             fontWeight: 500,
-
-            fontFamily:
-              "inherit",
-
-            padding: "0 12px",
-            minHeight: "28px",
-            maxHeight: "180px",
-            height: "28px",
-            resize: "none",
-            overflowY: "hidden",
-            whiteSpace: "pre-wrap",
-            lineHeight: "24px",
+            userSelect: "none",
           }}
-        />
+        >
+          Chọn tâm trạng rồi rút lá Tarot cho hôm nay
+        </div>
 
         {/* send */}
         <button

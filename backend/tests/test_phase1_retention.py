@@ -99,6 +99,53 @@ def test_daily_card_one_tap_creates_and_returns_streak(monkeypatch, tmp_path):
         assert client.get("/api/daily-card/streak", headers=headers2).status_code == 200
 
 
+def test_daily_card_reflection_can_be_cleared(monkeypatch, tmp_path):
+    """Gửi reflection rỗng phải XOÁ chiêm nghiệm cũ; không gửi field thì giữ nguyên."""
+    main_module = _bootstrap(monkeypatch, tmp_path)
+    from fastapi.testclient import TestClient
+
+    with TestClient(main_module.app) as client:
+        _, token = _register_login(client, "reflectclear@example.com")
+        headers = {"Authorization": f"Bearer {token}"}
+
+        card_id = client.get("/api/daily-card", headers=headers).json()["item"]["id"]
+
+        # 1) Lưu chiêm nghiệm ban đầu.
+        saved = client.post(
+            f"/api/daily-card/{card_id}/reflect",
+            headers=headers,
+            json={"reflection": "Hôm nay mình thấy bình an.", "mood_post": "joyful"},
+        )
+        assert saved.status_code == 200, saved.text
+        assert saved.json()["reflection"] == "Hôm nay mình thấy bình an."
+        assert saved.json()["mood_post"] == "joyful"
+
+        # 2) Gửi reflection rỗng (kèm mood mới) → XOÁ chiêm nghiệm cũ, mood vẫn cập nhật.
+        cleared = client.post(
+            f"/api/daily-card/{card_id}/reflect",
+            headers=headers,
+            json={"reflection": "", "mood_post": "calm"},
+        )
+        assert cleared.status_code == 200, cleared.text
+        assert not cleared.json()["reflection"]  # None hoặc rỗng — đã xoá
+        assert cleared.json()["mood_post"] == "calm"
+
+        # 3) KHÔNG gửi field reflection (chỉ cập nhật mood) → reflection giữ nguyên.
+        client.post(
+            f"/api/daily-card/{card_id}/reflect",
+            headers=headers,
+            json={"reflection": "Ghi chú mới", "mood_post": "hopeful"},
+        )
+        mood_only = client.post(
+            f"/api/daily-card/{card_id}/reflect",
+            headers=headers,
+            json={"mood_post": "grateful"},
+        )
+        assert mood_only.status_code == 200, mood_only.text
+        assert mood_only.json()["reflection"] == "Ghi chú mới"  # không bị xoá khi thiếu field
+        assert mood_only.json()["mood_post"] == "grateful"
+
+
 def test_daily_card_requires_auth(monkeypatch, tmp_path):
     main_module = _bootstrap(monkeypatch, tmp_path)
     from fastapi.testclient import TestClient

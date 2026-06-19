@@ -897,7 +897,10 @@ async def conversation(
 
 
 @app.get("/api/question_suggestions")
-async def question_suggestions(user_id: int | None = Query(default=None), limit: int = Query(default=3, ge=1, le=10)):
+async def question_suggestions(request: Request, limit: int = Query(default=3, ge=1, le=10)):
+    # Lấy user_id từ JWT nếu có; KHÔNG nhận user_id do client tự khai trên query string —
+    # nếu không, bất kỳ ai đoán id đều xem được "lá gần đây" của người khác (endpoint public).
+    user_id = resolve_optional_user_id(request)
     suggestions = generate_question_suggestions(user_id=user_id, limit=limit)
     return {"suggestions": suggestions}
 
@@ -1232,6 +1235,8 @@ async def daily_card_reflect(
             user_id=current_user.id,
             daily_card_id=daily_card_id,
             reflection=req.reflection,
+            # Phân biệt "không gửi field reflection" với "gửi reflection rỗng để XOÁ".
+            reflection_provided="reflection" in req.model_fields_set,
             mood_post=req.mood_post,
         )
     except ValueError as exc:
