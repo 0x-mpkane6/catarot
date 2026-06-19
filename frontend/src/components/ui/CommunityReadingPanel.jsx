@@ -196,6 +196,7 @@ export default function CommunityReadingPanel() {
             error
           )
         );
+        throw error; // ném lại để form con KHÔNG xoá nội dung khi gửi thất bại
       } finally {
         setIsSubmittingPost(false);
       }
@@ -243,6 +244,7 @@ export default function CommunityReadingPanel() {
             error
           )
         );
+        throw error; // ném lại để form con KHÔNG xoá lời luận giải khi gửi thất bại
       } finally {
         setBusy(key, false);
       }

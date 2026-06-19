@@ -321,12 +321,20 @@ const CardNav = ({
                 : ""
             }`}
             onClick={toggleMenu}
+            onKeyDown={(e) => {
+              // Bàn phím: Enter/Space cũng mở/đóng menu (div role="button" cần xử lý phím).
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                toggleMenu();
+              }
+            }}
             role="button"
             aria-label={
               isExpanded
                 ? "Đóng menu"
                 : "Mở menu"
             }
+            aria-expanded={isExpanded}
             tabIndex={0}
             style={{
               color:
@@ -436,6 +444,20 @@ const CardNav = ({
                         aria-label={
                           lnk.ariaLabel
                         }
+                        // Link chỉ có onClick (không href) → cho thao tác được bằng bàn phím:
+                        // focus (tabIndex) + role button + Enter/Space.
+                        role={lnk.href ? undefined : "button"}
+                        tabIndex={lnk.href ? undefined : 0}
+                        onKeyDown={(e) => {
+                          if (
+                            !lnk.href &&
+                            (e.key === "Enter" || e.key === " ")
+                          ) {
+                            e.preventDefault();
+                            lnk.onClick?.();
+                            closeMenu();
+                          }
+                        }}
 
                         onClick={() => {
 

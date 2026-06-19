@@ -186,14 +186,19 @@ export default function DreamJournalComposer({
     async (event) => {
       event.preventDefault();
 
-      await onSubmit?.({
-        raw_text:
-          rawText.trim(),
-        audio: audioFile,
-      });
+      try {
+        await onSubmit?.({
+          raw_text:
+            rawText.trim(),
+          audio: audioFile,
+        });
 
-      setRawText("");
-      clearAudio();
+        // Chỉ xoá khi gửi thành công.
+        setRawText("");
+        clearAudio();
+      } catch {
+        // parent đã hiện toast lỗi; giữ nguyên nội dung giấc mơ đã viết.
+      }
     };
 
   return (

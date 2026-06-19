@@ -290,8 +290,18 @@ export default function HomePage() {
 
     // Đẩy 1 "chốt" lịch sử để nút Back có cái để tiêu thụ mà KHÔNG rời khỏi /home.
     window.history.pushState({ __homeScreen: true }, "");
+    const armedAt = Date.now();
+    let sentinelLive = true; // còn 1 "chốt" của mình đang nằm trong history?
+    let closing = false; // màn cuối đang đóng (chờ animation 250ms) → chặn Back lặp gọi đóng 2 lần
 
     const handlePopState = () => {
+      // Bỏ qua popstate phát sinh NGAY sau khi arm: đó là do StrictMode (dev) gọi history.back()
+      // trong cleanup giả, KHÔNG phải người dùng bấm Back (không ai bấm được trong <120ms).
+      // Dùng mốc THỜI GIAN (không dùng ref-flag) vì ở production cleanup gọi history.back() khi
+      // KHÔNG còn listener để tiêu thụ flag → flag sẽ kẹt và nuốt nhầm lần Back thật kế tiếp.
+      if (Date.now() - armedAt < 120) return;
+      if (closing) return; // đang đóng màn cuối → bỏ qua Back lặp trong lúc chờ state cập nhật
+
       const flags = screenFlagsRef.current;
       const openCount = [
         flags.showProfile,
@@ -301,20 +311,28 @@ export default function HomePage() {
         flags.showHistory,
         flags.selectedCard,
       ].filter(Boolean).length;
-      // Chốt "treo" (màn hình đã đóng bằng thao tác trong app) → để Back rời trang bình thường.
+
+      sentinelLive = false; // chốt vừa bị nút Back tiêu thụ
       if (openCount === 0) return;
       closeTopScreen();
       if (openCount - 1 > 0) {
-        // Vẫn còn lớp khác → đẩy lại chốt để lần Back kế tiếp tiếp tục đóng từng lớp.
+        // Vẫn còn lớp khác → đẩy lại chốt để lần Back kế tiếp đóng tiếp từng lớp.
         window.history.pushState({ __homeScreen: true }, "");
+        sentinelLive = true;
+      } else {
+        closing = true; // màn cuối đang đóng (vd defer 250ms) — không gọi đóng lại nữa
       }
     };
     window.addEventListener("popstate", handlePopState);
 
-    // CHỦ Ý không gọi history.back() trong cleanup: tránh tự đóng màn hình dưới StrictMode (dev)
-    // và tránh đua với listener mới. Nếu đóng bằng thao tác trong app, "chốt" còn treo sẽ bị
-    // Back kế tiếp tiêu thụ vô hại (nhánh openCount===0) thay vì nhảy về /login.
-    return () => window.removeEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      // Đóng bằng thao tác TRONG app (không phải Back) → chốt còn treo → gỡ đi để lần Back kế
+      // tiếp KHÔNG bị "đơ" (hết dead-press). StrictMode dev được chặn bằng guard `armedAt` ở trên.
+      if (sentinelLive && window.history.state?.__homeScreen) {
+        window.history.back();
+      }
+    };
   }, [anyScreenOpen, closeTopScreen]);
 
   const buildAssistantMessage = (
@@ -773,6 +791,9 @@ const handleChatSubmitDraft =
           "Đã có lỗi xảy ra"
         );
 
+        // Ném lại để ChatBox KHÔNG xoá câu hỏi/ảnh khi gửi ảnh thất bại.
+        throw error;
+
       } finally {
 
         setIsBackendLoading(false);
@@ -1184,6 +1205,16 @@ const handleChatSubmitDraft =
     {selectedCard && (
       <Undo2
       onClick={resetReadingToGallery}
+      role="button"
+      tabIndex={0}
+      aria-label="Quay lại"
+      onKeyDown={(e) => {
+        // Cho phép quay lại bằng bàn phím (icon Undo2 vốn là svg, không nhận phím sẵn).
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          resetReadingToGallery();
+        }
+      }}
 
         size={isMobile ? 28 : 34}
 

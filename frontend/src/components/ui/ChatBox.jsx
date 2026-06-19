@@ -228,18 +228,24 @@ export default function ChatBox({
       return;
     }
 
-    await Promise.resolve(
-      onSubmitDraft?.({
-        mode,
-        question: trimmedQuestion,
-        images: uploadedImages,
-        audio: audioBlob,
-      })
-    );
+    try {
+      await Promise.resolve(
+        onSubmitDraft?.({
+          mode,
+          question: trimmedQuestion,
+          images: uploadedImages,
+          audio: audioBlob,
+        })
+      );
 
-    setQuestion("");
-    setUploadedImages([]);
-    setAudioBlob(null);
+      // Chỉ xoá input khi gửi THÀNH CÔNG; nếu API lỗi (parent ném lại) thì giữ nguyên
+      // câu hỏi/ảnh/âm thanh để không mất bài khi mạng chập chờn.
+      setQuestion("");
+      setUploadedImages([]);
+      setAudioBlob(null);
+    } catch {
+      // parent đã hiện toast lỗi; cố ý KHÔNG xoá input.
+    }
   };
 
   return (

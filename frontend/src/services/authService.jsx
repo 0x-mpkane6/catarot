@@ -32,6 +32,9 @@ export const getCurrentUser = async () => {
   return {
     // Giữ lại id từ /api/auth/me để getStoredUserId()/cache theo user còn hoạt động.
     id: profile?.id ?? null,
+    // Giữ role để Community còn hiện tab "Kiểm duyệt" cho admin sau khi reload profile
+    // (HomePage ghi đè profile này vào storage; thiếu role => admin mất tab kiểm duyệt).
+    role: profile?.role ?? "user",
     // User đăng nhập bằng Google không có username → fallback display_name / phần đầu email.
     username:
       profile?.username ||

@@ -119,27 +119,32 @@ export default function TimeCapsuleComposer({
     async (event) => {
       event.preventDefault();
 
-      await onSubmit?.({
-        title:
-          title.trim(),
-        question_text:
-          questionText.trim(),
-        prediction_text:
-          predictionText.trim(),
-        reveal_at: new Date(
-          revealAt
-        ).toISOString(),
-        cards:
-          parseCards(cardsText),
-      });
+      try {
+        await onSubmit?.({
+          title:
+            title.trim(),
+          question_text:
+            questionText.trim(),
+          prediction_text:
+            predictionText.trim(),
+          reveal_at: new Date(
+            revealAt
+          ).toISOString(),
+          cards:
+            parseCards(cardsText),
+        });
 
-      setTitle("");
-      setQuestionText("");
-      setPredictionText("");
-      setCardsText("");
-      setRevealAt(
-        buildDefaultRevealAt()
-      );
+        // Chỉ xoá khi gửi thành công — giữ nội dung khi API lỗi.
+        setTitle("");
+        setQuestionText("");
+        setPredictionText("");
+        setCardsText("");
+        setRevealAt(
+          buildDefaultRevealAt()
+        );
+      } catch {
+        // parent đã hiện toast lỗi; giữ nguyên nội dung đã nhập.
+      }
     };
 
   return (

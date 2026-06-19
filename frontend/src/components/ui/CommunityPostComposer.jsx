@@ -29,17 +29,22 @@ export default function CommunityPostComposer({
         return;
       }
 
-      await onSubmit?.({
-        question_text:
-          cleanQuestion,
-        card_summary:
-          parseCardSummary(
-            cardSummaryText
-          ),
-      });
+      try {
+        await onSubmit?.({
+          question_text:
+            cleanQuestion,
+          card_summary:
+            parseCardSummary(
+              cardSummaryText
+            ),
+        });
 
-      setQuestionText("");
-      setCardSummaryText("");
+        // Chỉ xoá khi gửi thành công — API lỗi thì giữ nội dung đã viết.
+        setQuestionText("");
+        setCardSummaryText("");
+      } catch {
+        // parent đã hiện toast lỗi; giữ nguyên input để gửi lại.
+      }
     };
 
   return (

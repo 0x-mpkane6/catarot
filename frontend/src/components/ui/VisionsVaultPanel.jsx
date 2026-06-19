@@ -167,6 +167,7 @@ export default function VisionsVaultPanel() {
             error
           )
         );
+        throw error; // ném lại để form con KHÔNG xoá nội dung khi gửi thất bại
       } finally {
         setIsSubmittingCapsule(
           false
@@ -271,6 +272,7 @@ export default function VisionsVaultPanel() {
             error
           )
         );
+        throw error; // ném lại để form con KHÔNG xoá nội dung khi gửi thất bại
       } finally {
         setIsSubmittingDream(
           false

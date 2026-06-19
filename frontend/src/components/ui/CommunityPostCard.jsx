@@ -54,12 +54,17 @@ export default function CommunityPostCard({
         return;
       }
 
-      await onAddInterpretation?.(
-        post.id,
-        cleanDraft
-      );
+      try {
+        await onAddInterpretation?.(
+          post.id,
+          cleanDraft
+        );
 
-      setDraft("");
+        // Chỉ xoá khi gửi thành công.
+        setDraft("");
+      } catch {
+        // parent đã hiện toast lỗi; giữ nguyên lời luận giải đã viết.
+      }
     };
 
   return (
