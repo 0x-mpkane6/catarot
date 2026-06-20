@@ -81,11 +81,7 @@ docker compose up --build backend
 ```
 
 ## 🌐 Demo
-
-| Thành phần  | Đường dẫn                                     |
-| ----------- | --------------------------------------------- |
-| Frontend    | *Đang cập nhật* |
-| Backend API | *Đang cập nhật* |
+Trang web được deploy tại: **catarot.me**
 
 ---
 
