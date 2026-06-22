@@ -225,7 +225,17 @@ _pipeline: TarotPipeline | None = None
 def _get_pipeline() -> TarotPipeline:
     global _pipeline
     if _pipeline is None:
-        _pipeline = TarotPipeline()
+        try:
+            _pipeline = TarotPipeline()
+        except Exception as exc:
+            # Khởi tạo pipeline (vision/RAG/reader) có thể lỗi: OpenCLIP strict load fail, tải
+            # model lỗi/mất mạng... Trả 503 RÕ RÀNG thay vì để lỗi bay lên thành 500 mơ hồ.
+            # KHÔNG cache _pipeline=None nên lần sau vẫn thử lại (lỗi tải model thường tạm thời).
+            LOGGER.error("Khởi tạo TarotPipeline thất bại: %s", exc, exc_info=True)
+            raise HTTPException(
+                status_code=503,
+                detail="Dịch vụ đọc bài tạm thời chưa sẵn sàng, vui lòng thử lại sau giây lát.",
+            ) from exc
     return _pipeline
 
 
