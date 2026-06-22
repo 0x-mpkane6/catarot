@@ -81,7 +81,7 @@ docker compose up --build backend
 ```
 
 ## 🌐 Demo
-Trang web được deploy tại: **catarot.me**
+Trang web được deploy tại: [**catarot.me**](https://catarot.me)
 
 ---
 
