@@ -91,9 +91,25 @@ button,
 input[type="submit"],
 input[type="button"],
 .clickable,
+[tabindex]:not([tabindex="-1"]),
+[class*="link"],
+[class*="Link"],
+[class*="btn"],
+[class*="Btn"],
+[class*="button"],
+[class*="Button"],
 label[for],
+label:has(input:not([type="hidden"])),
 summary {
   cursor: url("/cursor-pointer-42.png") 3 3, pointer !important;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed !important;
 }
 
 body.cursor-effects-disabled,
@@ -107,9 +123,25 @@ body.cursor-effects-disabled [role="button"],
 body.cursor-effects-disabled input[type="submit"],
 body.cursor-effects-disabled input[type="button"],
 body.cursor-effects-disabled .clickable,
+body.cursor-effects-disabled [tabindex]:not([tabindex="-1"]),
+body.cursor-effects-disabled [class*="link"],
+body.cursor-effects-disabled [class*="Link"],
+body.cursor-effects-disabled [class*="btn"],
+body.cursor-effects-disabled [class*="Btn"],
+body.cursor-effects-disabled [class*="button"],
+body.cursor-effects-disabled [class*="Button"],
 body.cursor-effects-disabled label[for],
+body.cursor-effects-disabled label:has(input:not([type="hidden"])),
 body.cursor-effects-disabled summary {
   cursor: pointer !important;
+}
+
+body.cursor-effects-disabled button:disabled,
+body.cursor-effects-disabled input:disabled,
+body.cursor-effects-disabled select:disabled,
+body.cursor-effects-disabled textarea:disabled,
+body.cursor-effects-disabled [aria-disabled="true"] {
+  cursor: not-allowed !important;
 }
 
 /* ============================================================
