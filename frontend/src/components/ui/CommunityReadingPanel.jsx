@@ -87,6 +87,8 @@ export default function CommunityReadingPanel() {
     useState("feed");
   const [feedItems, setFeedItems] =
     useState([]);
+  const [feedError, setFeedError] =
+    useState("");
   const [moderationItems, setModerationItems] =
     useState([]);
   const [isLoadingFeed, setIsLoadingFeed] =
@@ -114,13 +116,12 @@ export default function CommunityReadingPanel() {
       setFeedItems(
         payload.items || []
       );
+      setFeedError("");
     } catch (error) {
       console.error(error);
-      toast.error(
-        getCommunityErrorMessage(
-          error
-        )
-      );
+      const message = getCommunityErrorMessage(error);
+      setFeedError(message);
+      toast.error(message);
     } finally {
       setIsLoadingFeed(false);
     }
@@ -495,6 +496,9 @@ export default function CommunityReadingPanel() {
     return (
       <CommunityFeed
         posts={feedItems}
+        isError={Boolean(feedError)}
+        errorMessage={feedError}
+        onRetry={loadFeed}
         busyMap={busyMap}
         onAddInterpretation={
           handleAddInterpretation

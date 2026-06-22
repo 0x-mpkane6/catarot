@@ -162,6 +162,8 @@ export default function DuoReadingPanel() {
   const [error, setError] = useState("");
   const [copiedResult, setCopiedResult] = useState(false);
   const [replaySignal, setReplaySignal] = useState(0);
+  const [pollStalled, setPollStalled] = useState(false);
+  const pollCountRef = useRef(0);
 
   const storedUser = useMemo(
     () => getStoredUser(),
@@ -277,9 +279,23 @@ export default function DuoReadingPanel() {
       return undefined;
     }
 
+    // Mỗi lần (re)start poll: reset bộ đếm + cờ treo.
+    pollCountRef.current = 0;
+    setPollStalled(false);
+
+    // Sinh trải bài chung là đồng bộ (vài giây); nếu poll quá ngưỡng (~90s) coi như backend
+    // treo → DỪNG poll vô hạn + báo người dùng thay vì để dòng "Đang tạo..." xoay mãi.
+    const MAX_POLLS = 45;
+
     const intervalId =
       window.setInterval(
         async () => {
+          pollCountRef.current += 1;
+          if (pollCountRef.current > MAX_POLLS) {
+            window.clearInterval(intervalId);
+            setPollStalled(true);
+            return;
+          }
           try {
             const payload =
               await getDuoSession(
@@ -596,6 +612,19 @@ export default function DuoReadingPanel() {
       <div className="duo-reading-panel__status-note">
         {getStatusMessage(duoSession)}
       </div>
+
+      {pollStalled && (
+        <div
+          role="alert"
+          style={{
+            marginTop: "8px",
+            fontSize: "0.85rem",
+            color: "#fecaca",
+          }}
+        >
+          Quá lâu chưa có kết quả. Thử bấm làm mới, hoặc rời phòng rồi tạo lại.
+        </div>
+      )}
 
         <div className="duo-reading-panel__section">
           <div className="duo-reading-panel__field-label">

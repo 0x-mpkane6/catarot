@@ -36,6 +36,9 @@ export default function DeepReadingPanel({
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [replaySignal, setReplaySignal] = useState(0);
+  // Chủ đề ĐÃ DÙNG để sinh kết quả đang hiển thị (khác `topic` ở ô input đang gõ) — để header
+  // không lệch: gõ chủ đề mới mà chưa Generate thì header vẫn khớp luận giải đang hiện.
+  const [generatedTopic, setGeneratedTopic] = useState("");
 
   const cardKey =
     card?.id ??
@@ -49,6 +52,7 @@ export default function DeepReadingPanel({
     setTopic("");
     setCopied(false);
     setReplaySignal(0);
+    setGeneratedTopic("");
   }, [cardKey]);
 
   if (!card || !card.card_name || !isOpen) {
@@ -67,6 +71,7 @@ export default function DeepReadingPanel({
     try {
       const data = await getDeepReading({ topic });
       setResult(data);
+      setGeneratedTopic(topic.trim() || "Tổng quan");
     } catch (err) {
       const message =
         err?.response?.data?.detail ||
@@ -82,6 +87,9 @@ export default function DeepReadingPanel({
     result?.deep_reading
   );
   const activeTopicLabel = topic.trim() || "Tổng quan";
+  // Header hiển thị chủ đề KHỚP với luận giải đang hiện: có kết quả thì dùng chủ đề lúc sinh;
+  // chưa có thì theo ô input đang gõ.
+  const headerTopicLabel = result ? generatedTopic || "Tổng quan" : activeTopicLabel;
   const speechKey =
     cardKey && deepReadingText
       ? `daily-deep-${cardKey}-${deepReadingText.length}`
@@ -175,7 +183,7 @@ export default function DeepReadingPanel({
           >
             {card.card_name}
             {card.orientation === "reversed" ? " (ngược)" : " (xuôi)"} ·{" "}
-            {activeTopicLabel}
+            {headerTopicLabel}
           </div>
         </div>
 

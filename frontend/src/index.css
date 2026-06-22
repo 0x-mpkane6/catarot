@@ -79,10 +79,10 @@ html,
 body,
 #root,
 body * {
-  /* Con trỏ mặc định = hệ thống. (Trước đây trỏ tới /cursor-default-42.png nhưng file này
-     không tồn tại trong public/ → mọi trang phát 1 request 404 rồi vẫn fallback về auto.
-     Nếu muốn con trỏ mặc định tuỳ biến, thêm file vào public/ rồi đổi lại url ở đây.) */
-  cursor: auto !important;
+  /* Con trỏ skin mặc định cho TOÀN trang (pixel-art tím đơn sắc), hotspot (3,3) ở mũi tên
+     trên-trái; fallback 'auto' nếu ảnh lỗi. Nút/link dùng con trỏ đa sắc riêng ở quy tắc dưới
+     để vẫn có phản hồi khi hover. */
+  cursor: url("/cursor-default-42.png") 3 3, auto !important;
 }
 
 a,

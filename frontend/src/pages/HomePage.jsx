@@ -172,6 +172,16 @@ export default function HomePage() {
   const [showResult, setShowResult] =
     useState(false);
 
+  // Khoá ĐỒNG BỘ chống double-submit: prop `disabled` của nút cập nhật bất đồng bộ nên 2 cú
+  // bấm nhanh có thể lọt 2 request /api/ask (2 phiên, tốn LLM). Ref khoá ngay trong cùng tick.
+  const submittingRef = useRef(false);
+
+  // Nhãn loader theo ngữ cảnh: trải bài / mở phiên cũ / tải lá hằng ngày là 3 việc khác nhau,
+  // không nên cùng hiện "Đang luận giải...".
+  const [loadingLabel, setLoadingLabel] = useState(
+    "Đang luận giải lá bài của bạn"
+  );
+
   const [isToastVisible, setIsToastVisible] = useState(false);
 
   const [showProfile, setShowProfile] = useState(false);
@@ -437,15 +447,22 @@ export default function HomePage() {
       return;
     }
 
+    // Cờ huỷ: nếu user quay lại/đổi mode trong lúc đang tải, KHÔNG ghi đè màn hình bằng
+    // kết quả về muộn (tránh panel daily tự nhảy lại sau khi đã rời).
+    let isCancelled = false;
+
     const loadTodayDailyReading =
       async () => {
         try {
           setIsBackendLoading(true);
+          setLoadingLabel("Đang tải lá bài hằng ngày…");
 
           const result =
             await getTodayDailyReadingState(
               userProfile
             );
+
+          if (isCancelled) return;
 
           if (!result?.hasTodayReading || !result?.item) {
             setHasTodayDailyReading(false);
@@ -498,6 +515,10 @@ export default function HomePage() {
       };
 
     loadTodayDailyReading();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [selectedCard?.mode, userProfile]);
 
     const handleReflectSubmit =
@@ -714,6 +735,11 @@ const handleChatSubmitDraft =
     // -> skip spread grid
     if (hasImages) {
 
+      if (submittingRef.current) return;
+      submittingRef.current = true;
+
+      setLoadingLabel("Đang luận giải lá bài của bạn");
+
       try {
 
         setIsBackendLoading(true);
@@ -788,7 +814,7 @@ const handleChatSubmitDraft =
         console.error(error);
 
         toast.error(
-          "Đã có lỗi xảy ra"
+          getApiErrorMessage(error)
         );
 
         // Ném lại để ChatBox KHÔNG xoá câu hỏi/ảnh khi gửi ảnh thất bại.
@@ -797,6 +823,7 @@ const handleChatSubmitDraft =
       } finally {
 
         setIsBackendLoading(false);
+        submittingRef.current = false;
       }
 
       return;
@@ -818,6 +845,15 @@ const handleChatSubmitDraft =
       );
       return;
     }
+
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+
+    setLoadingLabel(
+      selectedCard?.mode === "daily"
+        ? "Đang rút lá bài hằng ngày…"
+        : "Đang luận giải lá bài của bạn"
+    );
 
     try {
       setIsBackendLoading(true);
@@ -949,6 +985,7 @@ const handleChatSubmitDraft =
       );
     } finally {
       setIsBackendLoading(false);
+      submittingRef.current = false;
     }
   };
 
@@ -959,6 +996,7 @@ const handleChatSubmitDraft =
 
       setShowHistory(false);
       setIsBackendLoading(true);
+      setLoadingLabel("Đang mở lại phiên trải bài…");
       setPendingInput(null);
       setCurrentSession(session);
       setMessages([]);
@@ -1606,7 +1644,7 @@ const handleChatSubmitDraft =
       />
     )}
 
-    {isBackendLoading && <MysticLoader />}
+    {isBackendLoading && <MysticLoader label={loadingLabel} />}
 
       {/* stars */}
       <div
