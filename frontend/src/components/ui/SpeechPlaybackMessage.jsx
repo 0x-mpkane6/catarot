@@ -1,7 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
-import { useAppSettings } from "../../context/AppSettingsContext";
 import { synthesizeSpeech } from "../../services/speechService";
 
 function renderMarkdownLink(props) {
@@ -14,32 +13,28 @@ function renderMarkdownLink(props) {
   );
 }
 
-// Luận giải LUÔN hiển thị đầy đủ ngay khi có nội dung. Giọng đọc (TTS) chỉ là lớp phụ:
-// nếu bật thì phát NỀN, KHÔNG chặn/ẩn chữ.
+// Luận giải LUÔN hiển thị đầy đủ ngay. Giọng đọc (TTS) là TÙY CHỌN: chỉ tổng hợp + phát khi
+// người dùng BẤM nút loa (replaySignal tăng) — KHÔNG auto-play.
 //
-// Trước đây component "gõ dần" chữ theo tiến độ audio và để TRỐNG chữ trong lúc tổng hợp
-// giọng. TTS tiếng Việt trên CPU rất chậm (vài chục giây cho một luận giải dài) nên người
-// dùng thấy bài đã hiện nhưng phần luận giải trống trơn — tưởng lỗi. Bỏ hẳn cơ chế đó.
+// Vì sao bỏ auto-play: TTS tiếng Việt (facebook/mms-tts-vie) chạy trên CPU rất chậm (vài chục
+// giây cho một luận giải dài); auto-play vừa tốn tài nguyên vừa bị trình duyệt CHẶN (không có
+// thao tác người dùng nên audio không phát được). Khi đang tổng hợp có chỉ báo "đang tạo giọng
+// đọc" để không bị tưởng đơ/hỏng.
 export default function SpeechPlaybackMessage({
   text = "",
-  autoPlay = false,
   speechKey = "",
   replaySignal = 0,
 }) {
-  const { settings } = useAppSettings();
   const safeText = String(text || "");
-  const shouldAutoPlay = autoPlay && settings.speechPlaybackEnabled;
-
   const audioRef = useRef(null);
   const audioUrlRef = useRef("");
-  // Mốc replaySignal đã xử lý. Khởi tạo = replaySignal hiện tại để KHÔNG tự phát khi component
-  // mount/remount với một replaySignal kế thừa (vd ChatConversation tái dùng instance theo
-  // index khi đổi phiên lịch sử). Chỉ phát lại khi user thực sự BẤM loa (replaySignal TĂNG),
-  // không phải khi nội dung (safeText) đổi.
+  // Mốc replaySignal đã xử lý — khởi tạo = giá trị hiện tại để mount/remount (kế thừa signal
+  // khi đổi phiên) KHÔNG tự phát; chỉ phát khi signal TĂNG (người dùng bấm loa).
   const lastReplayRef = useRef(replaySignal);
+  const [isSynthesizing, setIsSynthesizing] = useState(false);
 
   useEffect(() => {
-    // Dọn audio của lần phát trước (đổi nội dung hoặc bấm phát lại).
+    // Dọn audio lần trước.
     const previousAudio = audioRef.current;
     if (previousAudio) {
       previousAudio.pause();
@@ -52,15 +47,12 @@ export default function SpeechPlaybackMessage({
 
     const isFreshReplay = replaySignal > lastReplayRef.current;
     lastReplayRef.current = replaySignal;
-
-    // Phát khi: autoplay (giọng bật) HOẶC user vừa bấm loa. KHÔNG phát chỉ vì replaySignal
-    // còn >0 từ lần trước.
-    const shouldPlay = Boolean(
-      safeText && speechKey && (shouldAutoPlay || isFreshReplay)
-    );
-    if (!shouldPlay) return undefined;
+    if (!isFreshReplay || !safeText || !speechKey) {
+      return undefined;
+    }
 
     let isCancelled = false;
+    setIsSynthesizing(true);
 
     (async () => {
       try {
@@ -74,8 +66,10 @@ export default function SpeechPlaybackMessage({
         audioRef.current = audio;
         await audio.play();
       } catch (error) {
-        // TTS lỗi hoặc trình duyệt chặn autoplay: bỏ qua giọng đọc, chữ vẫn hiển thị đầy đủ.
+        // TTS lỗi hoặc trình duyệt chặn phát: bỏ qua giọng đọc, chữ vẫn hiển thị đầy đủ.
         console.error("Speech playback failed", error);
+      } finally {
+        if (!isCancelled) setIsSynthesizing(false);
       }
     })();
 
@@ -91,15 +85,31 @@ export default function SpeechPlaybackMessage({
         audioUrlRef.current = "";
       }
     };
-  }, [replaySignal, safeText, speechKey, shouldAutoPlay]);
+  }, [replaySignal, safeText, speechKey]);
 
   return (
-    <ReactMarkdown
-      components={{
-        a: renderMarkdownLink,
-      }}
-    >
-      {safeText}
-    </ReactMarkdown>
+    <>
+      <ReactMarkdown
+        components={{
+          a: renderMarkdownLink,
+        }}
+      >
+        {safeText}
+      </ReactMarkdown>
+
+      {isSynthesizing && (
+        <div
+          aria-live="polite"
+          style={{
+            marginTop: "8px",
+            fontSize: "0.82rem",
+            fontStyle: "italic",
+            color: "rgba(196,181,253,0.92)",
+          }}
+        >
+          🔊 Đang tạo giọng đọc… (có thể mất vài chục giây)
+        </div>
+      )}
+    </>
   );
 }
