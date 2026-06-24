@@ -162,7 +162,11 @@ def join_duo_session(duo_session_id: int, user_id: int) -> dict[str, Any]:
             # remain "waiting_partner" until a real second player arrives.
             row.status = "waiting_cards"
             row.updated_at = datetime.now(timezone.utc)
-        session.flush()
+        try:
+            session.flush()
+        except IntegrityError as exc:
+            # Đua 2 người cùng join slot B → trả lỗi nghiệp vụ (400) thay vì IntegrityError → 500.
+            raise ValueError("duo session already has 2 participants") from exc
 
     reloaded = _load_duo_session(duo_session_id)
     assert reloaded is not None
@@ -183,33 +187,19 @@ def _generate_duo_reading(cards: list[DuoCard]) -> tuple[str, str]:
         + "\nHãy nêu điểm hòa hợp, điểm dễ va chạm và một lời khuyên thực tế cho cả hai."
     )
 
-    if reader.gemini_api_key:
-        try:
-            text = reader._generate_gemini(system_prompt, user_prompt)  # type: ignore[attr-defined]
-            if text.strip():
-                return text.strip(), f"gemini:{reader.gemini_model}"
-        except Exception:
-            pass
-    if reader.api_key:
-        try:
-            text = reader._generate_openai(system_prompt, user_prompt)  # type: ignore[attr-defined]
-            if text.strip():
-                return text.strip(), f"openai:{reader.model}"
-        except Exception:
-            pass
-    if reader.ollama_enabled:
-        try:
-            text = reader._generate_ollama(system_prompt, user_prompt)  # type: ignore[attr-defined]
-            if text.strip():
-                return text.strip(), f"ollama:{reader.ollama_model}"
-        except Exception:
-            pass
-
     fallback = (
         f"Sự kết hợp giữa {cards[0].card_name} và {cards[1].card_name} cho thấy một mối quan hệ "
         "nhiều sắc thái. Hãy thẳng thắn nhìn nhận khác biệt và cùng chọn một hành động chung trong tuần này."
     )
-    return fallback, "deterministic-fallback"
+    # Tái dùng ĐÚNG chuỗi fallback chuẩn: Gemini (xoay nhiều key) → OpenAI → Groq → Ollama →
+    # fallback. Trước đây tự gọi lẻ nên BỎ SÓT Groq và chỉ dùng 1 key Gemini → rớt fallback 2 câu
+    # dù Groq vẫn chạy.
+    text, model_used, _warnings = reader.generate_custom(
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        fallback_text=fallback,
+    )
+    return text, (model_used or "deterministic-fallback")
 
 
 def submit_duo_card(

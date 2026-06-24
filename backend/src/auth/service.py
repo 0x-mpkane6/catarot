@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 
 from src.auth.security import create_access_token, hash_password, verify_password
 from src.db.models import User
@@ -96,7 +97,11 @@ def register_user(
             role=role or "member",
         )
         session.add(user)
-        session.flush()
+        try:
+            session.flush()
+        except IntegrityError as exc:
+            # Đua đăng ký cùng email/username → trả lỗi nghiệp vụ (400) thay vì HTTP 500.
+            raise ValueError("email already exists") from exc
         return _to_auth_user(user)
 
 
@@ -307,7 +312,14 @@ def authenticate_with_google(*, id_token_str: str) -> tuple[AuthUser, str]:
                 role="member",
             )
             session.add(user)
-            session.flush()
+            try:
+                session.flush()
+            except IntegrityError as exc:
+                # Đua đăng nhập Google lần đầu (2 tab) → lỗi nghiệp vụ để client thử lại,
+                # thay vì IntegrityError lọt thành HTTP 500.
+                raise ValueError(
+                    "Đăng nhập Google gặp xung đột tài khoản, vui lòng thử lại."
+                ) from exc
         else:
             if not user.google_id:
                 user.google_id = google_sub

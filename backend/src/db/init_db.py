@@ -113,6 +113,7 @@ def _apply_unique_constraints() -> None:
         ("duo_cards", "uq_duo_card_session_participant", "duo_session_id, participant_id"),
         ("community_votes", "uq_community_votes_interp_user", "interpretation_id, user_id"),
         ("daily_cards", "uq_daily_cards_user_date", "user_id, draw_date"),
+        ("conversation_turns", "uq_conversation_turns_session_idx", "session_id, turn_index"),
     ]
     existing_tables = set(inspect(engine).get_table_names())
 

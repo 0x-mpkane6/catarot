@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from src.db.models import ConversationTurn, Reading, ReadingSession, RecognizedCard, TarotCard
 from src.db.session import session_scope
@@ -214,7 +215,12 @@ def add_followup_turn(
     # Chỉ khi LLM đã sinh xong mới ghi cả user-turn + assistant-turn trong CÙNG 1 transaction.
     with session_scope() as session:
         session.add_all([pending_user_turn, assistant_turn])
-        session.flush()
+        try:
+            session.flush()
+        except IntegrityError as exc:
+            # Đua 2 follow-up cùng session → trùng turn_index. Trả lỗi sạch để client thử lại,
+            # thay vì ghi lẫn lộn thứ tự hội thoại (UNIQUE(session_id, turn_index) chặn ở DB).
+            raise ValueError("conversation turn conflict, please retry") from exc
 
     return {
         "session_id": session_id,

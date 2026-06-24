@@ -18,6 +18,7 @@ from urllib.parse import quote
 import sqlalchemy as sa
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -142,9 +143,28 @@ def _normalize_rating_reminder_days(value: Any) -> int:
     return days
 
 
+def _init_database_with_retry(attempts: int = 5, base_delay: float = 1.5) -> None:
+    """Neon Postgres free-tier auto-suspend: kết nối đầu lúc boot có thể bị từ chối khi DB đang
+    resume → thử lại vài lần (backoff) thay vì crash-loop container ngay từ lần đầu."""
+    import time
+
+    last_exc: Exception | None = None
+    for i in range(max(1, attempts)):
+        try:
+            initialize_database_if_needed(seed_reference_data=True)
+            return
+        except Exception as exc:  # retry mọi lỗi kết nối/khởi tạo DB
+            last_exc = exc
+            LOGGER.warning("Khởi tạo DB thất bại (lần %d/%d): %s", i + 1, attempts, exc)
+            time.sleep(base_delay * (i + 1))
+    LOGGER.error("Khởi tạo DB thất bại sau %d lần thử — hủy khởi động.", attempts)
+    if last_exc is not None:
+        raise last_exc
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    initialize_database_if_needed(seed_reference_data=True)
+    _init_database_with_retry()
     # Fail-fast cấu hình JWT: ở production (APP_ENV=production), JWT_SECRET_KEY thiếu/yếu/<32
     # ký tự sẽ CHẶN khởi động (RuntimeError) — tránh việc mọi endpoint auth âm thầm trả 500
     # lúc chạy. Ở dev, _jwt_secret() trả placeholder nên chỉ cảnh báo ở dưới.
@@ -573,6 +593,12 @@ def _enforce_ask_rate_limit(request: Request, scope: str = "ask") -> None:
 @app.post("/api/ask")
 def ask(req: QuestionRequest, request: Request):
     _enforce_ask_rate_limit(request, scope="ask")
+    # Chống gọi LLM lãng phí: phải có ít nhất câu hỏi / ảnh / âm thanh.
+    if not (req.question or "").strip() and not req.image_paths and not req.audio_path:
+        raise HTTPException(
+            status_code=400,
+            detail="Cần nhập câu hỏi hoặc tải lên ảnh/âm thanh để đọc bài.",
+        )
     clean_spread = _normalize_spread_type(req.spread_type)
     reminder_days = _normalize_rating_reminder_days(req.rating_reminder_days)
     result = _get_pipeline().run_pipeline(
@@ -600,9 +626,9 @@ class TtsRequest(BaseModel):
 
 @app.post("/api/tts")
 def text_to_speech(req: TtsRequest, request: Request):
-    """Đọc luận giải tiếng Việt thành giọng nói → trả audio/wav.
+    """Đọc luận giải tiếng Việt thành giọng nói → trả audio/mpeg (MP3).
 
-    Nhận text (vd: final_answer) và tổng hợp bằng facebook/mms-tts-vie. Suy biến
+    Nhận text (vd: final_answer) và tổng hợp bằng edge-tts (giọng neural Microsoft). Suy biến
     mềm: văn bản rỗng → 400; TTS chưa sẵn sàng / lỗi → 503 kèm thông điệp, KHÔNG
     lộ stack trace. Tổng hợp on-demand nên KHÔNG làm chậm luồng /api/ask.
     """
@@ -615,14 +641,14 @@ def text_to_speech(req: TtsRequest, request: Request):
         detail = warnings[0] if warnings else "Không tạo được giọng đọc."
         raise HTTPException(status_code=503, detail=detail)
 
-    headers = {"Content-Disposition": 'inline; filename="reading.wav"'}
+    headers = {"Content-Disposition": 'inline; filename="reading.mp3"'}
     if warnings:
         # Cảnh báo mềm (vd: đã cắt bớt văn bản) trả qua header để client tuỳ chọn hiển thị.
         # Header HTTP chỉ chấp nhận latin-1 nên phải percent-encode chuỗi tiếng Việt
         # (client đọc bằng decodeURIComponent). Cắt bớt TRƯỚC khi encode để không
         # đứt giữa chừng một cụm %XX.
         headers["X-TTS-Warnings"] = quote(" | ".join(warnings)[:500], safe="")
-    return Response(content=audio_bytes, media_type="audio/wav", headers=headers)
+    return Response(content=audio_bytes, media_type="audio/mpeg", headers=headers)
 
 
 # =============================
@@ -879,7 +905,10 @@ async def followup(
 ):
     owner_id = _ensure_session_owner_or_admin(current_user, session_id)
     try:
-        result = add_followup_turn(
+        # run_in_threadpool: đẩy việc đồng bộ nặng (LLM) khỏi event loop để không chặn cả server
+        # (deploy 1 worker). Đồng nhất với /api/ask & /api/tts vốn là sync def chạy trong threadpool.
+        result = await run_in_threadpool(
+            add_followup_turn,
             session_id=session_id,
             user_id=owner_id,
             message=req.message,
@@ -1009,7 +1038,8 @@ async def duo_submit_card(
     upload_dir.mkdir(parents=True, exist_ok=True)
     save_path = _save_upload(upload_dir, image)
     try:
-        payload = submit_duo_card(
+        payload = await run_in_threadpool(
+            submit_duo_card,
             duo_session_id=duo_session_id,
             user_id=current_user.id,
             image_path=save_path,
@@ -1182,7 +1212,8 @@ async def dreams_create(
     try:
         if audio is not None:
             audio_path = _save_upload(upload_dir, audio)
-        return create_dream_entry(
+        return await run_in_threadpool(
+            create_dream_entry,
             user_id=current_user.id,
             raw_text=raw_text,
             audio_path=audio_path,
@@ -1336,7 +1367,8 @@ async def daily_card_deep_reading(
     topic = (req.topic if req else "general")
     pipeline = _get_pipeline()
     try:
-        result = get_or_create_deep_reading(
+        result = await run_in_threadpool(
+            get_or_create_deep_reading,
             user_id=current_user.id,
             topic=topic,
             reader=pipeline.reader,

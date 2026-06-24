@@ -436,12 +436,13 @@ class ReadingGenerator:
             f"{self.gemini_model}:generateContent"
         )
         try:
+            # Key gửi qua HEADER (x-goog-api-key), KHÔNG qua URL query (?key=) để không lọt
+            # vào access log / URL — đồng nhất với community_automod.
             response = requests.post(
                 endpoint,
-                params={"key": key},
                 json=payload,
                 timeout=self.gemini_timeout,
-                headers={"Content-Type": "application/json"},
+                headers={"Content-Type": "application/json", "x-goog-api-key": key},
             )
         except requests.exceptions.RequestException as exc:
             raise RuntimeError(f"Gemini network error: {exc}") from exc

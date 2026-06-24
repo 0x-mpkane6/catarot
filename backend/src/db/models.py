@@ -205,6 +205,10 @@ class ConversationTurn(Base):
             "role IN ('user', 'assistant', 'system')",
             name="ck_conversation_turns_role",
         ),
+        # Chặn đua 2 follow-up cùng session ghi trùng turn_index (làm lẫn thứ tự hội thoại).
+        UniqueConstraint(
+            "session_id", "turn_index", name="uq_conversation_turns_session_idx"
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
