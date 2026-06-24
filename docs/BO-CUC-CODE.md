@@ -1,4 +1,4 @@
-# Bố cục mã nguồn — CATAROT
+# [CATAROT] BỐ CỤC MÃ NGUỒN
 
 > Bản đồ code để đọc nhanh: thư mục nào làm gì, file nào chịu trách nhiệm gì, một request đi qua đâu. Dùng khi review/chấm code.
 

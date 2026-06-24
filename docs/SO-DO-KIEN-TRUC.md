@@ -1,4 +1,4 @@
-# Sơ đồ kiến trúc (Mermaid) — CATAROT
+# [CATAROT] SƠ ĐỒ KIẾN TRÚC
 
 > Dán các khối này vào báo cáo Markdown (GitHub/VS Code render trực tiếp), hoặc xem trong slide HTML.
 > Mọi sơ đồ bám sát mã nguồn thực tế ở trạng thái bản final.

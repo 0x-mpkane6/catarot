@@ -1,4 +1,4 @@
-# Báo cáo đồ án — Ứng dụng web đọc bài Tarot đa phương thức (bản chi tiết)
+# [CATAROT] BÁO CÁO ĐỒ ÁN (BẢN CHI TIẾT)
 
 > Tài liệu kỹ thuật đầy đủ: **kiến trúc**, **công nghệ** và **chức năng**, kèm *lý do lựa chọn* cho từng quyết định. Mọi mô tả trong tài liệu này được đối chiếu trực tiếp với mã nguồn.
 
