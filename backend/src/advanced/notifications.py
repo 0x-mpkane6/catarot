@@ -336,6 +336,15 @@ def start_notification_scheduler() -> None:
     if _SCHEDULER is not None:
         return
 
+    try:
+        if int(os.getenv("WEB_CONCURRENCY", "1") or "1") > 1:
+            LOGGER.warning(
+                "WEB_CONCURRENCY>1: notification scheduler chạy trên MỖI worker → có thể tạo "
+                "thông báo TRÙNG. Khuyến nghị WEB_CONCURRENCY=1 hoặc tách scheduler ra tiến trình riêng."
+            )
+    except ValueError:
+        pass
+
     scheduler = BackgroundScheduler(timezone=_app_timezone())
     scheduler.add_job(
         process_daily_card_notifications,

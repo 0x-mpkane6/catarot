@@ -937,6 +937,7 @@ async def conversation(
 
 @app.get("/api/question_suggestions")
 async def question_suggestions(request: Request, limit: int = Query(default=3, ge=1, le=10)):
+    enforce_rate_limit(request=request, scope="question_suggestions", max_hits=30, window_seconds=60)
     # Lấy user_id từ JWT nếu có; KHÔNG nhận user_id do client tự khai trên query string —
     # nếu không, bất kỳ ai đoán id đều xem được "lá gần đây" của người khác (endpoint public).
     user_id = resolve_optional_user_id(request)
@@ -1101,9 +1102,11 @@ async def community_create(req: CommunityPostRequest, current_user: CurrentUser 
 
 @app.get("/api/community/feed")
 async def community_feed(
+    request: Request,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=50),
 ):
+    enforce_rate_limit(request=request, scope="community_feed", max_hits=60, window_seconds=60)
     return list_community_feed(page=page, page_size=page_size)
 
 
