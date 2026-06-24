@@ -16,14 +16,20 @@ function renderMarkdownLink(props) {
 // Cắt phần markdown chưa đóng ở cuối chuỗi đang lộ dần để không render vỡ cú pháp
 // (vd "**đậm" chưa có "**" đóng) trong lúc karaoke.
 function cleanupPartialMarkdown(value) {
-  return String(value || "")
-    .replace(/\[[^\]]*$/, "")
-    .replace(/\([^()]*$/, "")
-    .replace(/\*\*[^*]*$/, "")
-    .replace(/\*[^*]*$/, "")
-    .replace(/`[^`]*$/, "")
-    .replace(/#{1,6}\s*$/, "")
-    .replace(/\s+$/, "");
+  let s = String(value || "");
+  // (1) Cú pháp đang gõ DỞ ở cuối (mở mà chưa đóng) → bỏ phần đuôi đó.
+  s = s
+    .replace(/\]\([^)]*$/, "") // ](url… link chưa đóng ngoặc
+    .replace(/!?\[[^\]]*$/, "") // [nhãn… hoặc ![alt… chưa có ]
+    .replace(/(^|\n)#{1,6}[ \t]*$/, "$1") // # tiêu đề ở cuối chưa có chữ
+    .replace(/\s+$/, ""); // bỏ khoảng trắng cuối TRƯỚC khi cân bằng
+  // Bản chỉ để ĐẾM nhấn mạnh: loại marker bullet đầu dòng (* - +) để không đếm nhầm '*'.
+  const forCount = s.replace(/(^|\n)[ \t]{0,3}[*+-][ \t]+/g, "$1");
+  // (2) Cân bằng dấu đóng còn thiếu (KHÔNG cắt nhầm dấu đóng của cụm đã hoàn chỉnh).
+  if (((forCount.match(/`/g) || []).length) % 2 === 1) s += "`"; // `code`
+  if (((forCount.match(/\*\*/g) || []).length) % 2 === 1) s += "**"; // **đậm**
+  if (((forCount.replace(/\*\*/g, "").match(/\*/g) || []).length) % 2 === 1) s += "*"; // *nghiêng*
+  return s;
 }
 
 // Đưa vị trí lộ chữ tới ranh giới TỪ kế tiếp (khoảng trắng/dấu câu) để không hiện cụt giữa
