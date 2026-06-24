@@ -23,7 +23,7 @@ from src.advanced.analytics import track_event
 from src.advanced.daily_card import draw_today_card
 from src.db.models import Notification, NotificationPreference, User
 from src.db.session import session_scope
-from src.utils.email import send_email, smtp_configured
+from src.utils.email import email_configured, send_email
 from src.utils.logging import get_logger
 from src.utils.timezone import get_app_timezone
 
@@ -232,7 +232,7 @@ def dispatch_notification(
             user = session.scalar(select(User).where(User.id == user_id))
             to_email = (user.email if user else None) or ""
 
-            if allow_email and email_enabled and to_email and smtp_configured():
+            if allow_email and email_enabled and to_email and email_configured():
                 try:
                     send_email(to_email=to_email, subject=clean_title, body=clean_body or clean_title)
                     status = "sent"

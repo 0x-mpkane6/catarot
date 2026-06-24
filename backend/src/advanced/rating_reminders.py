@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import os
-import smtplib
 from datetime import datetime, timezone
-from email.message import EmailMessage
 from typing import Any
 
 try:
@@ -14,6 +12,7 @@ from sqlalchemy import select
 
 from src.db.models import RatingReminder, Reading, ReadingSession, User
 from src.db.session import session_scope
+from src.utils.email import send_email
 from src.utils.logging import get_logger
 from src.utils.timezone import get_app_timezone
 
@@ -38,50 +37,28 @@ def _app_timezone():
     return get_app_timezone(logger=LOGGER)
 
 
-def _smtp_port() -> int:
-    try:
-        return int(os.getenv("SMTP_PORT", "587"))
-    except ValueError:
-        return 587
-
-
 def _send_rating_email(*, to_email: str, question_text: str, session_id: int) -> None:
-    host = os.getenv("SMTP_HOST", "").strip()
-    sender = os.getenv("SMTP_FROM", "").strip()
-    username = os.getenv("SMTP_USERNAME", "").strip()
-    password = os.getenv("SMTP_PASSWORD", "")
-    use_tls = _as_bool(os.getenv("SMTP_USE_TLS", "true"), default=True)
-
-    if not host or not sender:
-        raise RuntimeError("SMTP is not configured (SMTP_HOST/SMTP_FROM missing).")
-
-    msg = EmailMessage()
-    msg["Subject"] = "Nhắc đánh giá: buổi đọc bài tarot vừa rồi chính xác đến đâu?"
-    msg["From"] = sender
-    msg["To"] = to_email
-    msg.set_content(
-        "\n".join(
-            [
-                "Xin chào,",
-                "",
-                "Hãy đánh giá buổi đọc bài tarot của bạn từ 1 đến 5 sao.",
-                f"Mã phiên: {session_id}",
-                f"Câu hỏi: {question_text}",
-                "",
-                "Bạn có thể gửi đánh giá ngay trong ứng dụng khi lời nhắc này xuất hiện.",
-                "",
-                "Trân trọng,",
-                "Tarot AI",
-            ]
-        )
+    # Gửi qua kênh dùng chung (Resend → SMTP). Ném RuntimeError nếu chưa cấu hình kênh nào;
+    # người gọi (process_due_rating_reminders) bắt lỗi → đánh dấu 'failed'.
+    body = "\n".join(
+        [
+            "Xin chào,",
+            "",
+            "Hãy đánh giá buổi đọc bài tarot của bạn từ 1 đến 5 sao.",
+            f"Mã phiên: {session_id}",
+            f"Câu hỏi: {question_text}",
+            "",
+            "Bạn có thể gửi đánh giá ngay trong ứng dụng khi lời nhắc này xuất hiện.",
+            "",
+            "Trân trọng,",
+            "Tarot AI",
+        ]
     )
-
-    with smtplib.SMTP(host=host, port=_smtp_port(), timeout=15) as server:
-        if use_tls:
-            server.starttls()
-        if username:
-            server.login(username, password)
-        server.send_message(msg)
+    send_email(
+        to_email=to_email,
+        subject="Nhắc đánh giá: buổi đọc bài tarot vừa rồi chính xác đến đâu?",
+        body=body,
+    )
 
 
 def save_rating(*, session_id: int, score: int, note: str | None) -> dict[str, Any]:

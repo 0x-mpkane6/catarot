@@ -484,9 +484,14 @@ async def auth_forgot_password(req: ForgotPasswordRequest, request: Request):
         window_seconds=60,
     )
     try:
-        _found, dev_token, expires_at = request_password_reset(email=req.email)
+        # run_in_threadpool: request_password_reset ghi DB + gửi email (I/O đồng bộ tới ~15s).
+        # Endpoint là async nên PHẢI đẩy khỏi event loop, tránh treo cả server 1-worker.
+        _found, dev_token, expires_at = await run_in_threadpool(
+            request_password_reset, email=req.email
+        )
     except Exception as exc:  # pragma: no cover - defensive
-        LOGGER.warning("forgot-password failed: %s", exc)
+        # Kèm loại lỗi để giám sát phân biệt DB-down với lỗi gửi email (HTTP vẫn 200 chống dò email).
+        LOGGER.warning("forgot-password failed [%s]: %s", type(exc).__name__, exc)
         dev_token = None
         expires_at = None
 
@@ -509,7 +514,10 @@ async def auth_reset_password(req: ResetPasswordRequest, request: Request):
         window_seconds=60,
     )
     try:
-        reset_password_with_token(token=req.token, new_password=req.new_password)
+        # Băm mật khẩu (PBKDF2 200k vòng) + ghi DB là việc đồng bộ tốn CPU/I/O → đẩy khỏi event loop.
+        await run_in_threadpool(
+            reset_password_with_token, token=req.token, new_password=req.new_password
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"message": "Mật khẩu đã được đặt lại thành công."}

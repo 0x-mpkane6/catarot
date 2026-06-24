@@ -169,21 +169,57 @@ def _frontend_base_url() -> str:
     return ""
 
 
+def _reset_email_html(*, link: str | None, token: str, minutes: int) -> str:
+    """Bản HTML cho email đặt lại mật khẩu (inline CSS để hợp mọi email client)."""
+    if link:
+        action = (
+            f'<a href="{link}" '
+            'style="display:inline-block;padding:14px 28px;border-radius:10px;'
+            "background:#7c3aed;color:#ffffff;text-decoration:none;font-weight:600;"
+            'font-size:15px;">Đặt lại mật khẩu</a>'
+            f'<p style="margin:18px 0 0;font-size:12px;color:#9ca3af;">'
+            f'Nếu nút không bấm được, sao chép liên kết này vào trình duyệt:<br>'
+            f'<span style="color:#a78bfa;word-break:break-all;">{link}</span></p>'
+        )
+    else:
+        action = (
+            '<p style="margin:0 0 6px;font-size:13px;color:#9ca3af;">Mã đặt lại của bạn:</p>'
+            f'<p style="margin:0;padding:12px 16px;border-radius:8px;background:#1f2937;'
+            'color:#a78bfa;font-family:monospace;font-size:18px;letter-spacing:1px;'
+            f'word-break:break-all;">{token}</p>'
+        )
+    return (
+        '<div style="margin:0;padding:32px 16px;background:#0b1020;">'
+        '<div style="max-width:480px;margin:0 auto;padding:36px 32px;border-radius:16px;'
+        'background:#11162a;font-family:Arial,Helvetica,sans-serif;color:#e5e7eb;">'
+        '<h1 style="margin:0 0 4px;font-size:22px;color:#c4b5fd;letter-spacing:2px;">CATAROT</h1>'
+        '<p style="margin:0 0 24px;font-size:12px;color:#6b7280;">Đặt lại mật khẩu</p>'
+        '<p style="margin:0 0 20px;font-size:15px;line-height:1.6;">'
+        'Bạn vừa yêu cầu đặt lại mật khẩu cho tài khoản CATAROT. '
+        f'Yêu cầu này sẽ hết hạn sau <strong>{minutes} phút</strong>.</p>'
+        f'<div style="margin:0 0 24px;">{action}</div>'
+        '<hr style="border:none;border-top:1px solid #1f2937;margin:24px 0;">'
+        '<p style="margin:0;font-size:12px;color:#6b7280;line-height:1.6;">'
+        'Nếu không phải bạn yêu cầu, hãy bỏ qua email này — mật khẩu sẽ không thay đổi.</p>'
+        '</div></div>'
+    )
+
+
 def _send_reset_email(*, to_email: str, token: str, expires_at: datetime) -> None:
-    """Gửi email link đặt lại mật khẩu. BEST-EFFORT: nuốt mọi lỗi (kể cả SMTP chưa cấu hình)
+    """Gửi email link đặt lại mật khẩu. BEST-EFFORT: nuốt mọi lỗi (kể cả email chưa cấu hình)
     để KHÔNG lộ email có tồn tại hay không và không làm hỏng luồng forgot-password.
     Có link nếu biết FRONTEND_BASE_URL; nếu không thì gửi mã token để dán vào trang đặt lại."""
     try:
-        from src.utils.email import send_email, smtp_configured
+        from src.utils.email import email_configured, send_email
 
-        if not smtp_configured():
-            LOGGER.info("Bỏ qua gửi email đặt lại mật khẩu: SMTP chưa cấu hình.")
+        if not email_configured():
+            LOGGER.info("Bỏ qua gửi email đặt lại mật khẩu: chưa cấu hình kênh gửi (Resend/SMTP).")
             return
 
         minutes = _RESET_TOKEN_TTL_MIN
         base = _frontend_base_url()
-        if base:
-            link = f"{base}/reset-password?token={token}"
+        link = f"{base}/reset-password?token={token}" if base else None
+        if link:
             body = (
                 "Bạn vừa yêu cầu đặt lại mật khẩu cho tài khoản CATAROT.\n\n"
                 f"Nhấp vào liên kết sau để đặt mật khẩu mới (hết hạn sau {minutes} phút):\n{link}\n\n"
@@ -199,8 +235,9 @@ def _send_reset_email(*, to_email: str, token: str, expires_at: datetime) -> Non
             to_email=to_email,
             subject="Đặt lại mật khẩu CATAROT",
             body=body,
+            html=_reset_email_html(link=link, token=token, minutes=minutes),
         )
-    except Exception as exc:  # best-effort: không để lỗi SMTP nổi ra ngoài
+    except Exception as exc:  # best-effort: không để lỗi gửi email nổi ra ngoài
         LOGGER.warning("Gửi email đặt lại mật khẩu thất bại: %s", str(exc))
 
 

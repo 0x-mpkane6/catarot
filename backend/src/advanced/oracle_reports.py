@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import json
 import os
-import smtplib
 from collections import Counter
 from datetime import datetime, timedelta, timezone
-from email.message import EmailMessage
 
 from sqlalchemy import and_, select
 
@@ -132,35 +130,19 @@ def _generate_narrative(summary: dict) -> tuple[str, str]:
     return text, "deterministic-fallback"
 
 
-def _smtp_port() -> int:
-    try:
-        return int(os.getenv("SMTP_PORT", "587"))
-    except ValueError:
-        return 587
-
-
 def _send_oracle_email(*, to_email: str, narrative: str, period_start: datetime, period_end: datetime) -> None:
-    host = os.getenv("SMTP_HOST", "").strip()
-    sender = os.getenv("SMTP_FROM", "").strip()
-    username = os.getenv("SMTP_USERNAME", "").strip()
-    password = os.getenv("SMTP_PASSWORD", "")
-    use_tls = os.getenv("SMTP_USE_TLS", "true").strip().lower() in {"1", "true", "yes", "y", "on"}
+    # Import cục bộ để tránh đụng tên với tham số `send_email: bool` của
+    # create_oracle_report_for_user. Degrade im lặng nếu chưa cấu hình kênh gửi nào.
+    from src.utils.email import email_configured, send_email
 
-    if not host or not sender:
+    if not email_configured():
         return
 
-    msg = EmailMessage()
-    msg["Subject"] = f"Báo cáo Oracle Tarot ({period_start.date()} - {period_end.date()})"
-    msg["From"] = sender
-    msg["To"] = to_email
-    msg.set_content(narrative)
-
-    with smtplib.SMTP(host=host, port=_smtp_port(), timeout=15) as server:
-        if use_tls:
-            server.starttls()
-        if username:
-            server.login(username, password)
-        server.send_message(msg)
+    send_email(
+        to_email=to_email,
+        subject=f"Báo cáo Oracle Tarot ({period_start.date()} - {period_end.date()})",
+        body=narrative,
+    )
 
 
 def create_oracle_report_for_user(
