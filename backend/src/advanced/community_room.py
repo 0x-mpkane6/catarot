@@ -23,11 +23,14 @@ def _sanitize_card_summary(card_summary: list[dict] | None) -> list[dict]:
     for card in card_summary[:24]:
         if not isinstance(card, dict):
             continue
+        label = str(card.get("label") or "").strip()[:160]
         name = str(card.get("name") or card.get("card") or "").strip()[:80]
         orientation = str(card.get("orientation") or "").strip()[:20]
-        if not name and not orientation:
+        if not label and not name and not orientation:
             continue
         item: dict[str, str] = {}
+        if label:
+            item["label"] = label
         if name:
             item["name"] = name
         if orientation:

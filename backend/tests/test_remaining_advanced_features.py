@@ -124,11 +124,15 @@ def test_auth_me_and_remaining_features(monkeypatch: pytest.MonkeyPatch, tmp_pat
         # Community pre-moderation flow
         post_resp = client.post(
             "/api/community/posts",
-            json={"question_text": "Is this relationship aligned?", "card_summary": [{"name": "The Lovers"}]},
+            json={
+                "question_text": "Is this relationship aligned?",
+                "card_summary": [{"label": "The Lovers - Xuôi"}],
+            },
             headers=_auth_headers(token_member),
         )
         assert post_resp.status_code == 200
         post_id = post_resp.json()["id"]
+        assert post_resp.json()["card_summary"] == [{"label": "The Lovers - Xuôi"}]
 
         feed_before = client.get("/api/community/feed")
         assert feed_before.status_code == 200
@@ -136,7 +140,8 @@ def test_auth_me_and_remaining_features(monkeypatch: pytest.MonkeyPatch, tmp_pat
 
         queue = client.get("/api/admin/community/moderation_queue", headers=_auth_headers(token_admin))
         assert queue.status_code == 200
-        assert any(item["id"] == post_id for item in queue.json()["items"])
+        queued_post = next(item for item in queue.json()["items"] if item["id"] == post_id)
+        assert queued_post["card_summary"] == [{"label": "The Lovers - Xuôi"}]
 
         approve = client.post(
             f"/api/admin/community/posts/{post_id}/approve",
@@ -145,6 +150,12 @@ def test_auth_me_and_remaining_features(monkeypatch: pytest.MonkeyPatch, tmp_pat
         )
         assert approve.status_code == 200
         assert approve.json()["status"] == "approved"
+        assert approve.json()["card_summary"] == [{"label": "The Lovers - Xuôi"}]
+
+        feed_after = client.get("/api/community/feed")
+        assert feed_after.status_code == 200
+        approved_post = next(item for item in feed_after.json()["items"] if item["id"] == post_id)
+        assert approved_post["card_summary"] == [{"label": "The Lovers - Xuôi"}]
 
         interp = client.post(
             f"/api/community/posts/{post_id}/interpretations",
