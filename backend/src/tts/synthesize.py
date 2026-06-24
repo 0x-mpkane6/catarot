@@ -125,25 +125,30 @@ async def _edge_synthesize(text: str, voice: str) -> bytes:
     return bytes(audio)
 
 
-def synthesize_vietnamese(text: str | None) -> tuple[bytes | None, list[str]]:
-    """Sinh MP3 tiếng Việt từ văn bản. Trả (audio_bytes | None, cảnh_báo).
+def synthesize_vietnamese(text: str | None) -> tuple[bytes | None, int, list[str]]:
+    """Sinh MP3 tiếng Việt từ văn bản. Trả (audio_bytes | None, spoken_end, cảnh_báo).
 
-    Không bao giờ ném lỗi: thiếu thư viện / lỗi mạng / dịch vụ lỗi -> None + cảnh báo.
+    `spoken_end` = số ký tự của văn bản gốc mà audio THỰC SỰ đọc tới (= độ dài phần đã
+    chuẩn hoá/cắt bớt). Dùng cho karaoke ở frontend để ánh xạ tiến độ giọng nói lên đúng
+    đoạn văn bản được đọc (không lệ thuộc độ dài markdown đầy đủ / phần bị cắt). 0 nếu không
+    sinh được audio.
+
+    Không bao giờ ném lỗi: thiếu thư viện / lỗi mạng / dịch vụ lỗi -> (None, 0, cảnh báo).
     """
     warnings: list[str] = []
 
     if not _tts_enabled():
         warnings.append("Chức năng đọc giọng nói đang tắt (TTS_ENABLED=false).")
-        return None, warnings
+        return None, 0, warnings
 
     cleaned, prep_warnings = _prepare_text(text)
     warnings.extend(prep_warnings)
     if not cleaned:
-        return None, warnings
+        return None, 0, warnings
 
     if not _module_available("edge_tts"):
         warnings.append("Thiếu thư viện edge-tts; không thể tạo giọng đọc.")
-        return None, warnings
+        return None, 0, warnings
 
     try:
         spoken = _strip_markdown(cleaned) or cleaned
@@ -156,9 +161,11 @@ def synthesize_vietnamese(text: str | None) -> tuple[bytes | None, list[str]]:
         )
         if not audio_bytes:
             warnings.append("Không nhận được dữ liệu giọng đọc.")
-            return None, warnings
-        return audio_bytes, warnings
+            return None, 0, warnings
+        # spoken_end tính theo `cleaned` (đã cắt bớt nếu quá dài) — đây là đoạn văn bản gốc
+        # mà audio bao phủ; frontend ánh xạ tiến độ audio lên [0, spoken_end].
+        return audio_bytes, len(cleaned), warnings
     except Exception as exc:  # suy biến mềm — không làm sập API
         LOGGER.warning("TTS synthesis failed: %s", exc)
         warnings.append("Tạo giọng đọc thất bại; vui lòng thử lại sau.")
-        return None, warnings
+        return None, 0, warnings

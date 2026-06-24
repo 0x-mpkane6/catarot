@@ -26,6 +26,19 @@ function cleanupPartialMarkdown(value) {
     .replace(/\s+$/, "");
 }
 
+// Đưa vị trí lộ chữ tới ranh giới TỪ kế tiếp (khoảng trắng/dấu câu) để không hiện cụt giữa
+// một âm tiết tiếng Việt → karaoke đỡ giật, cleanupPartialMarkdown bớt phải cắt cụt.
+function nextWordBoundary(text, index) {
+  const s = String(text || "");
+  if (index <= 0) return 0;
+  if (index >= s.length) return s.length;
+  const boundary = /[\s,.;:!?…—()"'‘’“”]/;
+  let i = index;
+  while (i < s.length && !boundary.test(s[i])) i += 1; // tới hết từ hiện tại
+  while (i < s.length && boundary.test(s[i])) i += 1; // nuốt khoảng trắng/dấu câu liền sau
+  return i;
+}
+
 // Luận giải hiển thị ĐẦY ĐỦ khi không phát. Khi người dùng BẤM nút loa: tổng hợp giọng (edge-tts,
 // nhanh) rồi vừa phát vừa cho chữ HIỆN DẦN theo tiến độ audio (karaoke). Lộ theo TỪNG KÝ TỰ bằng
 // requestAnimationFrame → mượt, không giật từng cụm. Hết audio → hiện lại đầy đủ.
@@ -40,6 +53,8 @@ export default function SpeechPlaybackMessage({
   const rafRef = useRef(null);
   // Mốc replaySignal đã xử lý — khởi tạo = giá trị hiện tại để mount/remount KHÔNG tự phát.
   const lastReplayRef = useRef(replaySignal);
+  // Số ký tự (văn bản gốc) mà audio thực sự đọc tới — mẫu số ánh xạ tiến độ giọng→chữ.
+  const spokenEndRef = useRef(null);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   // Số ký tự đang lộ. null = hiện ĐẦY ĐỦ (mặc định / khi không phát). Số = đang karaoke.
   const [revealCount, setRevealCount] = useState(null);
@@ -84,8 +99,14 @@ export default function SpeechPlaybackMessage({
       setRevealCount(0); // bắt đầu karaoke từ rỗng
 
       try {
-        const { audioBlob } = await synthesizeSpeech(safeText);
+        const { audioBlob, spokenEnd } = await synthesizeSpeech(safeText);
         if (isCancelled) return;
+        // Audio chỉ đọc tới spokenEnd ký tự của văn bản gốc (đã strip markdown + cắt nếu dài);
+        // ánh xạ tiến độ giọng nói lên đúng đoạn này. Thiếu header → fallback toàn bộ (như cũ).
+        spokenEndRef.current =
+          Number.isFinite(spokenEnd) && spokenEnd > 0
+            ? Math.min(spokenEnd, safeText.length)
+            : safeText.length;
 
         const audioUrl = URL.createObjectURL(audioBlob);
         audioUrlRef.current = audioUrl;
@@ -99,12 +120,17 @@ export default function SpeechPlaybackMessage({
         const tick = () => {
           if (isCancelled || audioRef.current !== audio) return;
           const dur = audio.duration;
-          const progress =
-            Number.isFinite(dur) && dur > 0 ? audio.currentTime / dur : 0;
-          const count = Math.min(
-            safeText.length,
-            Math.max(0, Math.round(safeText.length * progress))
-          );
+          // Chỉ lộ chữ khi đã có metadata (duration hợp lệ) VÀ audio thật sự chạy
+          // (currentTime>0) — tránh "đứng hình" ở 0 lúc đang nạp + đỡ render thừa mỗi frame.
+          if (!Number.isFinite(dur) || dur <= 0 || audio.currentTime <= 0) {
+            if (!audio.ended) rafRef.current = requestAnimationFrame(tick);
+            return;
+          }
+          const progress = Math.min(1, audio.currentTime / dur);
+          // Mẫu số = đoạn audio thực đọc (spokenEnd), KHÔNG phải toàn bộ độ dài markdown.
+          const end = spokenEndRef.current ?? safeText.length;
+          const raw = Math.round(end * progress);
+          const count = Math.min(safeText.length, nextWordBoundary(safeText, raw));
           setRevealCount(count);
           if (!audio.ended) {
             rafRef.current = requestAnimationFrame(tick);

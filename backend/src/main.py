@@ -206,8 +206,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    # Cho phép JS phía frontend (khác origin) đọc cảnh báo TTS trả qua header.
-    expose_headers=["X-TTS-Warnings"],
+    # Cho phép JS phía frontend (khác origin) đọc các header TTS: cảnh báo + mốc karaoke.
+    expose_headers=["X-TTS-Warnings", "X-TTS-Spoken-End"],
 )
 
 
@@ -644,12 +644,17 @@ def text_to_speech(req: TtsRequest, request: Request):
     if not (req.text or "").strip():
         raise HTTPException(status_code=400, detail="Thiếu nội dung văn bản để đọc.")
 
-    audio_bytes, warnings = synthesize_vietnamese(req.text)
+    audio_bytes, spoken_end, warnings = synthesize_vietnamese(req.text)
     if audio_bytes is None:
         detail = warnings[0] if warnings else "Không tạo được giọng đọc."
         raise HTTPException(status_code=503, detail=detail)
 
-    headers = {"Content-Disposition": 'inline; filename="reading.mp3"'}
+    headers = {
+        "Content-Disposition": 'inline; filename="reading.mp3"',
+        # Mốc ký tự (theo văn bản gốc) mà audio đọc tới → frontend karaoke ánh xạ tiến độ
+        # giọng nói lên [0, spoken_end] thay vì toàn bộ độ dài markdown (chống lệch chữ-tiếng).
+        "X-TTS-Spoken-End": str(spoken_end),
+    }
     if warnings:
         # Cảnh báo mềm (vd: đã cắt bớt văn bản) trả qua header để client tuỳ chọn hiển thị.
         # Header HTTP chỉ chấp nhận latin-1 nên phải percent-encode chuỗi tiếng Việt
