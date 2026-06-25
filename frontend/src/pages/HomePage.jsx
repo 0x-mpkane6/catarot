@@ -75,7 +75,7 @@ from "../services/dailyService";
 
 import toast from "react-hot-toast";
 
-import { Undo2 } from "lucide-react";
+import { Undo2, X } from "lucide-react";
 import useIsMobile from "../hooks/useIsMobile";
 import tarotReading from "../assets/images/homepage/the-magician.png";
 import whatIsTarotContent from "../assets/text/what_is_tarot.md?raw";
@@ -1254,7 +1254,7 @@ const handleChatSubmitDraft =
       />
     </div>
 
-    {selectedCard && (
+    {selectedCard && !showSpreadGrid && (
       <Undo2
       onClick={resetReadingToGallery}
       role="button"
@@ -1503,6 +1503,33 @@ const handleChatSubmitDraft =
           overflowY: "auto",
         }}
       >
+        {/* Nút Huỷ rõ ràng (thay cho nút back bị ẩn khi mở overlay) → không bấm nhầm mất lựa chọn. */}
+        <button
+          type="button"
+          onClick={resetReadingToGallery}
+          aria-label="Huỷ rút bài"
+          style={{
+            position: "fixed",
+            top: isMobile ? "10px" : "24px",
+            left: isMobile ? "10px" : "24px",
+            zIndex: 25,
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: isMobile ? "8px 14px" : "10px 18px",
+            borderRadius: "999px",
+            border: "1px solid rgba(255,255,255,0.18)",
+            background: "rgba(20,10,35,0.72)",
+            backdropFilter: "blur(6px)",
+            color: "#f3d0ff",
+            fontSize: isMobile ? "0.85rem" : "0.92rem",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          <X size={isMobile ? 16 : 18} /> Huỷ
+        </button>
+
         <TarotSpreadGrid
           requiredCards={requiredCards}
           disabled={isBackendLoading}
