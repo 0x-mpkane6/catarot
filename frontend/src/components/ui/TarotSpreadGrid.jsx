@@ -481,15 +481,12 @@ export default function TarotSpreadGrid({
 
             borderRadius: "999px",
 
-            // Mobile: nút Xác nhận dính đáy để luôn thấy được khi cuộn lưới.
-            ...(isMobile
-              ? {
-                  position: "sticky",
-                  bottom: "10px",
-                  width: "100%",
-                  maxWidth: "360px",
-                }
-              : null),
+            // Nút Xác nhận DÍNH ĐÁY (sticky) để LUÔN thấy khi cuộn lưới bài — cả desktop lẫn
+            // mobile (trước chỉ mobile; desktop nút trôi xuống dưới đáy nên hay bị khuất).
+            position: "sticky",
+            bottom: isMobile ? "10px" : "24px",
+            zIndex: 5,
+            ...(isMobile ? { width: "100%", maxWidth: "360px" } : null),
 
             border:
               "1px solid rgba(255,255,255,0.14)",
