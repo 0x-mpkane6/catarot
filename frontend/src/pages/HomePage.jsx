@@ -28,6 +28,7 @@ import {
   getSessionDetail,
   buildSessionMessages,
   getApiErrorMessage,
+  resolveSessionId,
 } from "../services/historyService";
 
 import {
@@ -53,6 +54,7 @@ import {
 
 import {
   askTarotQuestion,
+  followupSession,
 } from "../services/tarotService";
 import {
   getCurrentUser,
@@ -236,7 +238,7 @@ export default function HomePage() {
   const [dailyInfoNote, setDailyInfoNote] =
     useState("");
 
-  // eslint-disable-next-line no-unused-vars -- TODO: hook up session reuse
+  // currentSession: phiên hiện tại để HỎI TIẾP (follow-up) trên cùng bài đọc.
   const [currentSession, setCurrentSession] = useState(null);
 
   // --- Đồng bộ nút Back của TRÌNH DUYỆT với điều hướng nội bộ của HomePage ---
@@ -844,7 +846,34 @@ const handleChatSubmitDraft =
     }
 
     // TEXT / AUDIO
-    // -> still open spread grid
+    // FOLLOW-UP: đang xem một phiên ĐÃ có kết quả + gõ tiếp (text) → HỎI TIẾP trên CÙNG phiên
+    // (gọi /followup) thay vì mở lại màn rút bài. Lượt đọc MỚI thì bắt đầu lại từ gallery.
+    const followupSessionId = showResult ? resolveSessionId(currentSession) : null;
+    const followupMessage = (draft.question || "").trim();
+    if (followupSessionId && followupMessage) {
+      if (submittingRef.current) return;
+      submittingRef.current = true;
+      setLoadingLabel("Đang hỏi tiếp…");
+      try {
+        setIsBackendLoading(true);
+        const data = await followupSession(followupSessionId, followupMessage);
+        setMessages((prev) => [
+          ...prev,
+          { role: "user", content: followupMessage },
+          { ...buildAssistantMessage(data.assistant_answer, true) },
+        ]);
+      } catch (error) {
+        console.error(error);
+        toast.error(getApiErrorMessage(error));
+        throw error; // ném lại để ChatBox giữ lại câu hỏi đã gõ
+      } finally {
+        setIsBackendLoading(false);
+        submittingRef.current = false;
+      }
+      return;
+    }
+
+    // -> lượt đọc MỚI: mở màn rút bài
     setPendingInput(draft);
 
     setShowSpreadGrid(true);
