@@ -8,6 +8,7 @@ fail-fast JWT ở production, bật các scheduler nền. Route ở đây MỎNG
 (`advanced/*`, `pipeline/*`).
 """
 import os
+import threading
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -184,6 +185,20 @@ async def lifespan(_app: FastAPI):
     start_analytics_scheduler()
     start_automod_scheduler()  # bot tự kiểm duyệt cộng đồng (opt-in qua COMMUNITY_AUTOMOD_ENABLED)
     start_notification_scheduler()  # daily card hằng ngày (opt-in qua NOTIFICATION_SCHEDULER_ENABLED)
+
+    # Build vision index ở THREAD NỀN nếu thiếu (gate VISION_AUTO_BUILD_INDEX). Index không ship
+    # kèm lên Space được (binary), nên build tại chỗ từ gallery có sẵn; chạy nền để KHÔNG làm chậm
+    # khởi động/trượt healthcheck. Predictor tự nạp index khi build xong (CardPredictor.predict).
+    def _bg_build_vision_index() -> None:
+        try:
+            from src.vision.index import ensure_vision_index_built
+
+            LOGGER.info("Vision index ensure: %s", ensure_vision_index_built())
+        except Exception as exc:  # pragma: no cover - không để lỗi build làm sập app
+            LOGGER.warning("Auto-build vision index thất bại: %s", exc)
+
+    threading.Thread(target=_bg_build_vision_index, name="vision-index-build", daemon=True).start()
+
     try:
         yield
     finally:
@@ -409,11 +424,23 @@ def health_check():
         db_ok = False
         db_error = str(exc)[:200]
 
+    # Cờ chẩn đoán: index nhận diện lá bài đã có trên đĩa chưa (kiểm tra file rẻ, KHÔNG nạp model).
+    vision_index_ok = False
+    try:
+        from src.utils.config import resolve_path
+
+        vision_index_ok = resolve_path(
+            os.getenv("FAISS_INDEX_PATH", "./models/vision/faiss.index")
+        ).exists()
+    except Exception:  # pragma: no cover - defensive
+        pass
+
     return {
         "status": "ok" if db_ok else "degraded",
         "version": APP_VERSION,
         "db": "ok" if db_ok else "error",
         "db_error": db_error,
+        "vision_index": vision_index_ok,
         "timezone": os.getenv("APP_TIMEZONE", "Asia/Ho_Chi_Minh"),
         "now": datetime.now().isoformat(),
     }

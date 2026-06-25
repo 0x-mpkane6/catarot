@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -59,6 +60,20 @@ def load_meta(meta_path: str | Path) -> list[dict[str, Any]]:
         return json.load(handle)
 
 
+def _resolve_manifest_image_path(raw: str) -> str:
+    """Manifest có thể chứa path TUYỆT ĐỐI của máy build (vd /mnt/d/.../data/...). Trên máy khác
+    (HF Space) path đó không tồn tại → lấy đoạn từ 'data/' và resolve theo project root."""
+    p = Path(raw)
+    if p.exists():
+        return str(p)
+    parts = p.parts
+    if "data" in parts:
+        candidate = resolve_path(Path(*parts[parts.index("data"):]))
+        if candidate.exists():
+            return str(candidate)
+    return raw
+
+
 def build_vision_index_from_manifest(
     manifest_path: str | Path,
     index_path: str | Path,
@@ -69,7 +84,7 @@ def build_vision_index_from_manifest(
     if not records:
         raise ValueError(f"Gallery manifest is empty: {manifest_path}")
 
-    image_paths = [record["path"] for record in records]
+    image_paths = [_resolve_manifest_image_path(record["path"]) for record in records]
     vectors = embedder.embed_paths(image_paths, load_image)
     index = build_index(vectors)
 
@@ -90,6 +105,49 @@ def build_vision_index_from_manifest(
 
     LOGGER.info("Built vision index with %d vectors, dim=%d", vectors.shape[0], vectors.shape[1])
     return vectors.shape[0], vectors.shape[1]
+
+
+_BOOL_TRUE = {"1", "true", "yes", "y", "on"}
+
+
+def ensure_vision_index_built() -> str:
+    """Build vision index từ gallery manifest NẾU chưa có (gate qua env VISION_AUTO_BUILD_INDEX).
+    Dùng cho deploy (HF Space) — index không ship kèm được nên build tại chỗ từ gallery có sẵn.
+    Trả chuỗi trạng thái; người gọi nên bọc try/except (chạy ở thread nền).
+    """
+    if os.getenv("VISION_AUTO_BUILD_INDEX", "0").strip().lower() not in _BOOL_TRUE:
+        return "disabled"
+
+    from src.utils.config import get_config_value, load_config
+    from src.vision.embedder import VisionEmbedder
+
+    config = load_config()
+    index_path = resolve_path(
+        get_config_value(config, "paths", "vision_index_path", default="./models/vision/faiss.index")
+    )
+    meta_path = resolve_path(
+        get_config_value(config, "paths", "vision_meta_path", default="./models/vision/faiss_meta.json")
+    )
+    if index_path.exists() and meta_path.exists():
+        return "exists"
+
+    manifest_path = resolve_path(
+        get_config_value(
+            config, "paths", "gallery_manifest", default="./data/processed/gallery/gallery_manifest.jsonl"
+        )
+    )
+    if not manifest_path.exists():
+        return "no-manifest"
+
+    index_path.parent.mkdir(parents=True, exist_ok=True)
+    embedder = VisionEmbedder(
+        model_name=get_config_value(config, "vision", "model_name", default="ViT-B-32"),
+        pretrained=get_config_value(config, "vision", "pretrained", default="laion2b_s34b_b79k"),
+        device=get_config_value(config, "vision", "device", default="cpu"),
+    )
+    count, dim = build_vision_index_from_manifest(manifest_path, index_path, meta_path, embedder)
+    LOGGER.info("Auto-built vision index: %d vectors, dim=%d", count, dim)
+    return f"built:{count}x{dim}"
 
 
 def search_index(index, meta: list[dict[str, Any]], query_vector: np.ndarray, top_k: int = 5) -> list[dict[str, Any]]:
