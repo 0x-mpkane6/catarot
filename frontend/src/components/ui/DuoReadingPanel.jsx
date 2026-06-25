@@ -23,6 +23,7 @@ import {
   joinDuoByInvite,
   uploadDuoCard,
 } from "../../services/duoService";
+import MysticLoader from "./MysticLoader";
 import SpeechPlaybackMessage from "./SpeechPlaybackMessage";
 
 const ACTIVE_DUO_SESSION_KEY = "active_duo_session_id";
@@ -189,6 +190,18 @@ export default function DuoReadingPanel() {
 
   const canUploadCard =
     !currentUserCard;
+  const cardsCount =
+    duoSession?.cards?.length || 0;
+  const hasBothParticipants =
+    participants.length === 2;
+  const hasBothCards =
+    hasBothParticipants &&
+    cardsCount === 2;
+  const showDuoGeneratingOverlay =
+    view === "room" &&
+    hasBothCards &&
+    duoSession?.status !== "completed" &&
+    duoSession?.status !== "failed";
 
   const isOwner =
     currentUserId !== null &&
@@ -548,54 +561,55 @@ export default function DuoReadingPanel() {
   );
 
   const renderRoom = () => (
-    <>
-      <div className="duo-reading-panel__room-header">
-        <div className="duo-reading-panel__invite-card">
-          <div>
-            <div className="duo-reading-panel__meta-title">
-              Mã mời
+    <div className="duo-reading-panel__room-layout">
+      <div className="duo-reading-panel__room-main">
+        <div className="duo-reading-panel__room-header">
+          <div className="duo-reading-panel__invite-card">
+            <div>
+              <div className="duo-reading-panel__meta-title">
+                Mã mời
+              </div>
+
+              <div className="duo-reading-panel__meta-value">
+                {duoSession?.invite_code || "N/A"}
+              </div>
             </div>
 
-            <div className="duo-reading-panel__meta-value">
-              {duoSession?.invite_code || "N/A"}
-            </div>
+            <button
+              type="button"
+              className="duo-reading-panel__copy-button"
+              onClick={handleCopyInviteCode}
+              title="Sao chép mã mời"
+            >
+              <Copy size={16} />
+            </button>
           </div>
 
-          <button
-            type="button"
-            className="duo-reading-panel__copy-button"
-            onClick={handleCopyInviteCode}
-            title="Sao chép mã mời"
-          >
-            <Copy size={16} />
-          </button>
+          <div className="duo-reading-panel__header-actions">
+            <button
+              type="button"
+              className="duo-reading-panel__icon-button"
+              onClick={handleRefresh}
+              disabled={loading}
+              title="Làm mới phòng"
+            >
+              <RefreshCw size={18} />
+            </button>
+
+            <button
+              type="button"
+              className="duo-reading-panel__icon-button duo-reading-panel__icon-button--danger"
+              title="Rời phòng"
+              onClick={handleLeaveRoom}
+            >
+              <SquareArrowRightExit size={18} />
+            </button>
+          </div>
         </div>
 
-        <div className="duo-reading-panel__header-actions">
-          <button
-            type="button"
-            className="duo-reading-panel__icon-button"
-            onClick={handleRefresh}
-            disabled={loading}
-            title="Làm mới phòng"
-          >
-            <RefreshCw size={18} />
-          </button>
-
-          <button
-            type="button"
-            className="duo-reading-panel__icon-button duo-reading-panel__icon-button--danger"
-            title="Rời phòng"
-            onClick={handleLeaveRoom}
-          >
-            <SquareArrowRightExit size={18} />
-          </button>
+        <div className="duo-reading-panel__status-note">
+          {getStatusMessage(duoSession)}
         </div>
-      </div>
-
-      <div className="duo-reading-panel__status-note">
-        {getStatusMessage(duoSession)}
-      </div>
 
         <div className="duo-reading-panel__section">
           <div className="duo-reading-panel__field-label">
@@ -732,16 +746,17 @@ export default function DuoReadingPanel() {
         </div>
 
         {isOwner &&
-          participants.length === 2 &&
-          (duoSession?.cards?.length || 0) === 2 &&
+          hasBothCards &&
           duoSession?.status !== "completed" && (
             <div className="duo-reading-panel__note">
               Trải bài chung sẽ được tạo tự động sau khi cả hai lá bài được tải lên.
             </div>
           )}
+      </div>
 
-      {duoSession?.status === "completed" &&
-        duoSession?.reading && (
+      <aside className="duo-reading-panel__sidebar">
+        {duoSession?.status === "completed" &&
+        duoSession?.reading ? (
           <div className="duo-reading-panel__result">
             <div className="duo-reading-panel__result-header">
               <div className="duo-reading-panel__field-label duo-reading-panel__field-label--tight">
@@ -786,8 +801,13 @@ export default function DuoReadingPanel() {
               />
             </div>
           </div>
+        ) : (
+          <div className="duo-reading-panel__sidebar-placeholder">
+            Kết quả Trải Bài Đôi sẽ hiện ở đây sau khi cả hai người tải lá bài lên xong.
+          </div>
         )}
-    </>
+      </aside>
+    </div>
   );
 
   return (
@@ -796,6 +816,10 @@ export default function DuoReadingPanel() {
         className={`duo-reading-panel ${
           view === "landing"
             ? "duo-reading-panel--landing"
+            : ""
+        } ${
+          view === "room"
+            ? "duo-reading-panel--room"
             : ""
         }`}
       >
@@ -811,6 +835,10 @@ export default function DuoReadingPanel() {
           )}
         </div>
       </div>
+
+      {showDuoGeneratingOverlay && (
+        <MysticLoader label="Đang tạo trải bài đôi" />
+      )}
     </div>
   );
 }
