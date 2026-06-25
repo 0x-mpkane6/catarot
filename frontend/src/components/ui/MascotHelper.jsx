@@ -239,6 +239,35 @@ export default function MascotHelper() {
                   </button>
                 </div>
 
+                <div className="mascot-helper__settings-row mascot-helper__settings-row--stack">
+                  <div className="mascot-helper__settings-volume-header">
+                    <span>{t("settings_music_volume")}</span>
+                    <strong>
+                      {Math.round(
+                        Number(settings.backgroundMusicVolume || 0) * 100
+                      )}
+                      %
+                    </strong>
+                  </div>
+
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    className="mascot-helper__volume-slider"
+                    value={Math.round(
+                      Number(settings.backgroundMusicVolume || 0) * 100
+                    )}
+                    onChange={(event) =>
+                      updateSettings({
+                        backgroundMusicVolume:
+                          Number(event.target.value) / 100,
+                      })
+                    }
+                  />
+                </div>
+
                 <div className="mascot-helper__settings-row">
                   <span>{t("settings_cursor")}</span>
                   <button

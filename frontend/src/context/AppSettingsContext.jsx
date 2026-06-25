@@ -6,6 +6,7 @@ const DEFAULT_SETTINGS = {
   mascotSoundEnabled: true,
   cursorEffectsEnabled: true,
   speechPlaybackEnabled: true,
+  backgroundMusicVolume: 0.35,
 };
 
 const STRINGS = {
@@ -14,6 +15,7 @@ const STRINGS = {
   common_close: "Đóng",
   settings_title: "Cài đặt",
   settings_sound: "Âm thanh mèo",
+  settings_music_volume: "Âm lượng nhạc nền",
   settings_cursor: "Hiệu ứng cursor",
   settings_speech: "Đọc phản hồi",
   settings_open: "Mở cài đặt",

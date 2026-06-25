@@ -151,6 +151,25 @@
   flex-direction: column;
 }
 
+.mascot-helper__settings-volume-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mascot-helper__settings-volume-header strong {
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.mascot-helper__volume-slider {
+  width: 100%;
+  accent-color: #d946ef;
+  cursor: pointer;
+}
+
 .mascot-helper__toggle,
 .mascot-helper__lang-button {
   border: 1px solid rgba(192, 132, 252, 0.18);
