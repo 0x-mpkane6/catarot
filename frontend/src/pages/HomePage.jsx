@@ -521,6 +521,20 @@ export default function HomePage() {
     };
   }, [selectedCard?.mode, userProfile]);
 
+  // Khoá cuộn nền khi mở overlay rút bài: chống iOS cuộn xuyên nền (scroll bleed-through)
+  // làm trang phía dưới bị lệch khi đóng overlay. touchAction='none' mới chặn rubber-band iOS.
+  useEffect(() => {
+    if (!showSpreadGrid) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    const prevTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.touchAction = prevTouchAction;
+    };
+  }, [showSpreadGrid]);
+
     const handleReflectSubmit =
   async (
     cardId,

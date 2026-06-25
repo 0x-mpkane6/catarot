@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import toast from "react-hot-toast";
 
 import { synthesizeSpeech } from "../../services/speechService";
 import "./SpeechPlaybackMessage.css";
@@ -70,6 +71,8 @@ export default function SpeechPlaybackMessage({
   // Mốc replaySignal đã xử lý — khởi tạo = giá trị hiện tại để mount/remount KHÔNG tự phát.
   const lastReplayRef = useRef(replaySignal);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
+  // Cảnh báo mềm từ backend (vd: bài quá dài bị cắt khi đọc) — hiện dưới luận giải.
+  const [warningNote, setWarningNote] = useState("");
 
   useEffect(() => {
     let isCancelled = false;
@@ -115,13 +118,17 @@ export default function SpeechPlaybackMessage({
     (async () => {
       // Tách khỏi luồng đồng bộ của effect (tránh setState đồng bộ trong effect body).
       await Promise.resolve();
-      if (isCancelled || !willPlay) return;
+      if (isCancelled) return;
+      setWarningNote(""); // luận giải mới / không phát → xoá cảnh báo cũ
+      if (!willPlay) return;
 
       setIsSynthesizing(true);
 
       try {
-        const { audioBlob, spokenEnd } = await synthesizeSpeech(safeText);
+        const { audioBlob, spokenEnd, warnings } = await synthesizeSpeech(safeText);
         if (isCancelled) return;
+        // Cảnh báo mềm (vd cắt bớt văn bản khi đọc) → cho người dùng biết thay vì im lặng.
+        if (warnings && warnings.length > 0) setWarningNote(warnings.join(" • "));
 
         // spokenEnd = số ký tự văn bản gốc audio đọc tới; quy về tỉ lệ để ánh xạ sang số TỪ.
         const validEnd =
@@ -183,11 +190,20 @@ export default function SpeechPlaybackMessage({
         if (isCancelled) return;
         rafRef.current = requestAnimationFrame(tick);
       } catch (error) {
-        // TTS lỗi / trình duyệt chặn phát: bỏ qua giọng đọc, luận giải vẫn hiện đầy đủ.
+        // TTS lỗi / trình duyệt chặn phát: luận giải vẫn hiện đầy đủ, nhưng BÁO cho người dùng
+        // (trước đây im lặng → nút loa như bị "chết").
         console.error("Speech playback failed", error);
         if (!isCancelled) {
           setIsSynthesizing(false);
-          clearHighlight();
+          stopPlayback(); // dọn audio/blob/listener + bỏ tô sáng (không chỉ clearHighlight)
+          const status = error?.response?.status;
+          toast.error(
+            status === 429
+              ? "Bạn bấm đọc hơi nhanh, thử lại sau giây lát."
+              : status === 503
+                ? "Giọng đọc tạm thời không khả dụng, thử lại sau."
+                : "Không tạo được giọng đọc, vui lòng thử lại."
+          );
         }
       }
     })();
@@ -217,6 +233,20 @@ export default function SpeechPlaybackMessage({
           }}
         >
           🔊 Đang tạo giọng đọc…
+        </div>
+      )}
+
+      {warningNote && (
+        <div
+          aria-live="polite"
+          style={{
+            marginTop: "8px",
+            fontSize: "0.8rem",
+            fontStyle: "italic",
+            color: "rgba(251,191,36,0.92)",
+          }}
+        >
+          ⚠️ {warningNote}
         </div>
       )}
     </>

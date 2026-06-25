@@ -152,7 +152,9 @@ export default function TarotSpreadGrid({
 
           boxSizing: "border-box",
 
-          overflow: "hidden",
+          // KHÔNG đặt overflow:hidden ở đây — nếu đặt, <section> thành scroll-container của
+          // nút Xác nhận (position:sticky) nhưng lại không tự cuộn → nút mất tầm dính, trôi
+          // khỏi màn hình. Để overflow mặc định (visible) thì nút dính theo overlay cuộn được.
 
           background: `
             radial-gradient(
