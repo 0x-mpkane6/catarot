@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
+import BackGroundMusic from "./components/common/BackGroundMusic";
 import SplashCursor from "./components/common/SplashCursor";
 import RouteTransition from "./components/transition/RouteTransition";
 import MysticLoader from "./components/ui/MysticLoader";
@@ -40,6 +41,8 @@ function App() {
 
   return (
     <>
+      <BackGroundMusic />
+
       {settings.cursorEffectsEnabled && (
         <SplashCursor
           DENSITY_DISSIPATION={3.5}
