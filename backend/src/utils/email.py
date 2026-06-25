@@ -23,7 +23,10 @@ LOGGER = get_logger(__name__)
 _BOOL_TRUE = {"1", "true", "yes", "y", "on"}
 
 _RESEND_API_URL = "https://api.resend.com/emails"
-_EMAIL_TIMEOUT = 15.0  # giây — dùng chung cho cả Resend (HTTP) lẫn SMTP
+_EMAIL_TIMEOUT = 15.0  # giây — socket timeout cho SMTP (fallback)
+# (connect, read) cho Resend HTTP: connect 5s để FAIL NHANH khi Resend không kết nối được,
+# tránh giữ slot threadpool (dùng chung với /api/ask, /api/tts) quá lâu.
+_RESEND_TIMEOUT = (5.0, 10.0)
 
 
 def _as_bool(value: str | None, default: bool = False) -> bool:
@@ -79,7 +82,7 @@ def _send_via_resend(*, to_email: str, subject: str, body: str, html: str | None
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         },
-        timeout=_EMAIL_TIMEOUT,
+        timeout=_RESEND_TIMEOUT,
     )
     if resp.status_code >= 400:
         # Không log nội dung email; chỉ log mã + đoạn đầu lỗi để chẩn đoán cấu hình.

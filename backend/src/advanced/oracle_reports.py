@@ -205,8 +205,8 @@ def create_oracle_report_for_user(
             try:
                 _send_oracle_email(to_email=user.email, narrative=narrative, period_start=start, period_end=end)
                 row.delivered_email_at = now
-            except Exception:
-                pass
+            except Exception as exc:  # best-effort: không sập tạo báo cáo, nhưng PHẢI log để thấy lỗi cấu hình
+                LOGGER.warning("Gửi email Oracle thất bại (user=%s): %s", user_id, exc)
 
         created_id = row.id
         delivered_email_at = row.delivered_email_at

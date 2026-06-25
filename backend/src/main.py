@@ -438,7 +438,10 @@ async def auth_register(req: RegisterRequest, request: Request):
     # Bảo mật: KHÔNG cho client tự chọn role. Đăng ký công khai LUÔN là 'member';
     # tài khoản admin chỉ được tạo qua seeding/DB, không qua API công khai.
     try:
-        user = register_user(
+        # Băm mật khẩu PBKDF2 200k vòng + ghi DB là việc đồng bộ nặng → đẩy khỏi event loop
+        # (deploy 1-worker), tránh chặn mọi request khác. Đồng nhất với forgot/reset-password.
+        user = await run_in_threadpool(
+            register_user,
             email=req.email,
             password=req.password,
             username=req.username,
@@ -457,7 +460,9 @@ async def auth_login(req: LoginRequest, request: Request):
     if not raw_identifier:
         raise HTTPException(status_code=400, detail="missing username/email")
     try:
-        user, token = authenticate_user_by_identifier(
+        # PBKDF2 verify 200k vòng + truy vấn DB đồng bộ → đẩy khỏi event loop (1-worker).
+        user, token = await run_in_threadpool(
+            authenticate_user_by_identifier,
             identifier=raw_identifier,
             password=req.password,
         )
@@ -527,7 +532,10 @@ async def auth_reset_password(req: ResetPasswordRequest, request: Request):
 async def auth_google(req: GoogleLoginRequest, request: Request):
     enforce_rate_limit(request=request, scope="auth_google", max_hits=10, window_seconds=60)
     try:
-        user, token = authenticate_with_google(id_token_str=req.id_token)
+        # verify_oauth2_token gọi HTTPS tới Google (đồng bộ) + ghi DB → đẩy khỏi event loop.
+        user, token = await run_in_threadpool(
+            authenticate_with_google, id_token_str=req.id_token
+        )
     except RuntimeError as exc:
         # Config / library lỗi → 503 để client biết phía server thiếu thiết lập.
         raise HTTPException(status_code=503, detail=str(exc)) from exc
