@@ -204,6 +204,10 @@ export default function DuoReadingPanel() {
     hasBothCards &&
     duoSession?.status !== "completed" &&
     duoSession?.status !== "failed";
+  const showFloatingResultSidebar =
+    view === "room" &&
+    duoSession?.status === "completed" &&
+    duoSession?.reading;
 
   const isOwner =
     currentUserId !== null &&
@@ -576,56 +580,106 @@ export default function DuoReadingPanel() {
     </div>
   );
 
-  const renderRoom = () => (
-    <div className="duo-reading-panel__room-layout">
-      <div className="duo-reading-panel__room-main">
-        <div className="duo-reading-panel__room-header">
-          <div className="duo-reading-panel__invite-card">
-            <div>
-              <div className="duo-reading-panel__meta-title">
-                Mã mời
-              </div>
-
-              <div className="duo-reading-panel__meta-value">
-                {duoSession?.invite_code || "N/A"}
-              </div>
+  const renderResultSidebar = () => (
+    <aside className="duo-reading-panel__floating-sidebar">
+      <div className="duo-reading-panel__floating-sidebar-card">
+        <div className="duo-reading-panel__result">
+          <div className="duo-reading-panel__result-header">
+            <div className="duo-reading-panel__field-label duo-reading-panel__field-label--tight">
+              Kết quả Trải Bài Đôi
             </div>
 
-            <button
-              type="button"
-              className="duo-reading-panel__copy-button"
-              onClick={handleCopyInviteCode}
-              title="Sao chép mã mời"
-            >
-              <Copy size={16} />
-            </button>
+            <div className="duo-reading-panel__result-actions">
+              <button
+                type="button"
+                className="duo-reading-panel__icon-button"
+                title="Đọc kết quả"
+                onClick={() =>
+                  setReplaySignal(
+                    (prev) => prev + 1
+                  )
+                }
+              >
+                <Volume2 size={18} />
+              </button>
+
+              <button
+                type="button"
+                className="duo-reading-panel__icon-button"
+                title="Sao chép kết quả"
+                onClick={handleCopyReadingResult}
+              >
+                {copiedResult ? (
+                  <Check size={18} />
+                ) : (
+                  <Copy size={18} />
+                )}
+              </button>
+            </div>
           </div>
 
-          <div className="duo-reading-panel__header-actions">
-            <button
-              type="button"
-              className="duo-reading-panel__icon-button"
-              onClick={handleRefresh}
-              disabled={loading}
-              title="Làm mới phòng"
-            >
-              <RefreshCw size={18} />
-            </button>
-
-            <button
-              type="button"
-              className="duo-reading-panel__icon-button duo-reading-panel__icon-button--danger"
-              title="Rời phòng"
-              onClick={handleLeaveRoom}
-            >
-              <SquareArrowRightExit size={18} />
-            </button>
+          <div className="duo-reading-panel__result-text">
+            <SpeechPlaybackMessage
+              text={duoReadingText}
+              autoPlay
+              speechKey={duoSpeechKey}
+              replaySignal={replaySignal}
+            />
           </div>
         </div>
+      </div>
+    </aside>
+  );
 
-        <div className="duo-reading-panel__status-note">
-          {getStatusMessage(duoSession)}
+  const renderRoom = () => (
+    <>
+      <div className="duo-reading-panel__room-header">
+        <div className="duo-reading-panel__invite-card">
+          <div>
+            <div className="duo-reading-panel__meta-title">
+              Mã mời
+            </div>
+
+            <div className="duo-reading-panel__meta-value">
+              {duoSession?.invite_code || "N/A"}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="duo-reading-panel__copy-button"
+            onClick={handleCopyInviteCode}
+            title="Sao chép mã mời"
+          >
+            <Copy size={16} />
+          </button>
         </div>
+
+        <div className="duo-reading-panel__header-actions">
+          <button
+            type="button"
+            className="duo-reading-panel__icon-button"
+            onClick={handleRefresh}
+            disabled={loading}
+            title="Làm mới phòng"
+          >
+            <RefreshCw size={18} />
+          </button>
+
+          <button
+            type="button"
+            className="duo-reading-panel__icon-button duo-reading-panel__icon-button--danger"
+            title="Rời phòng"
+            onClick={handleLeaveRoom}
+          >
+            <SquareArrowRightExit size={18} />
+          </button>
+        </div>
+      </div>
+
+      <div className="duo-reading-panel__status-note">
+        {getStatusMessage(duoSession)}
+      </div>
 
       {pollStalled && (
         <div
@@ -781,62 +835,7 @@ export default function DuoReadingPanel() {
               Trải bài chung sẽ được tạo tự động sau khi cả hai lá bài được tải lên.
             </div>
           )}
-      </div>
-
-      <aside className="duo-reading-panel__sidebar">
-        {duoSession?.status === "completed" &&
-        duoSession?.reading ? (
-          <div className="duo-reading-panel__result">
-            <div className="duo-reading-panel__result-header">
-              <div className="duo-reading-panel__field-label duo-reading-panel__field-label--tight">
-                Kết quả Trải Bài Đôi
-              </div>
-
-              <div className="duo-reading-panel__result-actions">
-                <button
-                  type="button"
-                  className="duo-reading-panel__icon-button"
-                  title="Đọc kết quả"
-                  onClick={() =>
-                    setReplaySignal(
-                      (prev) => prev + 1
-                    )
-                  }
-                >
-                  <Volume2 size={18} />
-                </button>
-
-                <button
-                  type="button"
-                  className="duo-reading-panel__icon-button"
-                  title="Sao chép kết quả"
-                  onClick={handleCopyReadingResult}
-                >
-                  {copiedResult ? (
-                    <Check size={18} />
-                  ) : (
-                    <Copy size={18} />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div className="duo-reading-panel__result-text">
-              <SpeechPlaybackMessage
-                text={duoReadingText}
-                autoPlay
-                speechKey={duoSpeechKey}
-                replaySignal={replaySignal}
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="duo-reading-panel__sidebar-placeholder">
-            Kết quả Trải Bài Đôi sẽ hiện ở đây sau khi cả hai người tải lá bài lên xong.
-          </div>
-        )}
-      </aside>
-    </div>
+    </>
   );
 
   return (
@@ -845,10 +844,6 @@ export default function DuoReadingPanel() {
         className={`duo-reading-panel ${
           view === "landing"
             ? "duo-reading-panel--landing"
-            : ""
-        } ${
-          view === "room"
-            ? "duo-reading-panel--room"
             : ""
         }`}
       >
@@ -864,6 +859,9 @@ export default function DuoReadingPanel() {
           )}
         </div>
       </div>
+
+      {showFloatingResultSidebar &&
+        renderResultSidebar()}
 
       {showDuoGeneratingOverlay && (
         <MysticLoader label="Đang tạo trải bài đôi" />
