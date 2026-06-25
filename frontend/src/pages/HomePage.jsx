@@ -1478,20 +1478,15 @@ const handleChatSubmitDraft =
     {showSpreadGrid && (
       <div
         style={{
-          position: "absolute",
+          // Overlay phủ TOÀN màn hình + cho CUỘN DỌC (cả desktop lẫn mobile) để luôn thấy
+          // nút "Xác nhận" khi lưới bài cao hơn viewport. Trước đây desktop dùng position
+          // absolute + overflow mặc định → nút bị đẩy xuống dưới đáy, không cuộn tới được.
+          position: "fixed",
           inset: 0,
           zIndex: 18,
-          background:
-            "rgba(5, 5, 16, 0.68)",
+          background: "rgba(5, 5, 16, 0.68)",
           backdropFilter: "blur(12px)",
-
-          // Mobile: phủ kín nhưng cho cuộn dọc để xem hết lưới bài.
-          ...(isMobile
-            ? {
-                position: "fixed",
-                overflowY: "auto",
-              }
-            : null),
+          overflowY: "auto",
         }}
       >
         <TarotSpreadGrid
