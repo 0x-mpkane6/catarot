@@ -105,6 +105,15 @@ export default function SpeechPlaybackMessage({
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   // Cảnh báo mềm từ backend (vd cắt bớt) — gần như không xảy ra nữa vì mỗi đoạn < ngưỡng.
   const [warningNote, setWarningNote] = useState("");
+  const [isPlaying, setIsPlaying] = useState(false); // đang phát → hiện nút Dừng
+  // Tăng để YÊU CẦU dừng: effect chạy lại → cleanup dừng audio; lần chạy mới willPlay=false
+  // (replaySignal không đổi) nên KHÔNG tự phát lại → dừng sạch mà không khởi động lại.
+  const [stopCounter, setStopCounter] = useState(0);
+
+  const handleStop = () => {
+    setIsPlaying(false);
+    setStopCounter((c) => c + 1);
+  };
 
   useEffect(() => {
     let isCancelled = false;
@@ -168,11 +177,15 @@ export default function SpeechPlaybackMessage({
       await Promise.resolve();
       if (isCancelled) return;
       setWarningNote("");
-      if (!willPlay) return;
+      if (!willPlay) {
+        setIsPlaying(false);
+        return;
+      }
 
       const chunks = splitIntoChunks(safeText);
       const totalChars = Math.max(1, safeText.length);
       setIsSynthesizing(true);
+      setIsPlaying(true);
 
       // Tổng hợp 1 đoạn → Audio (null nếu bị huỷ giữa chừng).
       const synthChunk = async (chunkText) => {
@@ -277,6 +290,7 @@ export default function SpeechPlaybackMessage({
           if (isCancelled) return;
         }
         stopPlayback(); // đọc xong hết → bỏ mờ + giải phóng mọi blob ngay (không đợi lần dừng sau)
+        setIsPlaying(false);
       } catch (error) {
         console.error("Speech playback failed", error);
         if (!isCancelled) {
@@ -291,7 +305,10 @@ export default function SpeechPlaybackMessage({
           );
         }
       } finally {
-        if (!isCancelled) setIsSynthesizing(false);
+        if (!isCancelled) {
+          setIsSynthesizing(false);
+          setIsPlaying(false);
+        }
       }
     })();
 
@@ -299,7 +316,7 @@ export default function SpeechPlaybackMessage({
       isCancelled = true;
       stopPlayback();
     };
-  }, [replaySignal, safeText, speechKey]);
+  }, [replaySignal, safeText, speechKey, stopCounter]);
 
   return (
     <>
@@ -321,6 +338,30 @@ export default function SpeechPlaybackMessage({
         >
           🔊 Đang tạo giọng đọc…
         </div>
+      )}
+
+      {(isPlaying || isSynthesizing) && (
+        <button
+          type="button"
+          onClick={handleStop}
+          aria-label="Dừng đọc"
+          style={{
+            marginTop: "8px",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "6px 14px",
+            borderRadius: "999px",
+            border: "1px solid rgba(255,255,255,0.18)",
+            background: "rgba(20,10,35,0.6)",
+            color: "#f3d0ff",
+            fontSize: "0.82rem",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          ⏹ Dừng đọc
+        </button>
       )}
 
       {warningNote && (
