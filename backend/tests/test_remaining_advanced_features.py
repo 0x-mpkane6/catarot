@@ -201,8 +201,17 @@ def test_auth_me_and_remaining_features(monkeypatch: pytest.MonkeyPatch, tmp_pat
             headers=_auth_headers(token_member2),
         )
         assert up2.status_code == 200
-        assert up2.json()["status"] == "completed"
-        assert up2.json()["reading"] is not None
+        # Sinh luận giải nay chạy NỀN (BackgroundTasks) → response của lá thứ hai chỉ ở trạng
+        # thái "generating". TestClient chạy xong background task TRƯỚC khi post() trả về, nên
+        # GET ngay sau đó phải thấy "completed" + có reading.
+        assert up2.json()["status"] in ("generating", "completed")
+        duo_after = client.get(
+            f"/api/duo/sessions/{duo_id}",
+            headers=_auth_headers(token_member2),
+        )
+        assert duo_after.status_code == 200
+        assert duo_after.json()["status"] == "completed"
+        assert duo_after.json()["reading"] is not None
 
         with client.websocket_connect(f"/ws/duo/{duo_id}?token={token_member}") as ws:
             payload = ws.receive_json()

@@ -17,7 +17,7 @@ from typing import Any, List
 from urllib.parse import quote
 
 import sqlalchemy as sa
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
@@ -64,6 +64,7 @@ from src.advanced.dream_journal import create_dream_entry, get_dream_entry, list
 from src.advanced.duo_reading import (
     DUO_WS_MANAGER,
     create_duo_session,
+    generate_duo_reading_for_session,
     get_duo_session,
     join_duo_by_invite,
     join_duo_session,
@@ -1077,9 +1078,25 @@ async def duo_join_by_invite(req: JoinByInviteRequest, current_user: CurrentUser
     return payload
 
 
+async def _run_duo_generation(duo_session_id: int) -> None:
+    """Chạy NỀN: gọi LLM sinh luận giải Trải Bài Đôi rồi phát qua WebSocket.
+
+    Tách khỏi request tải lá để người tải lá thứ hai không phải chờ ~35-120s. Nuốt + log
+    mọi lỗi để task nền không làm sập tiến trình (người dùng vẫn thấy lỗi qua poll-stall guard).
+    """
+    try:
+        payload = await run_in_threadpool(generate_duo_reading_for_session, duo_session_id)
+    except Exception:  # noqa: BLE001 - task nền: chỉ log, không để lỗi nổi lên
+        LOGGER.exception("Duo background generation failed for session %s", duo_session_id)
+        return
+    if payload is not None:
+        await DUO_WS_MANAGER.broadcast(duo_session_id, {"type": "duo_updated", "data": payload})
+
+
 @app.post("/api/duo/sessions/{duo_session_id}/card")
 async def duo_submit_card(
     duo_session_id: int,
+    background_tasks: BackgroundTasks,
     image: UploadFile = File(...),
     current_user: CurrentUser = Depends(get_current_user),
 ):
@@ -1099,6 +1116,11 @@ async def duo_submit_card(
     finally:
         if os.path.exists(save_path):
             os.remove(save_path)
+    # Đủ 2 lá → sinh luận giải CHẠY NỀN (sau khi response trả về) để người tải lá thứ hai
+    # KHÔNG phải chờ LLM ~35-120s (trước đây sinh đồng bộ → "1 bên bị treo"). Cả hai phía
+    # sẽ thấy kết quả qua polling/WS khi nền sinh xong.
+    if payload.get("status") == "generating":
+        background_tasks.add_task(_run_duo_generation, duo_session_id)
     await DUO_WS_MANAGER.broadcast(duo_session_id, {"type": "duo_updated", "data": payload})
     return payload
 
