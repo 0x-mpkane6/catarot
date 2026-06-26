@@ -207,7 +207,7 @@ export default function DuoReadingPanel() {
   const showFloatingResultSidebar =
     view === "room" &&
     duoSession?.status === "completed" &&
-    duoSession?.reading;
+    duoSession?.reading?.generated_text;
 
   const isOwner =
     currentUserId !== null &&
@@ -318,7 +318,14 @@ export default function DuoReadingPanel() {
               await getDuoSession(
                 duoSession.id
               );
-            setDuoSession(payload);
+            // Chống đua: KHÔNG để snapshot poll CŨ ghi đè state MỚI hơn (vd vừa upload lá xong
+            // làm card chớp tắt). So updated_at — chỉ cập nhật nếu payload mới hơn (hoặc thiếu mốc).
+            setDuoSession((prev) => {
+              const prevTs = prev?.updated_at;
+              const nextTs = payload?.updated_at;
+              if (prevTs && nextTs && nextTs < prevTs) return prev;
+              return payload;
+            });
           } catch (err) {
             console.warn(
               "Duo polling failed",
