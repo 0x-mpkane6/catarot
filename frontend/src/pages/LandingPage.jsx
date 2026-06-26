@@ -153,8 +153,14 @@ export default function LandingPage() {
           position: "relative",
           zIndex: 2,
 
-          width: "1400px",
+          // Trước đây width cố định 1400px → trên điện thoại bị cắt hai bên (khung
+          // rộng hơn màn hình, container ngoài overflow:hidden cắt cụt). Cho co theo
+          // màn hình + chừa lề để vừa mọi cỡ.
+          width: "100%",
+          maxWidth: "1400px",
           minHeight: "500px",
+          padding: "0 20px",
+          boxSizing: "border-box",
 
           display: "flex",
           flexDirection: "column",
@@ -168,7 +174,9 @@ export default function LandingPage() {
           tag="div"
           duration={1600}
           style={{
-            fontSize: "clamp(5.8rem, 10vw, 9.4rem)",
+            // Sàn nhỏ hơn để tiêu đề co vừa màn hình điện thoại (trước 5.8rem ~93px
+            // quá to → "CATAROT" tràn ngang, bị cắt hai bên).
+            fontSize: "clamp(2.6rem, 12vw, 9.4rem)",
             maxWidth: "100%",
             color: "#f8f4ff",
             letterSpacing: "0.08em",

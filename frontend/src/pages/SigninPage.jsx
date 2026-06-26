@@ -81,7 +81,7 @@ export default function SigninPage() {
           position: "relative",
           zIndex: 10,
 
-          width: "500px",
+          width: "min(500px, calc(100vw - 24px))",
 
           padding: "60px 45px",
 
