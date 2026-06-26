@@ -1643,17 +1643,23 @@ const handleChatSubmitDraft =
 
       zIndex: 20,
 
-      // Mobile: ô nhập dính đáy, full chiều ngang.
+      // Mobile: ô nhập GHIM CỐ ĐỊNH đáy màn (fixed) để LUÔN thấy ngay khi mở Trải Bài.
+      // Trước dùng sticky → khi nội dung ngắn, ô nhập không được kéo lên đáy mà nằm khuất
+      // dưới fold, phải cuộn mới thấy → tưởng app bị đơ.
       ...(isMobile
         ? {
-            position: "sticky",
+            position: "fixed",
             bottom: 0,
-            left: "auto",
+            left: 0,
+            right: 0,
             transform: "none",
             width: "100%",
             maxWidth: "100%",
-            padding: "0 10px 12px",
+            padding: "8px 10px calc(10px + env(safe-area-inset-bottom, 0px))",
             boxSizing: "border-box",
+            zIndex: 30,
+            background:
+              "linear-gradient(to top, rgba(5,5,16,0.97) 62%, rgba(5,5,16,0))",
           }
         : null),
     }}
@@ -1677,9 +1683,10 @@ const handleChatSubmitDraft =
           // Mobile: bỏ giới hạn chiều cao + dịch chuyển để hội thoại chảy tự nhiên.
           ...(isMobile
             ? {
-                maxHeight: "none",
+                maxHeight: "calc(100dvh - 210px)",
+                overflowY: "auto",
                 transform: "none",
-                marginBottom: "18px",
+                marginBottom: "10px",
               }
             : null),
         }}
