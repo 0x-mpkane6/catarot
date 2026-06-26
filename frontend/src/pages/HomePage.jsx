@@ -525,8 +525,17 @@ export default function HomePage() {
 
   // Khoá cuộn nền khi mở overlay rút bài: chống iOS cuộn xuyên nền (scroll bleed-through)
   // làm trang phía dưới bị lệch khi đóng overlay. touchAction='none' mới chặn rubber-band iOS.
+  // Khoá cuộn nền khi mở BẤT KỲ overlay/drawer nào (không chỉ rút bài) → chống iOS cuộn
+  // xuyên nền làm trang phía dưới lệch + làm drawer khó đóng cảm giác như hỏng.
+  const anyOverlayOpen =
+    showSpreadGrid ||
+    showProfile ||
+    showHistory ||
+    showReflectionHistory ||
+    showContact ||
+    Boolean(activeMarkdownDoc);
   useEffect(() => {
-    if (!showSpreadGrid) return undefined;
+    if (!anyOverlayOpen) return undefined;
     const prevOverflow = document.body.style.overflow;
     const prevTouchAction = document.body.style.touchAction;
     document.body.style.overflow = "hidden";
@@ -535,7 +544,7 @@ export default function HomePage() {
       document.body.style.overflow = prevOverflow;
       document.body.style.touchAction = prevTouchAction;
     };
-  }, [showSpreadGrid]);
+  }, [anyOverlayOpen]);
 
     const handleReflectSubmit =
   async (
