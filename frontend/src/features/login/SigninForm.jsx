@@ -73,8 +73,10 @@ export default function SigninForm() {
       localStorage.removeItem(key);
       sessionStorage.removeItem(key);
     });
-    sessionStorage.setItem("token", res.token);
-    sessionStorage.setItem("user", JSON.stringify(res.user));
+    // Đăng nhập Google KHÔNG có ô "ghi nhớ" → luôn lưu localStorage để phiên còn sau khi
+    // đóng/mở lại app (TWA/PWA: sessionStorage mất khi thoát app → đăng xuất mỗi lần mở lại).
+    localStorage.setItem("token", res.token);
+    localStorage.setItem("user", JSON.stringify(res.user));
     toast.success(t("signup_welcome"));
     navigate("/home", { replace: true });
   };

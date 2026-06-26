@@ -11,3 +11,10 @@ createRoot(document.getElementById('root')).render(
     </AppSettingsProvider>
   </StrictMode>,
 )
+
+// PWA: đăng ký service worker (chỉ ở bản production để không cản trở khi dev).
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
+  })
+}

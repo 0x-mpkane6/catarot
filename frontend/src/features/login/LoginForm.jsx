@@ -20,7 +20,10 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false);
 
   // Lưu phiên đăng nhập (dùng chung cho đăng nhập thường và đăng nhập Google).
-  const persistSession = (res) => {
+  // persistent=true → ép localStorage (phiên còn sau khi đóng/mở lại app). Đăng nhập Google
+  // không có ô "ghi nhớ" nên luôn ép bền: TWA/PWA mất sessionStorage khi thoát app → nếu để
+  // sessionStorage thì mỗi lần mở lại app sẽ bị đăng xuất.
+  const persistSession = (res, persistent = rememberMe) => {
     localStorage.removeItem("token");
     localStorage.removeItem("access_token");
     localStorage.removeItem("user");
@@ -28,7 +31,7 @@ export default function LoginForm() {
     sessionStorage.removeItem("access_token");
     sessionStorage.removeItem("user");
 
-    const store = rememberMe ? localStorage : sessionStorage;
+    const store = persistent ? localStorage : sessionStorage;
     store.setItem("token", res.token);
     store.setItem("user", JSON.stringify(res.user));
   };
@@ -62,7 +65,7 @@ export default function LoginForm() {
 
   // Đăng nhập Google thành công → lưu phiên rồi chuyển vào trang chính.
   const handleGoogleSuccess = (res) => {
-    persistSession(res);
+    persistSession(res, true); // ép localStorage để không bị đăng xuất khi mở lại app
     toast.success(t("login_success"));
     navigate("/home", { replace: true });
   };
