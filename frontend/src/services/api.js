@@ -1,5 +1,7 @@
 import axios from "axios";
 
+import { isDevPreview, devMockAdapter } from "../lib/devPreview";
+
 const baseURL =
   (typeof import.meta !== "undefined" &&
     import.meta.env &&
@@ -13,6 +15,12 @@ const api = axios.create({
   // được loader (finally chạy) + báo lỗi thay vì xoay mãi phải F5.
   timeout: 120000,
 });
+
+// CHỈ DEV: chế độ xem thử dùng adapter giả lập (không gọi backend thật) để kiểm
+// layout các màn sau đăng nhập ở khổ điện thoại. Bản production loại bỏ nhánh này.
+if (import.meta.env.DEV && isDevPreview()) {
+  api.defaults.adapter = devMockAdapter;
+}
 
 const getStoredToken = () => {
   const storageList = [localStorage, sessionStorage];
