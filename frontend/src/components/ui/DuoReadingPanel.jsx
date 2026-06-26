@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   Check,
   Copy,
@@ -867,8 +868,11 @@ export default function DuoReadingPanel() {
         </div>
       </div>
 
+      {/* Portal ra <body> để THOÁT khỏi ancestor có transform (wrapper duo
+          dùng translate(-50%,-50%) tạo containing block, khiến position:fixed
+          bị neo theo wrapper thay vì viewport → panel lệch vào giữa). */}
       {showFloatingResultSidebar &&
-        renderResultSidebar()}
+        createPortal(renderResultSidebar(), document.body)}
 
       {showDuoGeneratingOverlay && (
         <MysticLoader label="Đang tạo trải bài đôi" />
