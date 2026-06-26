@@ -140,7 +140,7 @@ export default function ReflectionHistory({
           top: 0,
           right: 0,
           width: "24%",
-          minWidth: "380px",
+          minWidth: "min(380px, 100vw)",
           height: "100vh",
           background:
             "linear-gradient(to bottom, rgba(15,10,30,0.92), rgba(8,5,18,0.96))",

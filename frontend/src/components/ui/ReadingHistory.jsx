@@ -91,7 +91,7 @@ export default function ReadingHistory({
           right: 0,
 
           width: "22%",
-          minWidth: "360px",
+          minWidth: "min(360px, 100vw)",
 
           height: "100vh",
 

@@ -44,7 +44,7 @@ export default function ContactPanel({
           right: 0,
 
           width: "35%",
-          minWidth: "520px",
+          minWidth: "min(520px, 100vw)",
 
           height: "100vh",
 

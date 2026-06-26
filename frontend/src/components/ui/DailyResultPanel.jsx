@@ -421,7 +421,7 @@ export default function DailyResultPanel({
               src={getImagePath(card.card_name)}
               alt={card.card_name}
               style={{
-                width: "280px",
+                width: "min(280px, 100%)",
                 height: "auto",
                 marginTop: "20px",
                 marginLeft: "auto",

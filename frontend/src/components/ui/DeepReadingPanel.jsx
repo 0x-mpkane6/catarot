@@ -353,6 +353,8 @@ export default function DeepReadingPanel({
                 color: "#ede9fe",
                 fontSize: "0.92rem",
                 lineHeight: 1.6,
+                overflowWrap: "anywhere",
+                overflowX: "hidden",
               }}
               className="deep-reading-markdown"
             >
