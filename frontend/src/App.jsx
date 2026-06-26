@@ -60,6 +60,10 @@ function App() {
 
       <Toaster
         position="top-center"
+        containerStyle={{
+          // Đẩy toast xuống dưới thanh nav cố định (+ safe-area) để không che nav/nút.
+          top: "calc(env(safe-area-inset-top, 0px) + 78px)",
+        }}
         toastOptions={{
           style: {
             background: "rgba(20, 8, 35, 0.92)",

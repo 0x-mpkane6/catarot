@@ -4,6 +4,24 @@
   box-sizing: border-box;
 }
 
+/* Phản hồi chạm + viền focus bàn phím cho MỌI nút (nhiều nút dùng inline style nên
+   không tự có :active/:focus-visible). :active opacity nhẹ → không đụng transform sẵn có.
+   :focus-visible chỉ hiện khi dùng bàn phím → chuột/chạm vẫn sạch. An toàn, thêm vào. */
+button:active,
+[role="button"]:active {
+  opacity: 0.82;
+}
+
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(232, 121, 249, 0.85);
+  outline-offset: 2px;
+}
+
 :root {
   --font-body: "Kanit", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-heading: "Playfair Display", Georgia, serif;
