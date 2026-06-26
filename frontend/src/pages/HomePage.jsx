@@ -6,6 +6,7 @@ import ReflectionHistory from "../components/ui/ReflectionHistory";
 import MascotHelper from "../components/ui/MascotHelper";
 import MarkdownOverlay from "../components/ui/MarkdownOverlay";
 import ContactPanel from "../components/ui/ContactPanel";
+import SettingsModal from "../components/ui/SettingsModal";
 // import TarotGallery from "../components/ui/TarotGallery";
 import TarotGallery from "../components/ui/StaticTarotGallery";
 import DuoReadingPanel from "../components/ui/DuoReadingPanel";
@@ -82,6 +83,7 @@ import useIsMobile from "../hooks/useIsMobile";
 import tarotReading from "../assets/images/homepage/the-magician.png";
 import whatIsTarotContent from "../assets/text/what_is_tarot.md?raw";
 import catarotContent from "../assets/text/catarot.md?raw";
+import guidelineContent from "../assets/text/guideline.md?raw";
 import "./HomePage.css";
 import { useAppSettings } from "../context/AppSettingsContext";
 
@@ -204,6 +206,7 @@ export default function HomePage() {
 
   // Contact Panel
   const [showContact, setShowContact] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [activeMarkdownDoc, setActiveMarkdownDoc] =
     useState(null);
 
@@ -533,6 +536,7 @@ export default function HomePage() {
     showHistory ||
     showReflectionHistory ||
     showContact ||
+    showSettings ||
     Boolean(activeMarkdownDoc);
   useEffect(() => {
     if (!anyOverlayOpen) return undefined;
@@ -1164,6 +1168,18 @@ const handleChatSubmitDraft =
         { label: t("nav_more_info"),
           onClick: () => playScene({ onCover: () => setShowContact(true) }),
         },
+        // Lối vào Cài đặt + Hướng dẫn cho MOBILE (mascot bị ẩn trên điện thoại nên
+        // trước đây không tới được — gồm tắt nhạc nền / âm lượng / đọc TTS).
+        { label: t("settings_title"),
+          onClick: () => setShowSettings(true),
+        },
+        { label: t("guide_title"),
+          onClick: () =>
+            setActiveMarkdownDoc({
+              title: t("guide_title"),
+              content: guidelineContent,
+            }),
+        },
       ],
     },
   ];
@@ -1252,6 +1268,11 @@ const handleChatSubmitDraft =
         onClose={() => {
           setShowContact(false);
         }}
+      />
+
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
       />
 
       <MarkdownOverlay
