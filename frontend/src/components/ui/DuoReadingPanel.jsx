@@ -26,8 +26,13 @@ import {
 } from "../../services/duoService";
 import MysticLoader from "./MysticLoader";
 import SpeechPlaybackMessage from "./SpeechPlaybackMessage";
+import useIsMobile from "../../hooks/useIsMobile";
 
 const ACTIVE_DUO_SESSION_KEY = "active_duo_session_id";
+
+// Dưới ngưỡng này, panel kết quả CHẢY XUỐNG DƯỚI phòng (xếp dọc) thay vì neo nổi
+// bên phải — tránh đè lên nội dung phòng ở các màn hẹp/vừa (≤1100px).
+const DUO_RESULT_STACK_BREAKPOINT = 1100;
 
 const getErrorMessage = (error) =>
   error?.response?.data?.detail ||
@@ -209,6 +214,13 @@ export default function DuoReadingPanel() {
     view === "room" &&
     duoSession?.status === "completed" &&
     duoSession?.reading?.generated_text;
+
+  // Màn hẹp/vừa: xếp kết quả xuống dưới (tránh đè phòng). Màn rộng: neo nổi mép phải.
+  const stackResultBelow = useIsMobile(
+    DUO_RESULT_STACK_BREAKPOINT
+  );
+  const dockResultRight =
+    showFloatingResultSidebar && !stackResultBelow;
 
   const isOwner =
     currentUserId !== null &&
@@ -463,6 +475,8 @@ export default function DuoReadingPanel() {
 
   const handleUploadMyCard =
     async () => {
+    if (loading) return;
+
     if (participants.length < 2) {
       toast.error("Đang chờ bạn đồng hành tham gia.");
       return;
@@ -602,25 +616,27 @@ export default function DuoReadingPanel() {
                 type="button"
                 className="duo-reading-panel__icon-button"
                 title="Đọc kết quả"
+                aria-label="Đọc kết quả"
                 onClick={() =>
                   setReplaySignal(
                     (prev) => prev + 1
                   )
                 }
               >
-                <Volume2 size={18} />
+                <Volume2 size={18} aria-hidden="true" />
               </button>
 
               <button
                 type="button"
                 className="duo-reading-panel__icon-button"
                 title="Sao chép kết quả"
+                aria-label="Sao chép kết quả"
                 onClick={handleCopyReadingResult}
               >
                 {copiedResult ? (
-                  <Check size={18} />
+                  <Check size={18} aria-hidden="true" />
                 ) : (
-                  <Copy size={18} />
+                  <Copy size={18} aria-hidden="true" />
                 )}
               </button>
             </div>
@@ -629,7 +645,6 @@ export default function DuoReadingPanel() {
           <div className="duo-reading-panel__result-text">
             <SpeechPlaybackMessage
               text={duoReadingText}
-              autoPlay
               speechKey={duoSpeechKey}
               replaySignal={replaySignal}
             />
@@ -658,8 +673,9 @@ export default function DuoReadingPanel() {
             className="duo-reading-panel__copy-button"
             onClick={handleCopyInviteCode}
             title="Sao chép mã mời"
+            aria-label="Sao chép mã mời"
           >
-            <Copy size={16} />
+            <Copy size={16} aria-hidden="true" />
           </button>
         </div>
 
@@ -670,17 +686,19 @@ export default function DuoReadingPanel() {
             onClick={handleRefresh}
             disabled={loading}
             title="Làm mới phòng"
+            aria-label="Làm mới phòng"
           >
-            <RefreshCw size={18} />
+            <RefreshCw size={18} aria-hidden="true" />
           </button>
 
           <button
             type="button"
             className="duo-reading-panel__icon-button duo-reading-panel__icon-button--danger"
             title="Rời phòng"
+            aria-label="Rời phòng"
             onClick={handleLeaveRoom}
           >
-            <SquareArrowRightExit size={18} />
+            <SquareArrowRightExit size={18} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -692,11 +710,7 @@ export default function DuoReadingPanel() {
       {pollStalled && (
         <div
           role="alert"
-          style={{
-            marginTop: "8px",
-            fontSize: "0.85rem",
-            color: "#fecaca",
-          }}
+          className="duo-reading-panel__stall-alert"
         >
           Quá lâu chưa có kết quả. Thử bấm làm mới, hoặc rời phòng rồi tạo lại.
         </div>
@@ -807,8 +821,9 @@ export default function DuoReadingPanel() {
                       className="duo-reading-panel__preview-remove"
                       onClick={clearSelectedImage}
                       title="Xóa ảnh đã chọn"
+                      aria-label="Xóa ảnh đã chọn"
                     >
-                      <X size={14} />
+                      <X size={14} aria-hidden="true" />
                     </button>
                   </div>
                 )}
@@ -847,7 +862,13 @@ export default function DuoReadingPanel() {
   );
 
   return (
-    <div className="duo-reading-panel-shell">
+    <div
+      className={`duo-reading-panel-shell ${
+        dockResultRight
+          ? "duo-reading-panel-shell--docked-result"
+          : ""
+      }`}
+    >
       <div
         className={`duo-reading-panel ${
           view === "landing"
@@ -868,10 +889,18 @@ export default function DuoReadingPanel() {
         </div>
       </div>
 
-      {/* Portal ra <body> để THOÁT khỏi ancestor có transform (wrapper duo
-          dùng translate(-50%,-50%) tạo containing block, khiến position:fixed
-          bị neo theo wrapper thay vì viewport → panel lệch vào giữa). */}
+      {/* Màn hẹp/vừa (≤1100px): render INLINE trong shell để kết quả xếp dọc
+          ngay dưới phòng (shell chuyển flex-direction:column ở media query). */}
       {showFloatingResultSidebar &&
+        stackResultBelow &&
+        renderResultSidebar()}
+
+      {/* Màn rộng: Portal ra <body> để THOÁT ancestor có transform (wrapper duo
+          dùng translate(-50%,-50%) tạo containing block khiến position:fixed bị
+          neo theo wrapper thay vì viewport). Đồng thời shell dời phòng sang trái
+          (--docked-result) để panel nổi mép phải không đè lên nội dung phòng. */}
+      {showFloatingResultSidebar &&
+        dockResultRight &&
         createPortal(renderResultSidebar(), document.body)}
 
       {showDuoGeneratingOverlay && (
