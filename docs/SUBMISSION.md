@@ -51,7 +51,7 @@ Các tính năng được nhóm demo:
 ### 3. CATAROT dành cho Android
 Nhóm đã phát triển phiên bản **CATAROT** dành cho Android dưới dạng file APK. Ở phiên bản này, giao diện được thiết kế lại để phù hợp hơn với trải nghiệm trên thiết bị di động, giúp người dùng thao tác thuận tiện và trực quan hơn so với giao diện web. 
 
-> Truy cập tại [catarot.apk](../catarot.apk)
+> Truy cập tại [catarot.apk](https://drive.google.com/file/d/1dT-3KA1HU891th71RXKiOeCdhEgM0wuv/view?usp=drive_link)
 
 *Các chức năng chính của hệ thống vẫn được giữ đầy đủ như phiên bản web, được cập nhật theo phiên bản mới nhất ngày 26/06/2026.*
 

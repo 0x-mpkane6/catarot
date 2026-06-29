@@ -88,7 +88,7 @@ docker compose up --build backend
 CATAROT được triển khai tại: [**catarot.me**](https://catarot.me)
 
 ## 📱 CATAROT dành cho Android
-Truy cập phiên bản Android của CATAROT tại: [catarot.apk](catarot.apk) 
+Truy cập phiên bản Android của CATAROT tại: [catarot.apk](https://drive.google.com/file/d/1dT-3KA1HU891th71RXKiOeCdhEgM0wuv/view?usp=drive_link) 
 
 ---
 
