@@ -57,6 +57,13 @@ Nhóm đã phát triển phiên bản **CATAROT** dành cho Android dưới dạ
 
 ---
 
+### 4. Minh chứng cộng điểm 
+Do nhóm đã thực hiện phần đánh giá giảng viên trước thời điểm được yêu cầu chụp lại minh chứng, nên nhóm không còn ảnh chụp trực tiếp màn hình đánh giá. Tuy nhiên, các thành viên trong nhóm đã chủ động trao đổi lại với thầy thông qua email cũng như trong buổi báo cáo đồ án, và đã được thầy thông qua. 
+
+**Tóm lượt nội dung đánh giá của nhóm:** giảng viên hướng dẫn nhiệt tình, có nhiều góp ý và định hướng hữu ích cho sinh viên; nội dung môn học có tính thực tiễn; quá trình thực hiện đồ án giúp nhóm hiểu rõ hơn về việc xây dựng và triển khai một hệ thống web hoàn chỉnh.
+
+![Minh chứng cộng điểm](minh-chung-cong-diem.png)
+
 ## 💌 Lời kết
 Nhóm em xin gửi lời cảm ơn chân thành đến **ThS. Trần Tuấn Dũng** - người đã trực tiếp hướng dẫn nhóm trong suốt quá trình xây dựng website. Những góp ý và định hướng của thầy đã giúp nhóm có thêm nhiều góc nhìn mới trong việc thiết kế, hoàn thiện sản phẩm và hiểu rõ hơn cách một hệ thống web được xây dựng trong thực tế.
 
