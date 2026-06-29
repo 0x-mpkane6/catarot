@@ -22,6 +22,17 @@ createRoot(document.getElementById('root')).render(
 
 // PWA: đăng ký service worker (chỉ ở bản production để không cản trở khi dev).
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  // Tự cập nhật cho app đã cài (TWA/PWA): khi service worker MỚI giành quyền điều khiển
+  // (sau skipWaiting + clients.claim trong sw.js), reload 1 lần để nạp shell + asset mới —
+  // hết cảnh "kẹt bản cũ" phải xóa cache thủ công. Bỏ qua lần cài SW ĐẦU TIÊN (chưa từng có
+  // controller) để không reload vô cớ; cờ refreshing chống reload lặp.
+  let refreshing = false
+  const hadController = !!navigator.serviceWorker.controller
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing || !hadController) return
+    refreshing = true
+    window.location.reload()
+  })
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {})
   })
