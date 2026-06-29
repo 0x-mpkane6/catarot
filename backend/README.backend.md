@@ -36,14 +36,14 @@ Nếu thiếu:
 - Bắt buộc:
   - Python 3.10+
   - ffmpeg (xử lý audio cho ASR)
-  - OpenCLIP (`open-clip-torch`) — hoặc `VISION_DEMO_MODE=true`
+  - OpenCLIP (`open-clip-torch`), hoặc `VISION_DEMO_MODE=true`
   - SQLAlchemy (`sqlalchemy`)
 - LLM (cần ít nhất 1; dùng theo thứ tự ưu tiên):
-  - `GEMINI_API_KEY` — **mặc định, khuyến nghị** (free tier)
-  - `OPENAI_API_KEY` — tùy chọn
-  - `GROQ_API_KEY` — tùy chọn (backup nhanh khi Gemini hết quota)
-  - Ollama local — tùy chọn (offline)
-  - Không có LLM nào → hệ thống dùng **template tất định**
+  - `GEMINI_API_KEY`: **mặc định, khuyến nghị** (free tier)
+  - `OPENAI_API_KEY`: tùy chọn
+  - `GROQ_API_KEY`: tùy chọn (backup nhanh khi Gemini hết quota)
+  - Ollama local: tùy chọn (offline)
+  - Không có LLM nào thì hệ thống dùng **template tất định**
 
 ## 3) Quickstart bằng Docker (khuyến nghị)
 
@@ -53,8 +53,8 @@ cd /mnt/d/LTWeb/github
 docker compose up --build
 ```
 
-- Backend: <http://localhost:8000> (health: `/api/health`) — Frontend: <http://localhost:5173>
-- Docker đóng băng code lúc build (`COPY . .`) → đổi code xong **luôn** chạy lại với `--build`, nếu không container phục vụ code cũ (đây là lý do hay gặp "code mới mà vẫn ra cũ").
+- Backend: <http://localhost:8000> (health: `/api/health`). Frontend: <http://localhost:5173>
+- Docker đóng băng code lúc build (`COPY . .`), nên đổi code xong **luôn** chạy lại với `--build`, nếu không container phục vụ code cũ (đây là lý do hay gặp "code mới mà vẫn ra cũ").
 - LLM mặc định dùng `GEMINI_API_KEY` trong `backend/.env`. Muốn dùng Ollama trên host thì compose đã map sẵn `host.docker.internal`.
 
 ### Chạy trực tiếp không Docker (dev nhanh)
@@ -137,7 +137,7 @@ Mặc định trong `.env.example`:
 - Ưu tiên độ chính xác cao cho tiếng Việt/tiếng Anh.
 - Nếu `faster-whisper` lỗi, hệ thống tự fallback sang `transformers`.
 
-> ⚠️ `large-v3` rất nặng trên CPU (đặc biệt host 2 vCPU): một câu nói có thể mất 30–90s và tải ~3GB lần đầu. Để chạy nhanh/demo, đặt `ASR_MODEL_FASTER=base` hoặc `small`.
+> Lưu ý: `large-v3` rất nặng trên CPU (đặc biệt host 2 vCPU): một câu nói có thể mất 30-90s và tải khoảng 3GB lần đầu. Để chạy nhanh hoặc demo, đặt `ASR_MODEL_FASTER=base` hoặc `small`.
 
 ## 7) API công khai cho frontend
 

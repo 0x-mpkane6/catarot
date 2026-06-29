@@ -2,7 +2,7 @@
 
 Ứng dụng đọc bài Tarot 3 lá (quá khứ/hiện tại/tương lai) với văn bản + giọng nói + hình ảnh, kèm bộ tính năng nâng cao + gamification giữ chân người dùng.
 
-## TL;DR 60 giây (Docker — khuyến nghị)
+## TL;DR 60 giây (Docker, khuyến nghị)
 
 ```bash
 cd /mnt/d/LTWeb/github
@@ -13,7 +13,7 @@ docker compose up --build
 - Frontend: <http://localhost:5173>
 - Backend API: <http://localhost:8000> (health: <http://localhost:8000/api/health>)
 
-> Docker đóng băng code lúc build → đổi code xong phải chạy lại `docker compose up --build`, nếu không container vẫn chạy code cũ.
+> Docker đóng băng code lúc build, nên đổi code xong phải chạy lại `docker compose up --build`, nếu không container vẫn chạy code cũ.
 
 ## Dữ liệu (bắt buộc)
 
@@ -84,7 +84,7 @@ npm run dev -- --host 127.0.0.1 --port 5173
 - 3-card spread (past / present / future) qua text, voice (ASR), ảnh lá bài.
 - Vision card recognition + RAG snippets + LLM diễn giải, nhiều tầng fallback.
 
-### Advanced (f1 → f10)
+### Advanced (f1 đến f10)
 
 | ID | Tính năng | Endpoint chính |
 |---|---|---|
@@ -104,7 +104,7 @@ npm run dev -- --host 127.0.0.1 --port 5173
 | Tên | Mô tả ngắn | Endpoint chính |
 |---|---|---|
 | **Daily Card + Streak** | Mỗi user 1 lá/ngày, đếm streak (Duolingo-style), kèm reflection note + mood pre/post. | `POST /api/daily-card/draw`, `GET /api/daily-card/streak` |
-| **Time Capsule Reading** | Khoá một dự đoán cho ngày mở trong tương lai; đến ngày, user verify accuracy → feed vào rating loop. | `POST /api/time-capsules`, `POST /api/time-capsules/{id}/reveal` |
+| **Time Capsule Reading** | Khoá một dự đoán cho ngày mở trong tương lai; đến ngày, user verify accuracy rồi feed vào rating loop. | `POST /api/time-capsules`, `POST /api/time-capsules/{id}/reveal` |
 | **Card Affirmation widget** | Sinh affirmation deterministic theo card + ngày, dùng cho widget lock-screen. | `GET /api/affirmations/{card_name}` |
 
 Xem chi tiết tại [`../docs/BAO-CAO-DO-AN.md`](../docs/BAO-CAO-DO-AN.md).
@@ -133,8 +133,8 @@ Xem chi tiết tại [`../docs/BAO-CAO-DO-AN.md`](../docs/BAO-CAO-DO-AN.md).
 2. Random flow: bấm `Random Draw` không cần ảnh.
 3. Voice flow: record hoặc upload audio, xác nhận UI hiển thị `TRANSCRIPT`.
 4. Kiểm tra `warnings` nếu transcript rỗng hoặc confidence thấp.
-5. Daily card: `POST /api/daily-card/draw` (cần JWT) → check `streak_at_draw=1`.
-6. Time capsule: `POST /api/time-capsules` với `reveal_at` 1 ngày sau → list ra trạng thái `sealed`.
+5. Daily card: `POST /api/daily-card/draw` (cần JWT), check `streak_at_draw=1`.
+6. Time capsule: `POST /api/time-capsules` với `reveal_at` 1 ngày sau, list ra trạng thái `sealed`.
 
 ## Test suite
 
@@ -143,7 +143,7 @@ Xem chi tiết tại [`../docs/BAO-CAO-DO-AN.md`](../docs/BAO-CAO-DO-AN.md).
 API_UPLOAD_DIR=/tmp/tarot_test_uploads pytest tests/ --ignore=tests/test_vision_smoke.py --ignore=tests/test_rag_smoke.py
 ```
 
-Trạng thái bản final: **109 hàm test trên 21 file** (pytest), bao phủ pipeline, auth/security, DB persistence, migration, LLM fallback, RAG, vision và các tính năng nâng cao.
+Trạng thái bản final: **174 hàm test trên 26 file** (pytest), bao phủ pipeline, auth/security, DB persistence, migration, LLM fallback, RAG, vision và các tính năng nâng cao.
 
 ## Link tài liệu chi tiết
 
