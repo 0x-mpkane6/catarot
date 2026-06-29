@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 700" font-family="Segoe UI, Roboto, Arial, sans-serif">
+  <defs>
+    <style>
+      .frame { fill:#ffffff; stroke:#241b3a; stroke-width:2.5; }
+      .nav { fill:#f4f1fb; stroke:#8b5cf6; stroke-width:1.2; }
+      .tabon { fill:#ede9fe; stroke:#7c3aed; stroke-width:1.5; }
+      .taboff { fill:#faf8ff; stroke:#c9bdec; stroke-width:1.2; }
+      .content { fill:#fbfaff; stroke:#c9bdec; stroke-width:1.2; stroke-dasharray:5 4; }
+      .row { fill:#f4f1fb; stroke:#d8d2ee; stroke-width:1; }
+      .input { fill:#ffffff; stroke:#8b5cf6; stroke-width:1.5; }
+      .t { fill:#241b3a; font-size:13px; }
+      .tb { fill:#241b3a; font-size:13px; font-weight:600; }
+      .ts { fill:#6f6391; font-size:11px; }
+      .note { fill:#6f6391; font-size:11px; font-style:italic; }
+    </style>
+  </defs>
+
+  <rect x="14" y="10" width="352" height="680" rx="28" class="frame"/>
+
+  <!-- top nav -->
+  <rect x="26" y="26" width="328" height="40" rx="9" class="nav"/>
+  <text x="40" y="51" class="tb">Menu</text>
+  <text x="190" y="51" text-anchor="middle" class="tb">CATAROT</text>
+  <text x="340" y="51" text-anchor="end" class="t">Bạn</text>
+
+  <!-- horizontal tabs -->
+  <rect x="26" y="78" width="160" height="38" rx="9" class="tabon"/>
+  <text x="106" y="102" text-anchor="middle" class="tb">Bảng tin</text>
+  <rect x="194" y="78" width="160" height="38" rx="9" class="taboff"/>
+  <text x="274" y="102" text-anchor="middle" class="t">Chia sẻ</text>
+  <text x="338" y="134" text-anchor="end" class="note">tab ngang (thay thanh dọc)</text>
+
+  <!-- scrollable content -->
+  <rect x="26" y="146" width="328" height="396" rx="12" class="content"/>
+  <rect x="42" y="164" width="296" height="58" rx="8" class="row"/>
+  <rect x="42" y="234" width="296" height="58" rx="8" class="row"/>
+  <rect x="42" y="304" width="296" height="58" rx="8" class="row"/>
+  <rect x="42" y="374" width="296" height="58" rx="8" class="row"/>
+  <text x="190" y="466" text-anchor="middle" class="ts">danh sách / bài viết... (cuộn nội bộ)</text>
+
+  <!-- input pinned -->
+  <rect x="26" y="558" width="328" height="64" rx="12" class="input"/>
+  <text x="190" y="595" text-anchor="middle" class="t">ô nhập / chia sẻ...</text>
+  <text x="338" y="642" text-anchor="end" class="note">trong tầm với, không cuộn xa</text>
+
+  <text x="30" y="676" class="ts">Một "phòng" - bố cục điện thoại</text>
+</svg>

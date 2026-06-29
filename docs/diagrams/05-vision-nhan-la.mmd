@@ -1,0 +1,22 @@
+flowchart TB
+    IMG["Ảnh lá bài"] --> P1["Embed ảnh GỐC<br/>OpenCLIP ViT-B-32, L2 norm"]
+    IMG --> ROT["Xoay 180 độ"]
+    ROT --> P2["Embed ảnh XOAY"]
+
+    P1 --> S1["FAISS IndexFlatIP<br/>(= cosine similarity)"]
+    P2 --> S2["FAISS IndexFlatIP"]
+    S2 --> FLIP["Đảo orientation<br/>upright sang reversed"]
+
+    S1 --> MERGE["Gộp ứng viên<br/>chọn điểm cao nhất"]
+    FLIP --> MERGE
+    MERGE --> CONF["confidence = (margin + 0.2) / 0.8<br/>margin = top1 - top2"]
+    CONF --> CHK{"confidence lớn hơn hoặc bằng 0.18 ?"}
+    CHK -->|"Có"| OK["Lá + chiều + top-5"]
+    CHK -->|"Không"| WARN["Cảnh báo chụp lại<br/>hoặc chọn từ top-5"]
+
+    classDef ai fill:#ede9fe,stroke:#7c3aed,color:#2a1b50;
+    classDef warn fill:#fef3c7,stroke:#d97706,color:#3a2a10;
+    classDef ok fill:#dcfce7,stroke:#16a34a,color:#0f3d2a;
+    class MERGE ai;
+    class CONF warn;
+    class OK ok;

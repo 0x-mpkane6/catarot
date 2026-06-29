@@ -1,0 +1,19 @@
+flowchart TD
+    POST["Đăng bài (ẩn danh Seeker-XXXX)"] --> PEND["status = pending"]
+    PEND --> Q{"Kiểm duyệt"}
+    Q -->|"Admin thật"| H1["approve hoặc reject"]
+    Q -->|"Bot automod (opt-in, mặc định TẮT)"| L1["Lớp 1: luật<br/>độ dài, từ cấm, PII, spam"]
+    L1 -->|"từ cấm rõ ràng"| REJ["reject (nếu bật autoreject)"]
+    L1 -->|"nghi ngờ hoặc sạch"| L2["Lớp 2: Gemini phân loại<br/>chống prompt injection"]
+    L2 -->|"chắc chắn an toàn"| APP["approve"]
+    L2 -->|"nghi ngờ hoặc LLM lỗi"| ESC["escalate, giữ pending<br/>cho người duyệt"]
+    H1 --> APP
+    H1 --> REJ
+    APP --> FEED["Hiện ở feed công khai"]
+
+    classDef warn fill:#fef3c7,stroke:#d97706,color:#3a2a10;
+    classDef ok fill:#dcfce7,stroke:#16a34a,color:#0f3d2a;
+    classDef bad fill:#fee2e2,stroke:#dc2626,color:#4a1010;
+    class ESC warn;
+    class APP,FEED ok;
+    class REJ bad;

@@ -1,0 +1,20 @@
+flowchart LR
+    subgraph U["Người dùng"]
+        B["Trình duyệt"]
+    end
+    subgraph CF["Cloudflare Workers"]
+        FE["Frontend static (dist/)<br/>SPA fallback<br/>throbbing-bar-16f0"]
+    end
+    subgraph HF["Hugging Face Spaces"]
+        BE["FastAPI + model AI<br/>Docker, 16GB RAM CPU<br/>tranganh06uit-tarot-backend"]
+    end
+    subgraph NE["Neon"]
+        DB[("PostgreSQL serverless")]
+    end
+
+    B -->|"HTTPS"| FE
+    FE -->|"REST + JWT"| BE
+    BE -->|"sslmode=require"| DB
+
+    classDef store fill:#eef2ff,stroke:#4f6bed,color:#1a2a6b;
+    class DB store;

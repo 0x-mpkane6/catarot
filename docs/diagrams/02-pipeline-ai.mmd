@@ -1,0 +1,21 @@
+flowchart LR
+    A["Audio"] --> ASR["1. ASR<br/>faster-whisper"]
+    A --> EMO["2. Cảm xúc<br/>phân tích tín hiệu"]
+    IMG["Ảnh lá bài"] --> VIS["3. Vision<br/>OpenCLIP + FAISS"]
+    Q["Câu hỏi (text)"] --> MERGE
+
+    ASR -->|"transcript"| MERGE["5. Gộp query<br/>câu hỏi + transcript"]
+    VIS -->|"cards"| MERGE
+    NOIMG["hoặc rút ngẫu nhiên<br/>(random_draw)"] -.-> MERGE
+
+    MERGE --> RAG["6. RAG<br/>sentence-transformers + FAISS<br/>lọc theo lá và chiều"]
+    RAG -->|"rag_snippets (tối thiểu 3)"| LLM["7. LLM<br/>chuỗi dự phòng 4 tầng"]
+    EMO -->|"emotion_state"| LLM
+    LLM --> OUT["Luận giải Markdown<br/>tiếng Việt"]
+
+    classDef ai fill:#ede9fe,stroke:#7c3aed,color:#2a1b50;
+    classDef warn fill:#fef3c7,stroke:#d97706,color:#3a2a10;
+    classDef ok fill:#dcfce7,stroke:#16a34a,color:#0f3d2a;
+    class ASR,VIS,RAG ai;
+    class LLM warn;
+    class OUT ok;

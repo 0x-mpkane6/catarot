@@ -1,0 +1,9 @@
+flowchart TB
+    A["Frontend: ChatBox<br/>tarotService.askTarotWithMedia<br/>FormData: question + audio/ảnh"] -->|"POST /api/ask_with_media (JWT)"| B
+    B["main.py: validate (Pydantic/Form)<br/>lấy user_id từ JWT, gọi pipeline"] --> C
+    C["tarot_pipeline.run_pipeline<br/>ASR, emotion, Vision hoặc random, RAG, LLM"] --> D
+    D["persistence.persist_reading_result<br/>lưu reading_sessions + recognized_cards + readings"] --> E
+    E["Trả JSON: cards, transcript, final_answer,<br/>warnings, session_id"] --> F["Frontend render Markdown"]
+
+    classDef ok fill:#dcfce7,stroke:#16a34a,color:#0f3d2a;
+    class F ok;

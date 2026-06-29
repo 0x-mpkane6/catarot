@@ -1,0 +1,48 @@
+erDiagram
+    USERS ||--o{ READING_SESSIONS : "sở hữu (SET NULL)"
+    READING_SESSIONS ||--o{ RECOGNIZED_CARDS : "CASCADE"
+    READING_SESSIONS ||--|| READINGS : "1-1 CASCADE"
+    READING_SESSIONS ||--o{ CONVERSATION_TURNS : "CASCADE"
+    READING_SESSIONS ||--o{ RATING_REMINDERS : "CASCADE"
+    TAROT_CARDS ||--o{ RECOGNIZED_CARDS : "tham chiếu"
+
+    USERS {
+        int id PK
+        string email UK "unique, index"
+        string username UK "nullable"
+        string password_hash "nullable (Google login)"
+        string role "member hoặc admin"
+        string google_id UK "OAuth"
+    }
+    READING_SESSIONS {
+        int id PK
+        int user_id FK "SET NULL (khách ẩn danh)"
+        text question_text
+        string emotion_state
+        string status "CHECK enum"
+    }
+    RECOGNIZED_CARDS {
+        int id PK
+        int session_id FK
+        int card_id FK
+        string orientation "CHECK upright reversed"
+        float confidence
+    }
+    READINGS {
+        int id PK
+        int session_id FK "unique 1-1"
+        text generated_text
+        string llm_model
+        int accuracy_score "1..5 nullable"
+    }
+    CONVERSATION_TURNS {
+        int id PK
+        int session_id FK
+        string role "CHECK user assistant system"
+        int turn_index "UNIQUE theo session"
+    }
+    TAROT_CARDS {
+        int id PK
+        string name UK
+        string arcana_type
+    }

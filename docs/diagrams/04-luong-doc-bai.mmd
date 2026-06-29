@@ -1,0 +1,21 @@
+sequenceDiagram
+    actor U as Người dùng
+    participant FE as Frontend (axios)
+    participant API as FastAPI (main.py)
+    participant P as TarotPipeline
+    participant L as LLM (4 tầng)
+    participant DB as Database
+
+    U->>FE: Nhập câu hỏi (kèm ảnh hoặc giọng nói)
+    FE->>API: POST /api/ask (JWT Bearer)
+    API->>API: Rate limit + Pydantic validate
+    API->>API: Lấy user_id từ JWT (không tin body)
+    API->>P: run_pipeline(question, audio, images)
+    P->>P: ASR, Emotion, Vision hoặc Random
+    P->>P: Gộp query, RAG (tối thiểu 3 snippet)
+    P->>L: generate(prompt)
+    L-->>P: luận giải (hoặc fallback tất định)
+    P-->>API: cards, final_answer, warnings, llm_model
+    API->>DB: persist_reading_result (nuốt lỗi mềm)
+    API-->>FE: JSON kết quả
+    FE-->>U: Render Markdown + lá bài

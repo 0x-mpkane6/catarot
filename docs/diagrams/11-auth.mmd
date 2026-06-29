@@ -1,0 +1,24 @@
+sequenceDiagram
+    actor U as Người dùng
+    participant FE as Frontend
+    participant API as FastAPI
+    participant G as Google
+
+    rect rgb(244, 241, 251)
+    note over U,API: Đăng nhập thường
+    U->>FE: username hoặc email + password
+    FE->>API: POST /api/auth/login
+    API->>API: verify PBKDF2 (200k vòng, compare_digest)
+    API-->>FE: JWT HS256 (hạn 120 phút)
+    end
+
+    rect rgb(238, 242, 255)
+    note over U,G: Đăng nhập Google
+    U->>G: chọn tài khoản
+    G-->>FE: id_token
+    FE->>API: POST /api/auth/google
+    API->>G: verify_oauth2_token (audience = GOOGLE_CLIENT_ID)
+    G-->>API: payload (sub, email)
+    API->>API: link google_id hoặc tạo user (role member)
+    API-->>FE: JWT
+    end

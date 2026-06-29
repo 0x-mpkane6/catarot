@@ -1,0 +1,8 @@
+stateDiagram-v2
+    [*] --> waiting_partner: tạo phòng (chủ phòng = slot A)
+    waiting_partner --> waiting_cards: người thứ 2 join (slot B)
+    waiting_cards --> generating: đủ 2 lá, gọi LLM (ngoài transaction)
+    generating --> completed: có luận giải đôi
+    generating --> failed: lỗi (có fallback tất định)
+    completed --> [*]
+    failed --> [*]

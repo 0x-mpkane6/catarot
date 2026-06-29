@@ -1,0 +1,41 @@
+flowchart TB
+    subgraph C1["Lõi đọc bài (7)"]
+        users
+        tarot_cards
+        reading_sessions
+        recognized_cards
+        readings
+        conversation_turns
+        rating_reminders
+    end
+    subgraph C2["Phân tích (3)"]
+        user_archetype_profiles
+        oracle_reports
+        analytics_events
+    end
+    subgraph C3["Đọc bài đôi (4)"]
+        duo_sessions
+        duo_participants
+        duo_cards
+        duo_readings
+    end
+    subgraph C4["Cộng đồng (4)"]
+        community_posts
+        community_interpretations
+        community_votes
+        community_moderation_logs
+    end
+    subgraph C5["Tính năng khác (6)"]
+        dream_entries
+        daily_cards
+        daily_deep_readings
+        time_capsules
+        notification_preferences
+        notifications
+    end
+
+    users --> C2
+    users --> C3
+    users --> C4
+    users --> C5
+    reading_sessions --> C2

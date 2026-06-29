@@ -1,0 +1,20 @@
+flowchart TD
+    Start(["Cần sinh luận giải"]) --> G{"Tier 1: Gemini<br/>(xoay vòng nhiều key)"}
+    G -->|"OK"| Done(["Trả luận giải<br/>+ ghi last_used_model"])
+    G -->|"429 hoặc lỗi"| O{"Tier 2: OpenAI<br/>(nếu có key)"}
+    O -->|"OK"| Done
+    O -->|"lỗi hoặc bỏ qua"| GR{"Tier 3: Groq<br/>llama-3.3-70b (free)"}
+    GR -->|"OK"| Done
+    GR -->|"lỗi hoặc bỏ qua"| OL{"Tier 4: Ollama<br/>local qwen2.5:3b"}
+    OL -->|"OK"| Done
+    OL -->|"lỗi hoặc bỏ qua"| FB["Fallback tất định<br/>template + từ điển nghĩa lá<br/>(không cần internet)"]
+    FB --> Done
+
+    classDef ai fill:#ede9fe,stroke:#7c3aed,color:#2a1b50;
+    classDef alt fill:#eef2ff,stroke:#4f6bed,color:#1a2a6b;
+    classDef warn fill:#fef3c7,stroke:#d97706,color:#3a2a10;
+    classDef ok fill:#dcfce7,stroke:#16a34a,color:#0f3d2a;
+    class G ai;
+    class O,GR,OL alt;
+    class FB warn;
+    class Done ok;
