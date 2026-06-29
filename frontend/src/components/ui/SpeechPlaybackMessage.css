@@ -1,0 +1,25 @@
+/* Karaoke kiểu TÔ SÁNG: luận giải LUÔN hiện đầy đủ. Khi bấm loa và đang đọc, phần CHƯA
+   đọc bị làm mờ, phần ĐÃ đọc sáng dần theo giọng. Không phát → .kw không bị mờ (như chữ
+   thường), nên không bao giờ có cảm giác "mất chữ". */
+.karaoke-text.karaoke-active .kw {
+  /* 0.65 (không phải 0.4) để chữ chưa đọc vẫn đạt tương phản WCAG AA mà vẫn thấy rõ
+     khác biệt với phần đã đọc. */
+  opacity: 0.65;
+  transition: opacity 0.28s ease;
+}
+
+@media (prefers-contrast: more) {
+  .karaoke-text.karaoke-active .kw {
+    opacity: 1;
+  }
+}
+
+.karaoke-text.karaoke-active .kw.kw--spoken {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .karaoke-text.karaoke-active .kw {
+    transition: none;
+  }
+}

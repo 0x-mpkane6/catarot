@@ -8,6 +8,7 @@ fail-fast JWT ở production, bật các scheduler nền. Route ở đây MỎNG
 (`advanced/*`, `pipeline/*`).
 """
 import os
+import threading
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -16,8 +17,9 @@ from typing import Any, List
 from urllib.parse import quote
 
 import sqlalchemy as sa
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -62,6 +64,7 @@ from src.advanced.dream_journal import create_dream_entry, get_dream_entry, list
 from src.advanced.duo_reading import (
     DUO_WS_MANAGER,
     create_duo_session,
+    generate_duo_reading_for_session,
     get_duo_session,
     join_duo_by_invite,
     join_duo_session,
@@ -97,6 +100,7 @@ from src.auth.service import (
     authenticate_with_google,
     register_user,
     request_password_reset,
+    send_reset_email,
     reset_password_with_token,
     update_user_profile,
 )
@@ -142,9 +146,28 @@ def _normalize_rating_reminder_days(value: Any) -> int:
     return days
 
 
+def _init_database_with_retry(attempts: int = 5, base_delay: float = 1.5) -> None:
+    """Neon Postgres free-tier auto-suspend: kết nối đầu lúc boot có thể bị từ chối khi DB đang
+    resume → thử lại vài lần (backoff) thay vì crash-loop container ngay từ lần đầu."""
+    import time
+
+    last_exc: Exception | None = None
+    for i in range(max(1, attempts)):
+        try:
+            initialize_database_if_needed(seed_reference_data=True)
+            return
+        except Exception as exc:  # retry mọi lỗi kết nối/khởi tạo DB
+            last_exc = exc
+            LOGGER.warning("Khởi tạo DB thất bại (lần %d/%d): %s", i + 1, attempts, exc)
+            time.sleep(base_delay * (i + 1))
+    LOGGER.error("Khởi tạo DB thất bại sau %d lần thử — hủy khởi động.", attempts)
+    if last_exc is not None:
+        raise last_exc
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    initialize_database_if_needed(seed_reference_data=True)
+    _init_database_with_retry()
     # Fail-fast cấu hình JWT: ở production (APP_ENV=production), JWT_SECRET_KEY thiếu/yếu/<32
     # ký tự sẽ CHẶN khởi động (RuntimeError) — tránh việc mọi endpoint auth âm thầm trả 500
     # lúc chạy. Ở dev, _jwt_secret() trả placeholder nên chỉ cảnh báo ở dưới.
@@ -164,6 +187,20 @@ async def lifespan(_app: FastAPI):
     start_analytics_scheduler()
     start_automod_scheduler()  # bot tự kiểm duyệt cộng đồng (opt-in qua COMMUNITY_AUTOMOD_ENABLED)
     start_notification_scheduler()  # daily card hằng ngày (opt-in qua NOTIFICATION_SCHEDULER_ENABLED)
+
+    # Build vision index ở THREAD NỀN nếu thiếu (gate VISION_AUTO_BUILD_INDEX). Index không ship
+    # kèm lên Space được (binary), nên build tại chỗ từ gallery có sẵn; chạy nền để KHÔNG làm chậm
+    # khởi động/trượt healthcheck. Predictor tự nạp index khi build xong (CardPredictor.predict).
+    def _bg_build_vision_index() -> None:
+        try:
+            from src.vision.index import ensure_vision_index_built
+
+            LOGGER.info("Vision index ensure: %s", ensure_vision_index_built())
+        except Exception as exc:  # pragma: no cover - không để lỗi build làm sập app
+            LOGGER.warning("Auto-build vision index thất bại: %s", exc)
+
+    threading.Thread(target=_bg_build_vision_index, name="vision-index-build", daemon=True).start()
+
     try:
         yield
     finally:
@@ -186,8 +223,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    # Cho phép JS phía frontend (khác origin) đọc cảnh báo TTS trả qua header.
-    expose_headers=["X-TTS-Warnings"],
+    # Cho phép JS phía frontend (khác origin) đọc các header TTS: cảnh báo + mốc karaoke.
+    expose_headers=["X-TTS-Warnings", "X-TTS-Spoken-End"],
 )
 
 
@@ -225,7 +262,17 @@ _pipeline: TarotPipeline | None = None
 def _get_pipeline() -> TarotPipeline:
     global _pipeline
     if _pipeline is None:
-        _pipeline = TarotPipeline()
+        try:
+            _pipeline = TarotPipeline()
+        except Exception as exc:
+            # Khởi tạo pipeline (vision/RAG/reader) có thể lỗi: OpenCLIP strict load fail, tải
+            # model lỗi/mất mạng... Trả 503 RÕ RÀNG thay vì để lỗi bay lên thành 500 mơ hồ.
+            # KHÔNG cache _pipeline=None nên lần sau vẫn thử lại (lỗi tải model thường tạm thời).
+            LOGGER.error("Khởi tạo TarotPipeline thất bại: %s", exc, exc_info=True)
+            raise HTTPException(
+                status_code=503,
+                detail="Dịch vụ đọc bài tạm thời chưa sẵn sàng, vui lòng thử lại sau giây lát.",
+            ) from exc
     return _pipeline
 
 
@@ -368,7 +415,6 @@ def root():
 def health_check():
     """Operator-friendly health probe with version + db connectivity."""
     db_ok = True
-    db_error: str | None = None
     try:
         from sqlalchemy import text
         from src.db.session import get_engine
@@ -377,13 +423,26 @@ def health_check():
             conn.execute(text("SELECT 1"))
     except Exception as exc:  # pragma: no cover - defensive
         db_ok = False
-        db_error = str(exc)[:200]
+        # KHÔNG trả chi tiết lỗi ra response: chuỗi lỗi SQLAlchemy/psycopg2 thường chứa
+        # connection string (user/mật khẩu/host/port) của DATABASE_URL. Chỉ log phía server.
+        LOGGER.error("DB health check failed: %s", exc)
+
+    # Cờ chẩn đoán: index nhận diện lá bài đã có trên đĩa chưa (kiểm tra file rẻ, KHÔNG nạp model).
+    vision_index_ok = False
+    try:
+        from src.utils.config import resolve_path
+
+        vision_index_ok = resolve_path(
+            os.getenv("FAISS_INDEX_PATH", "./models/vision/faiss.index")
+        ).exists()
+    except Exception:  # pragma: no cover - defensive
+        pass
 
     return {
         "status": "ok" if db_ok else "degraded",
         "version": APP_VERSION,
         "db": "ok" if db_ok else "error",
-        "db_error": db_error,
+        "vision_index": vision_index_ok,
         "timezone": os.getenv("APP_TIMEZONE", "Asia/Ho_Chi_Minh"),
         "now": datetime.now().isoformat(),
     }
@@ -408,7 +467,10 @@ async def auth_register(req: RegisterRequest, request: Request):
     # Bảo mật: KHÔNG cho client tự chọn role. Đăng ký công khai LUÔN là 'member';
     # tài khoản admin chỉ được tạo qua seeding/DB, không qua API công khai.
     try:
-        user = register_user(
+        # Băm mật khẩu PBKDF2 200k vòng + ghi DB là việc đồng bộ nặng → đẩy khỏi event loop
+        # (deploy 1-worker), tránh chặn mọi request khác. Đồng nhất với forgot/reset-password.
+        user = await run_in_threadpool(
+            register_user,
             email=req.email,
             password=req.password,
             username=req.username,
@@ -427,7 +489,9 @@ async def auth_login(req: LoginRequest, request: Request):
     if not raw_identifier:
         raise HTTPException(status_code=400, detail="missing username/email")
     try:
-        user, token = authenticate_user_by_identifier(
+        # PBKDF2 verify 200k vòng + truy vấn DB đồng bộ → đẩy khỏi event loop (1-worker).
+        user, token = await run_in_threadpool(
+            authenticate_user_by_identifier,
             identifier=raw_identifier,
             password=req.password,
         )
@@ -446,7 +510,9 @@ async def auth_me(current_user: CurrentUser = Depends(get_current_user)):
 
 
 @app.post("/api/auth/forgot-password")
-async def auth_forgot_password(req: ForgotPasswordRequest, request: Request):
+async def auth_forgot_password(
+    req: ForgotPasswordRequest, request: Request, background_tasks: BackgroundTasks
+):
     enforce_rate_limit(
         request=request,
         scope="auth_forgot_password",
@@ -454,19 +520,29 @@ async def auth_forgot_password(req: ForgotPasswordRequest, request: Request):
         window_seconds=60,
     )
     try:
-        _found, dev_token, expires_at = request_password_reset(email=req.email)
+        # run_in_threadpool: request_password_reset ghi DB (I/O đồng bộ). Endpoint là async
+        # nên PHẢI đẩy khỏi event loop, tránh treo cả server 1-worker.
+        result = await run_in_threadpool(request_password_reset, email=req.email)
     except Exception as exc:  # pragma: no cover - defensive
-        LOGGER.warning("forgot-password failed: %s", exc)
-        dev_token = None
-        expires_at = None
+        # Kèm loại lỗi để giám sát phân biệt DB-down (HTTP vẫn 200 chống dò email).
+        LOGGER.warning("forgot-password failed [%s]: %s", type(exc).__name__, exc)
+        result = None
+
+    # Gửi email ở NỀN (sau khi đã trả response) để thời gian phản hồi KHÔNG phụ thuộc email
+    # có tồn tại hay không → chống dò email (enumeration) qua đo thời gian.
+    if result is not None and result.pending_email is not None:
+        to_email, token, expires = result.pending_email
+        background_tasks.add_task(
+            send_reset_email, to_email=to_email, token=token, expires_at=expires
+        )
 
     # Response giống nhau dù email tồn tại hay không để chống enumeration.
     response: dict = {
         "message": "Nếu email tồn tại, hệ thống đã gửi hướng dẫn đặt lại mật khẩu.",
     }
-    if dev_token:
-        response["dev_only_token"] = dev_token
-        response["expires_at"] = expires_at.isoformat() if expires_at else None
+    if result is not None and result.dev_token:
+        response["dev_only_token"] = result.dev_token
+        response["expires_at"] = result.expires_at.isoformat() if result.expires_at else None
     return response
 
 
@@ -479,7 +555,10 @@ async def auth_reset_password(req: ResetPasswordRequest, request: Request):
         window_seconds=60,
     )
     try:
-        reset_password_with_token(token=req.token, new_password=req.new_password)
+        # Băm mật khẩu (PBKDF2 200k vòng) + ghi DB là việc đồng bộ tốn CPU/I/O → đẩy khỏi event loop.
+        await run_in_threadpool(
+            reset_password_with_token, token=req.token, new_password=req.new_password
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"message": "Mật khẩu đã được đặt lại thành công."}
@@ -489,7 +568,10 @@ async def auth_reset_password(req: ResetPasswordRequest, request: Request):
 async def auth_google(req: GoogleLoginRequest, request: Request):
     enforce_rate_limit(request=request, scope="auth_google", max_hits=10, window_seconds=60)
     try:
-        user, token = authenticate_with_google(id_token_str=req.id_token)
+        # verify_oauth2_token gọi HTTPS tới Google (đồng bộ) + ghi DB → đẩy khỏi event loop.
+        user, token = await run_in_threadpool(
+            authenticate_with_google, id_token_str=req.id_token
+        )
     except RuntimeError as exc:
         # Config / library lỗi → 503 để client biết phía server thiếu thiết lập.
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -563,6 +645,12 @@ def _enforce_ask_rate_limit(request: Request, scope: str = "ask") -> None:
 @app.post("/api/ask")
 def ask(req: QuestionRequest, request: Request):
     _enforce_ask_rate_limit(request, scope="ask")
+    # Chống gọi LLM lãng phí: phải có ít nhất câu hỏi / ảnh / âm thanh.
+    if not (req.question or "").strip() and not req.image_paths and not req.audio_path:
+        raise HTTPException(
+            status_code=400,
+            detail="Cần nhập câu hỏi hoặc tải lên ảnh/âm thanh để đọc bài.",
+        )
     clean_spread = _normalize_spread_type(req.spread_type)
     reminder_days = _normalize_rating_reminder_days(req.rating_reminder_days)
     result = _get_pipeline().run_pipeline(
@@ -590,9 +678,9 @@ class TtsRequest(BaseModel):
 
 @app.post("/api/tts")
 def text_to_speech(req: TtsRequest, request: Request):
-    """Đọc luận giải tiếng Việt thành giọng nói → trả audio/wav.
+    """Đọc luận giải tiếng Việt thành giọng nói → trả audio/mpeg (MP3).
 
-    Nhận text (vd: final_answer) và tổng hợp bằng facebook/mms-tts-vie. Suy biến
+    Nhận text (vd: final_answer) và tổng hợp bằng edge-tts (giọng neural Microsoft). Suy biến
     mềm: văn bản rỗng → 400; TTS chưa sẵn sàng / lỗi → 503 kèm thông điệp, KHÔNG
     lộ stack trace. Tổng hợp on-demand nên KHÔNG làm chậm luồng /api/ask.
     """
@@ -600,19 +688,24 @@ def text_to_speech(req: TtsRequest, request: Request):
     if not (req.text or "").strip():
         raise HTTPException(status_code=400, detail="Thiếu nội dung văn bản để đọc.")
 
-    audio_bytes, warnings = synthesize_vietnamese(req.text)
+    audio_bytes, spoken_end, warnings = synthesize_vietnamese(req.text)
     if audio_bytes is None:
         detail = warnings[0] if warnings else "Không tạo được giọng đọc."
         raise HTTPException(status_code=503, detail=detail)
 
-    headers = {"Content-Disposition": 'inline; filename="reading.wav"'}
+    headers = {
+        "Content-Disposition": 'inline; filename="reading.mp3"',
+        # Mốc ký tự (theo văn bản gốc) mà audio đọc tới → frontend karaoke ánh xạ tiến độ
+        # giọng nói lên [0, spoken_end] thay vì toàn bộ độ dài markdown (chống lệch chữ-tiếng).
+        "X-TTS-Spoken-End": str(spoken_end),
+    }
     if warnings:
         # Cảnh báo mềm (vd: đã cắt bớt văn bản) trả qua header để client tuỳ chọn hiển thị.
         # Header HTTP chỉ chấp nhận latin-1 nên phải percent-encode chuỗi tiếng Việt
         # (client đọc bằng decodeURIComponent). Cắt bớt TRƯỚC khi encode để không
         # đứt giữa chừng một cụm %XX.
         headers["X-TTS-Warnings"] = quote(" | ".join(warnings)[:500], safe="")
-    return Response(content=audio_bytes, media_type="audio/wav", headers=headers)
+    return Response(content=audio_bytes, media_type="audio/mpeg", headers=headers)
 
 
 # =============================
@@ -869,7 +962,10 @@ async def followup(
 ):
     owner_id = _ensure_session_owner_or_admin(current_user, session_id)
     try:
-        result = add_followup_turn(
+        # run_in_threadpool: đẩy việc đồng bộ nặng (LLM) khỏi event loop để không chặn cả server
+        # (deploy 1 worker). Đồng nhất với /api/ask & /api/tts vốn là sync def chạy trong threadpool.
+        result = await run_in_threadpool(
+            add_followup_turn,
             session_id=session_id,
             user_id=owner_id,
             message=req.message,
@@ -898,6 +994,7 @@ async def conversation(
 
 @app.get("/api/question_suggestions")
 async def question_suggestions(request: Request, limit: int = Query(default=3, ge=1, le=10)):
+    enforce_rate_limit(request=request, scope="question_suggestions", max_hits=30, window_seconds=60)
     # Lấy user_id từ JWT nếu có; KHÔNG nhận user_id do client tự khai trên query string —
     # nếu không, bất kỳ ai đoán id đều xem được "lá gần đây" của người khác (endpoint public).
     user_id = resolve_optional_user_id(request)
@@ -989,9 +1086,25 @@ async def duo_join_by_invite(req: JoinByInviteRequest, current_user: CurrentUser
     return payload
 
 
+async def _run_duo_generation(duo_session_id: int) -> None:
+    """Chạy NỀN: gọi LLM sinh luận giải Trải Bài Đôi rồi phát qua WebSocket.
+
+    Tách khỏi request tải lá để người tải lá thứ hai không phải chờ ~35-120s. Nuốt + log
+    mọi lỗi để task nền không làm sập tiến trình (người dùng vẫn thấy lỗi qua poll-stall guard).
+    """
+    try:
+        payload = await run_in_threadpool(generate_duo_reading_for_session, duo_session_id)
+    except Exception:  # noqa: BLE001 - task nền: chỉ log, không để lỗi nổi lên
+        LOGGER.exception("Duo background generation failed for session %s", duo_session_id)
+        return
+    if payload is not None:
+        await DUO_WS_MANAGER.broadcast(duo_session_id, {"type": "duo_updated", "data": payload})
+
+
 @app.post("/api/duo/sessions/{duo_session_id}/card")
 async def duo_submit_card(
     duo_session_id: int,
+    background_tasks: BackgroundTasks,
     image: UploadFile = File(...),
     current_user: CurrentUser = Depends(get_current_user),
 ):
@@ -999,7 +1112,8 @@ async def duo_submit_card(
     upload_dir.mkdir(parents=True, exist_ok=True)
     save_path = _save_upload(upload_dir, image)
     try:
-        payload = submit_duo_card(
+        payload = await run_in_threadpool(
+            submit_duo_card,
             duo_session_id=duo_session_id,
             user_id=current_user.id,
             image_path=save_path,
@@ -1010,6 +1124,11 @@ async def duo_submit_card(
     finally:
         if os.path.exists(save_path):
             os.remove(save_path)
+    # Đủ 2 lá → sinh luận giải CHẠY NỀN (sau khi response trả về) để người tải lá thứ hai
+    # KHÔNG phải chờ LLM ~35-120s (trước đây sinh đồng bộ → "1 bên bị treo"). Cả hai phía
+    # sẽ thấy kết quả qua polling/WS khi nền sinh xong.
+    if payload.get("status") == "generating":
+        background_tasks.add_task(_run_duo_generation, duo_session_id)
     await DUO_WS_MANAGER.broadcast(duo_session_id, {"type": "duo_updated", "data": payload})
     return payload
 
@@ -1061,9 +1180,11 @@ async def community_create(req: CommunityPostRequest, current_user: CurrentUser 
 
 @app.get("/api/community/feed")
 async def community_feed(
+    request: Request,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=50),
 ):
+    enforce_rate_limit(request=request, scope="community_feed", max_hits=60, window_seconds=60)
     return list_community_feed(page=page, page_size=page_size)
 
 
@@ -1172,7 +1293,8 @@ async def dreams_create(
     try:
         if audio is not None:
             audio_path = _save_upload(upload_dir, audio)
-        return create_dream_entry(
+        return await run_in_threadpool(
+            create_dream_entry,
             user_id=current_user.id,
             raw_text=raw_text,
             audio_path=audio_path,
@@ -1326,7 +1448,8 @@ async def daily_card_deep_reading(
     topic = (req.topic if req else "general")
     pipeline = _get_pipeline()
     try:
-        result = get_or_create_deep_reading(
+        result = await run_in_threadpool(
+            get_or_create_deep_reading,
             user_id=current_user.id,
             topic=topic,
             reader=pipeline.reader,

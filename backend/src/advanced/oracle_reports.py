@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import json
 import os
-import smtplib
 from collections import Counter
 from datetime import datetime, timedelta, timezone
-from email.message import EmailMessage
 
 from sqlalchemy import and_, select
 
@@ -97,70 +95,41 @@ def _generate_narrative(summary: dict) -> tuple[str, str]:
     )
     user_prompt = f"TOM_TAT_THANG_JSON:\n{json.dumps(summary, ensure_ascii=False)}"
 
-    if reader.gemini_api_key:
-        try:
-            text = reader._generate_gemini(system_prompt, user_prompt)  # type: ignore[attr-defined]
-            if text.strip():
-                return text.strip(), f"gemini:{reader.gemini_model}"
-        except Exception:
-            pass
-    if reader.api_key:
-        try:
-            text = reader._generate_openai(system_prompt, user_prompt)  # type: ignore[attr-defined]
-            if text.strip():
-                return text.strip(), f"openai:{reader.model}"
-        except Exception:
-            pass
-    if reader.ollama_enabled:
-        try:
-            text = reader._generate_ollama(system_prompt, user_prompt)  # type: ignore[attr-defined]
-            if text.strip():
-                return text.strip(), f"ollama:{reader.ollama_model}"
-        except Exception:
-            pass
-
     top_cards = ", ".join([name for name, _ in summary.get("top_cards", [])[:2]]) or "chưa có lá nổi bật"
     top_topics = (
         ", ".join([_TOPIC_LABEL_VI.get(name, name) for name, _ in summary.get("top_topics", [])[:2]])
         or "các mối quan tâm chung"
     )
-    text = (
+    fallback_text = (
         f"Trong tháng qua, năng lượng nổi bật tập trung quanh {top_cards}. "
         f"Chủ đề lặp lại nhiều nhất là {top_topics}. "
         "Hãy ưu tiên một hành động nhỏ nhưng đều đặn mỗi tuần, và theo dõi sự chuyển biến cảm xúc của bạn."
     )
-    return text, "deterministic-fallback"
 
-
-def _smtp_port() -> int:
-    try:
-        return int(os.getenv("SMTP_PORT", "587"))
-    except ValueError:
-        return 587
+    # Tái dùng ĐÚNG chuỗi fallback chuẩn: Gemini (xoay nhiều key) → OpenAI → Groq → Ollama →
+    # fallback. Trước đây tự gọi lẻ nên BỎ SÓT Groq và chỉ dùng 1 key Gemini → rớt thẳng bản
+    # tất định dù Groq vẫn chạy.
+    text, model, _warnings = reader.generate_custom(
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        fallback_text=fallback_text,
+    )
+    return text, (model or "deterministic-fallback")
 
 
 def _send_oracle_email(*, to_email: str, narrative: str, period_start: datetime, period_end: datetime) -> None:
-    host = os.getenv("SMTP_HOST", "").strip()
-    sender = os.getenv("SMTP_FROM", "").strip()
-    username = os.getenv("SMTP_USERNAME", "").strip()
-    password = os.getenv("SMTP_PASSWORD", "")
-    use_tls = os.getenv("SMTP_USE_TLS", "true").strip().lower() in {"1", "true", "yes", "y", "on"}
+    # Import cục bộ để tránh đụng tên với tham số `send_email: bool` của
+    # create_oracle_report_for_user. Degrade im lặng nếu chưa cấu hình kênh gửi nào.
+    from src.utils.email import email_configured, send_email
 
-    if not host or not sender:
+    if not email_configured():
         return
 
-    msg = EmailMessage()
-    msg["Subject"] = f"Báo cáo Oracle Tarot ({period_start.date()} - {period_end.date()})"
-    msg["From"] = sender
-    msg["To"] = to_email
-    msg.set_content(narrative)
-
-    with smtplib.SMTP(host=host, port=_smtp_port(), timeout=15) as server:
-        if use_tls:
-            server.starttls()
-        if username:
-            server.login(username, password)
-        server.send_message(msg)
+    send_email(
+        to_email=to_email,
+        subject=f"Báo cáo Oracle Tarot ({period_start.date()} - {period_end.date()})",
+        body=narrative,
+    )
 
 
 def create_oracle_report_for_user(
@@ -223,8 +192,8 @@ def create_oracle_report_for_user(
             try:
                 _send_oracle_email(to_email=user.email, narrative=narrative, period_start=start, period_end=end)
                 row.delivered_email_at = now
-            except Exception:
-                pass
+            except Exception as exc:  # best-effort: không sập tạo báo cáo, nhưng PHẢI log để thấy lỗi cấu hình
+                LOGGER.warning("Gửi email Oracle thất bại (user=%s): %s", user_id, exc)
 
         created_id = row.id
         delivered_email_at = row.delivered_email_at
@@ -277,13 +246,31 @@ def latest_oracle_report(user_id: int) -> dict | None:
     return rows[0]
 
 
-def run_oracle_monthly_job() -> dict[str, int]:
+def run_oracle_monthly_job(batch_size: int = 100) -> dict[str, int]:
+    """Tạo báo cáo Oracle tháng cho mọi user, duyệt theo lô (keyset theo User.id).
+
+    Không nạp toàn bộ user_id vào RAM một lần; mỗi vòng chỉ lấy `batch_size` user kế tiếp
+    (id tăng dần) để bộ nhớ luôn bị giới hạn dù số user lớn. Việc sinh báo cáo chạy NGOÀI
+    transaction đọc danh sách để không giữ khoá DB suốt quá trình.
+    """
     stats = {"processed": 0, "created": 0}
-    with session_scope() as session:
-        user_ids = session.scalars(select(User.id)).all()
-    for user_id in user_ids:
-        stats["processed"] += 1
-        row = create_oracle_report_for_user(user_id=user_id, allow_fallback_window=False)
-        if row is not None:
-            stats["created"] += 1
+    last_id = 0
+    while True:
+        with session_scope() as session:
+            user_ids = list(
+                session.scalars(
+                    select(User.id)
+                    .where(User.id > last_id)
+                    .order_by(User.id.asc())
+                    .limit(batch_size)
+                ).all()
+            )
+        if not user_ids:
+            break
+        for user_id in user_ids:
+            stats["processed"] += 1
+            row = create_oracle_report_for_user(user_id=user_id, allow_fallback_window=False)
+            if row is not None:
+                stats["created"] += 1
+        last_id = user_ids[-1]
     return stats

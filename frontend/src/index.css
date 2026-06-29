@@ -4,6 +4,24 @@
   box-sizing: border-box;
 }
 
+/* Phản hồi chạm + viền focus bàn phím cho MỌI nút (nhiều nút dùng inline style nên
+   không tự có :active/:focus-visible). :active opacity nhẹ → không đụng transform sẵn có.
+   :focus-visible chỉ hiện khi dùng bàn phím → chuột/chạm vẫn sạch. An toàn, thêm vào. */
+button:active,
+[role="button"]:active {
+  opacity: 0.82;
+}
+
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(232, 121, 249, 0.85);
+  outline-offset: 2px;
+}
+
 :root {
   --font-body: "Kanit", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-heading: "Playfair Display", Georgia, serif;
@@ -79,10 +97,10 @@ html,
 body,
 #root,
 body * {
-  /* Con trỏ mặc định = hệ thống. (Trước đây trỏ tới /cursor-default-42.png nhưng file này
-     không tồn tại trong public/ → mọi trang phát 1 request 404 rồi vẫn fallback về auto.
-     Nếu muốn con trỏ mặc định tuỳ biến, thêm file vào public/ rồi đổi lại url ở đây.) */
-  cursor: auto !important;
+  /* Con trỏ skin mặc định cho TOÀN trang (pixel-art tím đơn sắc), hotspot (3,3) ở mũi tên
+     trên-trái; fallback 'auto' nếu ảnh lỗi. Nút/link dùng con trỏ đa sắc riêng ở quy tắc dưới
+     để vẫn có phản hồi khi hover. */
+  cursor: url("/cursor-default-42.png") 3 3, auto !important;
 }
 
 a,
@@ -91,9 +109,25 @@ button,
 input[type="submit"],
 input[type="button"],
 .clickable,
+[tabindex]:not([tabindex="-1"]),
+[class*="link"],
+[class*="Link"],
+[class*="btn"],
+[class*="Btn"],
+[class*="button"],
+[class*="Button"],
 label[for],
+label:has(input:not([type="hidden"])),
 summary {
   cursor: url("/cursor-pointer-42.png") 3 3, pointer !important;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed !important;
 }
 
 body.cursor-effects-disabled,
@@ -107,9 +141,25 @@ body.cursor-effects-disabled [role="button"],
 body.cursor-effects-disabled input[type="submit"],
 body.cursor-effects-disabled input[type="button"],
 body.cursor-effects-disabled .clickable,
+body.cursor-effects-disabled [tabindex]:not([tabindex="-1"]),
+body.cursor-effects-disabled [class*="link"],
+body.cursor-effects-disabled [class*="Link"],
+body.cursor-effects-disabled [class*="btn"],
+body.cursor-effects-disabled [class*="Btn"],
+body.cursor-effects-disabled [class*="button"],
+body.cursor-effects-disabled [class*="Button"],
 body.cursor-effects-disabled label[for],
+body.cursor-effects-disabled label:has(input:not([type="hidden"])),
 body.cursor-effects-disabled summary {
   cursor: pointer !important;
+}
+
+body.cursor-effects-disabled button:disabled,
+body.cursor-effects-disabled input:disabled,
+body.cursor-effects-disabled select:disabled,
+body.cursor-effects-disabled textarea:disabled,
+body.cursor-effects-disabled [aria-disabled="true"] {
+  cursor: not-allowed !important;
 }
 
 /* ============================================================

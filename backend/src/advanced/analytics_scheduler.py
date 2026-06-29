@@ -37,6 +37,15 @@ def start_analytics_scheduler() -> None:
     if _SCHEDULER is not None:
         return
 
+    try:
+        if int(os.getenv("WEB_CONCURRENCY", "1") or "1") > 1:
+            LOGGER.warning(
+                "WEB_CONCURRENCY>1: analytics scheduler chạy trên MỖI worker → job chạy trùng. "
+                "Khuyến nghị WEB_CONCURRENCY=1 hoặc tách scheduler ra tiến trình riêng."
+            )
+    except ValueError:
+        pass
+
     scheduler = BackgroundScheduler(timezone=_app_timezone())
     if _as_bool(os.getenv("ARCHETYPE_SCHEDULER_ENABLED", "true"), default=True):
         scheduler.add_job(

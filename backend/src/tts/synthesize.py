@@ -1,20 +1,21 @@
 """TTS — đọc luận giải tiếng Việt thành giọng nói (tầng Text-To-Speech).
 
-synthesize_vietnamese(): sinh giọng nói tiếng Việt bằng mô hình VITS
-`facebook/mms-tts-vie` chạy qua `transformers` (cùng họ kiến trúc với MeloTTS
-nhưng KHÔNG thêm dependency nào — transformers đã có sẵn cho RAG/ASR). Văn bản
-tiếng Việt là chữ Latin nên KHÔNG cần g2p/uroman. Trả về WAV PCM 16-bit, đóng gói
-bằng thư viện chuẩn `wave` để không phụ thuộc soundfile/scipy (không có trong
-image slim). Mọi lỗi suy biến mềm: trả None + cảnh báo, API không sập. Model được
-nạp một lần và cache lại (lru_cache) đúng như pattern của tầng ASR.
+synthesize_vietnamese(): sinh giọng nói tiếng Việt bằng **edge-tts** (giọng neural của
+Microsoft Edge, mặc định `vi-VN-HoaiMyNeural`). Gọi dịch vụ online MIỄN PHÍ, KHÔNG cần
+API key, KHÔNG cần GPU → nhanh hơn nhiều và tự nhiên hơn so với chạy model trên CPU. Trả
+về MP3. Mọi lỗi suy biến mềm: trả None + cảnh báo, API không sập.
+
+Trước đây dùng `facebook/mms-tts-vie` (VITS) chạy local qua transformers — chính xác nhưng
+rất chậm trên CPU (vài chục giây cho một luận giải) và giọng máy móc.
 """
 from __future__ import annotations
 
+import asyncio
 import importlib.util
 import io
 import os
+import re
 import wave
-from functools import lru_cache
 
 import numpy as np
 
@@ -22,9 +23,9 @@ from src.utils.logging import get_logger
 
 LOGGER = get_logger(__name__)
 
-DEFAULT_TTS_MODEL = "facebook/mms-tts-vie"
-DEFAULT_MAX_CHARS = 1200
-DEFAULT_SAMPLE_RATE = 16000
+DEFAULT_TTS_VOICE = "vi-VN-HoaiMyNeural"
+DEFAULT_MAX_CHARS = 2000
+DEFAULT_TTS_TIMEOUT = 30.0
 _BOOL_TRUE = {"1", "true", "yes", "y", "on"}
 _PCM16_PEAK = 32767
 
@@ -35,6 +36,19 @@ def _module_available(module_name: str) -> bool:
 
 def _tts_enabled() -> bool:
     return os.getenv("TTS_ENABLED", "true").strip().lower() in _BOOL_TRUE
+
+
+def _voice() -> str:
+    """Giọng đọc; đổi qua env TTS_VOICE (vd vi-VN-NamMinhNeural cho giọng nam)."""
+    return os.getenv("TTS_VOICE", "").strip() or DEFAULT_TTS_VOICE
+
+
+def _tts_timeout() -> float:
+    """Hạn chờ edge-tts (giây); tránh treo vô hạn khi dịch vụ ngoài đơ. Đổi qua TTS_TIMEOUT_SECONDS."""
+    try:
+        return max(1.0, float(os.getenv("TTS_TIMEOUT_SECONDS", str(DEFAULT_TTS_TIMEOUT))))
+    except (TypeError, ValueError):
+        return DEFAULT_TTS_TIMEOUT
 
 
 def _max_chars() -> int:
@@ -60,8 +74,32 @@ def _prepare_text(text: str | None, max_chars: int | None = None) -> tuple[str, 
     return cleaned, warnings
 
 
+def _strip_markdown(text: str) -> str:
+    """Bỏ ký hiệu markdown để giọng đọc KHÔNG phát thành tiếng các ký tự ## ** ` - 1. ...
+
+    Chỉ phục vụ TTS (đầu vào giọng đọc); KHÔNG ảnh hưởng văn bản hiển thị trên UI.
+    """
+    t = text or ""
+    t = re.sub(r"```[\s\S]*?```", " ", t)          # code fence
+    t = re.sub(r"`([^`]*)`", r"\1", t)               # inline code
+    t = re.sub(r"(?m)^\s{0,3}#{1,6}\s*", "", t)      # heading
+    t = re.sub(r"\*\*([^*]+)\*\*", r"\1", t)         # bold
+    t = re.sub(r"\*([^*]+)\*", r"\1", t)             # italic
+    t = re.sub(r"__([^_]+)__", r"\1", t)
+    t = re.sub(r"(?m)^\s{0,3}>\s?", "", t)           # blockquote
+    t = re.sub(r"(?m)^\s{0,3}[-*+]\s+", "", t)       # bullet
+    t = re.sub(r"(?m)^\s{0,3}\d+\.\s+", "", t)       # numbered
+    t = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", t)   # link -> text
+    t = re.sub(r"[ \t]{2,}", " ", t)
+    t = re.sub(r"\n{3,}", "\n\n", t)
+    return t.strip()
+
+
 def _waveform_to_wav_bytes(waveform: np.ndarray, sample_rate: int) -> bytes:
-    """Chuyển waveform float32 [-1, 1] -> WAV PCM 16-bit mono (little-endian)."""
+    """Chuyển waveform float32 [-1, 1] -> WAV PCM 16-bit mono (little-endian).
+
+    Tiện ích thuần (vẫn có test); không còn dùng cho luồng tổng hợp hiện tại (edge-tts trả MP3).
+    """
     audio = np.asarray(waveform, dtype="float32").reshape(-1)
     audio = np.clip(audio, -1.0, 1.0)
     pcm16 = (audio * _PCM16_PEAK).astype("<i2")
@@ -75,67 +113,81 @@ def _waveform_to_wav_bytes(waveform: np.ndarray, sample_rate: int) -> bytes:
     return buffer.getvalue()
 
 
-@lru_cache(maxsize=1)
-def _get_model_and_tokenizer():
-    """Nạp model VITS + tokenizer một lần. Nặng → cache lại như ASR singleton."""
-    from transformers import AutoTokenizer, VitsModel  # type: ignore
+def _run_sync(coro):
+    """Chạy một coroutine đến khi xong, an toàn cả khi thread hiện tại đã có event loop.
 
-    model_name = os.getenv("TTS_MODEL", DEFAULT_TTS_MODEL)
-    model = VitsModel.from_pretrained(model_name)
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model.eval()
-
-    # Tốc độ đọc: mms VITS điều khiển qua speaking_rate (>1 nhanh hơn, <1 chậm hơn).
-    speaking_rate = os.getenv("TTS_SPEAKING_RATE", "").strip()
-    if speaking_rate:
+    Endpoint TTS thường chạy trong threadpool (không có loop) → tự tạo loop mới. Nhưng nếu
+    được gọi từ thread đã có loop đang chạy (vd test/async context), asyncio.run sẽ ném lỗi;
+    khi đó chạy ở một thread riêng với loop riêng để không đụng loop đang chạy.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
         try:
-            model.speaking_rate = float(speaking_rate)
-        except (TypeError, ValueError):
-            LOGGER.warning("TTS_SPEAKING_RATE không hợp lệ: %r", speaking_rate)
-    return model, tokenizer
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
+    # Thread này đã có event loop đang chạy → chạy ở thread riêng với loop riêng.
+    import concurrent.futures
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(lambda: asyncio.run(coro)).result()
 
 
-def synthesize_vietnamese(text: str | None) -> tuple[bytes | None, list[str]]:
-    """Sinh WAV tiếng Việt từ văn bản. Trả (audio_bytes | None, cảnh_báo).
+async def _edge_synthesize(text: str, voice: str) -> bytes:
+    """Gọi edge-tts, gom các chunk audio MP3 thành bytes."""
+    import edge_tts  # type: ignore
 
-    Không bao giờ ném lỗi: thiếu thư viện / model lỗi -> None + cảnh báo.
+    communicate = edge_tts.Communicate(text, voice)
+    audio = bytearray()
+    async for chunk in communicate.stream():
+        if chunk.get("type") == "audio" and chunk.get("data"):
+            audio.extend(chunk["data"])
+    return bytes(audio)
+
+
+def synthesize_vietnamese(text: str | None) -> tuple[bytes | None, int, list[str]]:
+    """Sinh MP3 tiếng Việt từ văn bản. Trả (audio_bytes | None, spoken_end, cảnh_báo).
+
+    `spoken_end` = số ký tự của văn bản gốc mà audio THỰC SỰ đọc tới (= độ dài phần đã
+    chuẩn hoá/cắt bớt). Dùng cho karaoke ở frontend để ánh xạ tiến độ giọng nói lên đúng
+    đoạn văn bản được đọc (không lệ thuộc độ dài markdown đầy đủ / phần bị cắt). 0 nếu không
+    sinh được audio.
+
+    Không bao giờ ném lỗi: thiếu thư viện / lỗi mạng / dịch vụ lỗi -> (None, 0, cảnh báo).
     """
     warnings: list[str] = []
 
     if not _tts_enabled():
         warnings.append("Chức năng đọc giọng nói đang tắt (TTS_ENABLED=false).")
-        return None, warnings
+        return None, 0, warnings
 
     cleaned, prep_warnings = _prepare_text(text)
     warnings.extend(prep_warnings)
     if not cleaned:
-        return None, warnings
+        return None, 0, warnings
 
-    if not _module_available("transformers"):
-        warnings.append("Thiếu thư viện transformers; không thể tạo giọng đọc.")
-        return None, warnings
+    if not _module_available("edge_tts"):
+        warnings.append("Thiếu thư viện edge-tts; không thể tạo giọng đọc.")
+        return None, 0, warnings
 
     try:
-        import torch  # type: ignore
-
-        model, tokenizer = _get_model_and_tokenizer()
-        inputs = tokenizer(cleaned, return_tensors="pt")
-
-        seed = os.getenv("TTS_SEED", "").strip()
-        if seed:
-            try:
-                torch.manual_seed(int(seed))  # VITS có duration ngẫu nhiên -> seed để tất định
-            except (TypeError, ValueError):
-                LOGGER.warning("TTS_SEED không hợp lệ: %r", seed)
-
-        with torch.no_grad():
-            output = model(**inputs)
-
-        waveform = output.waveform.squeeze().detach().cpu().numpy()
-        sample_rate = int(getattr(model.config, "sampling_rate", DEFAULT_SAMPLE_RATE))
-        audio_bytes = _waveform_to_wav_bytes(waveform, sample_rate)
-        return audio_bytes, warnings
+        spoken = _strip_markdown(cleaned) or cleaned
+        # edge-tts là async; chạy đồng bộ qua _run_sync để an toàn cả khi thread đã có event
+        # loop đang chạy (không chỉ threadpool không-loop).
+        # Bọc timeout: edge-tts goi dich vu mang ngoai; neu treo, asyncio.TimeoutError se duoc
+        # khoi except ben duoi bat -> tra None + canh bao mem (khong giu thread vo han).
+        audio_bytes = _run_sync(
+            asyncio.wait_for(_edge_synthesize(spoken, _voice()), timeout=_tts_timeout())
+        )
+        if not audio_bytes:
+            warnings.append("Không nhận được dữ liệu giọng đọc.")
+            return None, 0, warnings
+        # spoken_end tính theo `cleaned` (đã cắt bớt nếu quá dài) — đây là đoạn văn bản gốc
+        # mà audio bao phủ; frontend ánh xạ tiến độ audio lên [0, spoken_end].
+        return audio_bytes, len(cleaned), warnings
     except Exception as exc:  # suy biến mềm — không làm sập API
         LOGGER.warning("TTS synthesis failed: %s", exc)
         warnings.append("Tạo giọng đọc thất bại; vui lòng thử lại sau.")
-        return None, warnings
+        return None, 0, warnings

@@ -133,13 +133,14 @@ def _resample_linear(audio: np.ndarray, source_sr: int, target_sr: int = 16000) 
 def _get_faster_whisper_model():
     from faster_whisper import WhisperModel  # type: ignore
 
-    model_name = os.getenv("ASR_MODEL_FASTER", "large-v3")
+    # Mặc định 'small': large-v3 trên CPU rất chậm. (Prod có thể override qua env ASR_MODEL_FASTER.)
+    model_name = os.getenv("ASR_MODEL_FASTER", "small")
     return WhisperModel(model_name, device="cpu", compute_type="int8")
 
 
 def _transcribe_with_faster_whisper(audio_path: Path) -> str:
     model = _get_faster_whisper_model()
-    language_mode = os.getenv("ASR_LANGUAGE_MODE", "auto_vi_en").strip().lower()
+    language_mode = os.getenv("ASR_LANGUAGE_MODE", "vi").strip().lower()
     candidate_languages = _parse_candidate_languages(os.getenv("ASR_CANDIDATE_LANGS", "vi,en"))
 
     beam_size = int(os.getenv("ASR_BEAM_SIZE", "5"))
@@ -216,7 +217,7 @@ def _transcribe_with_transformers(audio_path: Path) -> str:
     audio = _resample_linear(audio, sample_rate, 16000)
 
     asr_pipeline = _get_transformers_asr_pipeline()
-    language_mode = os.getenv("ASR_LANGUAGE_MODE", "auto_vi_en").strip().lower()
+    language_mode = os.getenv("ASR_LANGUAGE_MODE", "vi").strip().lower()
     candidate_languages = _parse_candidate_languages(os.getenv("ASR_CANDIDATE_LANGS", "vi,en"))
 
     def run_once(language: str | None) -> str:

@@ -23,7 +23,7 @@ from src.advanced.analytics import track_event
 from src.advanced.daily_card import draw_today_card
 from src.db.models import Notification, NotificationPreference, User
 from src.db.session import session_scope
-from src.utils.email import send_email, smtp_configured
+from src.utils.email import email_configured, send_email
 from src.utils.logging import get_logger
 from src.utils.timezone import get_app_timezone
 
@@ -232,7 +232,7 @@ def dispatch_notification(
             user = session.scalar(select(User).where(User.id == user_id))
             to_email = (user.email if user else None) or ""
 
-            if allow_email and email_enabled and to_email and smtp_configured():
+            if allow_email and email_enabled and to_email and email_configured():
                 try:
                     send_email(to_email=to_email, subject=clean_title, body=clean_body or clean_title)
                     status = "sent"
@@ -292,7 +292,11 @@ def process_daily_card_notifications(max_users: int = 500) -> dict[str, int]:
                 continue
 
             day_start_local = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
-            # Mốc đầu ngày địa phương quy về UTC-naive để so với created_at (SQLite lưu naive UTC).
+            # Mốc đầu ngày địa phương quy về UTC rồi ép naive để so sánh nhất quán với
+            # created_at. Cả hai vế đều là UTC: now_utc dùng datetime.now(timezone.utc),
+            # còn mốc này đổi sang UTC trước khi bỏ tzinfo nên KHÔNG lệch giờ ở UTC+7.
+            # Phải ép naive vì cột created_at được lưu naive-UTC (đồng nhất với cách so
+            # sánh ở analytics._naive_utc); trộn aware vào đây sẽ sai trên SQLite.
             day_start_utc_naive = day_start_local.astimezone(timezone.utc).replace(tzinfo=None)
 
             with session_scope() as session:
@@ -335,6 +339,15 @@ def start_notification_scheduler() -> None:
         return
     if _SCHEDULER is not None:
         return
+
+    try:
+        if int(os.getenv("WEB_CONCURRENCY", "1") or "1") > 1:
+            LOGGER.warning(
+                "WEB_CONCURRENCY>1: notification scheduler chạy trên MỖI worker → có thể tạo "
+                "thông báo TRÙNG. Khuyến nghị WEB_CONCURRENCY=1 hoặc tách scheduler ra tiến trình riêng."
+            )
+    except ValueError:
+        pass
 
     scheduler = BackgroundScheduler(timezone=_app_timezone())
     scheduler.add_job(

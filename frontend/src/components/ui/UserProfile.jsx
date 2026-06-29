@@ -131,7 +131,7 @@ export default function UserProfile({
           top: 0,
           right: 0,
           width: "20%",
-          minWidth: "340px",
+          minWidth: "min(340px, 100vw)",
           height: "100vh",
           background:
             "linear-gradient(to bottom, rgba(15,10,30,0.88), rgba(8,5,18,0.94))",
@@ -156,6 +156,33 @@ export default function UserProfile({
           overflowX: "hidden",
         }}
       >
+        {/* Nút đóng (trước đây không có → panel che backdrop, bị kẹt trên điện thoại). */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Đóng"
+          style={{
+            position: "fixed",
+            top: "calc(12px + env(safe-area-inset-top, 0px))",
+            right: "12px",
+            width: "44px",
+            height: "44px",
+            borderRadius: "50%",
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(20,12,36,0.65)",
+            color: "#fff",
+            fontSize: "20px",
+            lineHeight: 1,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            zIndex: 5,
+          }}
+        >
+          ✕
+        </button>
+
         <div
           style={{
             position: "absolute",

@@ -81,7 +81,7 @@ export default function ResetPasswordPage() {
           position: "relative",
           zIndex: 10,
 
-          width: "440px",
+          width: "min(440px, calc(100vw - 24px))",
 
           padding: "45px 35px",
 

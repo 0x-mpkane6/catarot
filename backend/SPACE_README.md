@@ -37,15 +37,22 @@ https://<username>-<space-name>.hf.space/docs
 - `JWT_SECRET_KEY` — BẮT BUỘC khi APP_ENV=production (>=32 ký tự). Sinh: `python -c "import secrets; print(secrets.token_urlsafe(48))"`
 - `GOOGLE_CLIENT_ID` — cho Google login. PHẢI khớp `VITE_GOOGLE_CLIENT_ID` ở frontend (dùng làm audience khi verify id_token).
 - `DATABASE_URL` — KHUYẾN NGHỊ cho production (xem mục Lưu ý về persistence). VD Neon: `postgresql+psycopg2://USER:PASS@HOST/DB?sslmode=require`
+- `RESEND_API_KEY` — gửi email đặt lại mật khẩu (đăng ký tại https://resend.com → API Keys). Gửi qua HTTPS nên không bị chặn cổng SMTP.
 
 **Variables** (config public):
 - `APP_ENV=production`
 - `OLLAMA_ENABLED=false`
 - `EXPOSE_RESET_TOKEN_IN_RESPONSE=false`
-- `API_ALLOWED_ORIGINS=https://throbbing-bar-16f0.trangtuananh.workers.dev` (origin frontend đã deploy; phân tách bằng dấu phẩy nếu có nhiều domain, KHÔNG dấu `/` ở cuối)
+- `API_ALLOWED_ORIGINS=https://catarot.me,https://throbbing-bar-16f0.trangtuananh.workers.dev` (origin frontend đã deploy; phân tách bằng dấu phẩy, KHÔNG dấu `/` ở cuối)
+- `FRONTEND_BASE_URL=https://catarot.me` (để dựng link `/reset-password?token=...` trong email)
+- `RESEND_FROM=CATAROT <no-reply@catarot.me>` (người gửi email — phải thuộc domain đã xác thực ở Resend)
 - `GEMINI_MODEL=gemini-2.5-flash` (optional, mặc định flash)
 - `ASK_RATE_LIMIT_MAX=20`
 - `ASK_RATE_LIMIT_WINDOW=60`
+
+> Email đặt lại mật khẩu: code thử **Resend** trước (cần `RESEND_API_KEY` + `RESEND_FROM`),
+> fallback **SMTP** (`SMTP_HOST`+`SMTP_FROM`+…). Chưa cấu hình kênh nào → forgot-password
+> vẫn trả "thành công" (chống dò email) nhưng KHÔNG gửi email.
 
 ## Health check
 

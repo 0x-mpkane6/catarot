@@ -8,7 +8,10 @@
   border-radius: 20px;
   overflow: hidden;
 
-  width: 400px;  
+  /* Trước đây width cố định 400px → tràn ra ngoài card (đã bo theo màn) trên điện
+     thoại, bị overflow:hidden của trang cắt cụt bên phải. Cho co theo card. */
+  width: 100%;
+  max-width: 400px;
   padding: 16px 16px;
 }
 
@@ -113,6 +116,14 @@
 
 .remember {
   display: flex;
-  align-items: center;  
+  align-items: center;
   gap: 8px;
+}
+
+/* Điện thoại: bớt padding để input không bị chật (card + container + .right lồng
+   nhau ăn nhiều bề ngang). */
+@media (max-width: 480px) {
+  .right {
+    padding: 24px 18px;
+  }
 }

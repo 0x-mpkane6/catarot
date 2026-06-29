@@ -6,6 +6,12 @@
   justify-content: center;
 }
 
+/* Khi panel kết quả neo nổi mép phải (màn rộng): dời phòng sang TRÁI để panel
+   nổi không đè lên nội dung phòng (mã mời, người tham gia, tải ảnh). */
+.duo-reading-panel-shell--docked-result {
+  justify-content: flex-start;
+}
+
 .duo-reading-panel {
   position: relative;
   width: min(560px, 90vw);
@@ -42,10 +48,6 @@
   padding: 18px 20px;
 }
 
-.duo-reading-panel--room {
-  width: min(1120px, 94vw);
-}
-
 .duo-reading-panel::before {
   content: "";
   position: absolute;
@@ -71,31 +73,6 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-right: 4px;
-}
-
-.duo-reading-panel--room .duo-reading-panel__content {
-  overflow: hidden;
-  padding-right: 0;
-}
-
-.duo-reading-panel__room-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
-  gap: 18px;
-  min-height: 0;
-  height: 100%;
-}
-
-.duo-reading-panel__room-main,
-.duo-reading-panel__sidebar {
-  min-height: 0;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.duo-reading-panel__sidebar {
-  padding-left: 18px;
-  border-left: 1px solid rgba(168, 85, 247, 0.12);
 }
 
 .duo-reading-panel__actions {
@@ -177,7 +154,7 @@
   font-size: 0.82rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: rgba(243, 208, 255, 0.62);
+  color: rgba(243, 208, 255, 0.74);
 }
 
 .duo-reading-panel__field-label--tight {
@@ -222,7 +199,7 @@
   font-size: 0.76rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: rgba(243, 208, 255, 0.58);
+  color: rgba(243, 208, 255, 0.74);
 }
 
 .duo-reading-panel__meta-value {
@@ -244,8 +221,8 @@
   background: rgba(20, 12, 36, 0.82);
   color: #f3d0ff;
   cursor: pointer;
-  opacity: 0;
-  transform: translateX(4px);
+  /* Hé mờ lúc nghỉ (không ẩn hẳn) để chạm/bàn phím vẫn thấy nút. */
+  opacity: 0.45;
   transition:
     opacity 0.2s ease,
     transform 0.2s ease,
@@ -253,9 +230,9 @@
     box-shadow 0.2s ease;
 }
 
-.duo-reading-panel__invite-card:hover .duo-reading-panel__copy-button {
+.duo-reading-panel__invite-card:hover .duo-reading-panel__copy-button,
+.duo-reading-panel__copy-button:focus-visible {
   opacity: 1;
-  transform: translateX(0);
 }
 
 .duo-reading-panel__copy-button:hover {
@@ -444,8 +421,7 @@
   line-height: 1.5;
 }
 
-.duo-reading-panel__note,
-.duo-reading-panel__sidebar-placeholder {
+.duo-reading-panel__note {
   margin-top: 14px;
   padding: 13px 14px;
   border-radius: 15px;
@@ -453,10 +429,6 @@
   border: 1px solid rgba(168, 85, 247, 0.12);
   color: rgba(255, 255, 255, 0.74);
   line-height: 1.6;
-}
-
-.duo-reading-panel__sidebar-placeholder {
-  margin-top: 0;
 }
 
 .duo-reading-panel__error {
@@ -468,10 +440,48 @@
   color: #fecaca;
 }
 
+/* Cảnh báo poll treo: tách style inline ra class, có nền/viền đỏ nhạt cho dễ thấy. */
+.duo-reading-panel__stall-alert {
+  margin-top: 8px;
+  padding: 10px 14px;
+  border-radius: 15px;
+  font-size: 0.85rem;
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.18);
+}
+
+/* Viền focus rõ ràng cho bàn phím (chỉ hiện với :focus-visible → chuột vẫn sạch).
+   WCAG 2.4.11: chỉ báo focus tương phản đủ với nền tím tối. */
+.duo-reading-panel__button:focus-visible,
+.duo-reading-panel__icon-button:focus-visible,
+.duo-reading-panel__copy-button:focus-visible,
+.duo-reading-panel__upload-trigger:focus-visible,
+.duo-reading-panel__preview-remove:focus-visible {
+  outline: 2px solid rgba(232, 121, 249, 0.9);
+  outline-offset: 2px;
+}
+
+.duo-reading-panel__input:focus-visible {
+  border-color: rgba(192, 132, 252, 0.5);
+  outline: 2px solid rgba(192, 132, 252, 0.7);
+  outline-offset: 0;
+}
+
 .duo-reading-panel__result-text {
   margin-top: 10px;
   color: rgba(255, 255, 255, 0.84);
   line-height: 1.75;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 8px;
+  /* Chống chữ bị CẮT sát mép phải: cho từ/cụm dài tự xuống dòng (không tràn ngang để card
+     overflow:hidden cắt cụt) + chừa sẵn chỗ thanh cuộn để nó không lấn chữ. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  scrollbar-gutter: stable;
 }
 
 .duo-reading-panel__result-header {
@@ -485,6 +495,45 @@
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.duo-reading-panel__floating-sidebar {
+  position: fixed;
+  top: 108px;
+  right: 10px; /* sát mép phải hơn (trước 24px) */
+  z-index: 25;
+  width: min(384px, calc(100vw - 20px)); /* rộng hơn chút → chữ đỡ chật/cụt */
+  height: calc(100dvh - 148px);
+  pointer-events: none;
+}
+
+.duo-reading-panel__floating-sidebar-card {
+  width: 100%;
+  height: 100%;
+  border-radius: 22px;
+  border: 1px solid rgba(168, 85, 247, 0.18);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(16, 10, 30, 0.94),
+      rgba(10, 6, 20, 0.96)
+    );
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.36),
+    0 0 30px rgba(168, 85, 247, 0.12);
+  backdrop-filter: blur(22px);
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.duo-reading-panel__floating-sidebar-card .duo-reading-panel__result {
+  height: 100%;
+  margin-top: 0;
+  border: 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* Nội dung luận giải là Markdown (Gemini trả về **đậm**, tiêu đề, danh sách...).
@@ -553,6 +602,34 @@
   color: rgba(255, 255, 255, 0.78);
 }
 
+/* Màn vừa/hẹp (≤1100px): kết quả KHÔNG neo nổi nữa mà chảy xuống dưới phòng
+   (xếp dọc) để không đè lên nội dung. Khớp với DUO_RESULT_STACK_BREAKPOINT bên JS. */
+@media (max-width: 1100px) {
+  .duo-reading-panel-shell {
+    flex-direction: column;
+  }
+
+  .duo-reading-panel__floating-sidebar {
+    position: static;
+    width: min(620px, 92vw);
+    height: auto;
+    margin: 18px auto 0;
+    pointer-events: auto;
+  }
+
+  .duo-reading-panel__floating-sidebar-card {
+    height: auto;
+  }
+
+  .duo-reading-panel__floating-sidebar-card .duo-reading-panel__result {
+    min-height: 0;
+  }
+
+  .duo-reading-panel__result-text {
+    max-height: min(52vh, 460px);
+  }
+}
+
 @media (max-width: 760px) {
   .duo-reading-panel-shell {
     min-height: calc(100vh - 150px);
@@ -561,44 +638,19 @@
   .duo-reading-panel {
     width: 94vw;
     padding: 16px;
-    /* Mobile: bỏ trần chiều cao + để nội dung chảy tĩnh, dùng cuộn trang. */
-    max-height: none;
+    /* Mobile: vừa khít màn (trừ padding wrapper 80/24) + cuộn NỘI BỘ. Trước bỏ trần
+       (max-height:none) + cuộn trang → ô nhập/khối thao tác bị đẩy xuống dưới fold. */
+    max-height: calc(100dvh - 116px);
   }
 
   .duo-reading-panel__content {
-    overflow-y: visible;
-  }
-
-  .duo-reading-panel--room .duo-reading-panel__content {
-    overflow: visible;
+    overflow-y: auto;
   }
 
   .duo-reading-panel--landing {
     width: fit-content;
     max-width: 94vw;
     padding: 18px;
-  }
-
-  .duo-reading-panel--room {
-    width: 94vw;
-  }
-
-  .duo-reading-panel__room-layout {
-    grid-template-columns: 1fr;
-    height: auto;
-  }
-
-  .duo-reading-panel__room-main,
-  .duo-reading-panel__sidebar {
-    overflow-y: visible;
-    padding-right: 0;
-  }
-
-  .duo-reading-panel__sidebar {
-    padding-left: 0;
-    border-left: 0;
-    border-top: 1px solid rgba(168, 85, 247, 0.12);
-    padding-top: 18px;
   }
 
   .duo-reading-panel__room-header {
@@ -630,5 +682,25 @@
   .duo-reading-panel__copy-button {
     opacity: 1;
     transform: none;
+  }
+
+  .duo-reading-panel__floating-sidebar {
+    position: static;
+    width: 94vw;
+    height: auto;
+    margin: 16px auto 0;
+    pointer-events: auto;
+  }
+
+  .duo-reading-panel__floating-sidebar-card {
+    height: auto;
+  }
+
+  .duo-reading-panel__floating-sidebar-card .duo-reading-panel__result {
+    min-height: 0;
+  }
+
+  .duo-reading-panel__result-text {
+    max-height: min(48vh, 420px);
   }
 }

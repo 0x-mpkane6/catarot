@@ -1,11 +1,13 @@
 import CardNav from "../components/layout/CardNav";
 import { playScene } from "../components/transition/sceneTransition";
+import MobileAuroraBackground from "../components/common/MobileAuroraBackground";
 import UserProfile from "../components/ui/UserProfile";
 import ReadingHistory from "../components/ui/ReadingHistory";
 import ReflectionHistory from "../components/ui/ReflectionHistory";
 import MascotHelper from "../components/ui/MascotHelper";
 import MarkdownOverlay from "../components/ui/MarkdownOverlay";
 import ContactPanel from "../components/ui/ContactPanel";
+import SettingsModal from "../components/ui/SettingsModal";
 // import TarotGallery from "../components/ui/TarotGallery";
 import TarotGallery from "../components/ui/StaticTarotGallery";
 import DuoReadingPanel from "../components/ui/DuoReadingPanel";
@@ -28,6 +30,7 @@ import {
   getSessionDetail,
   buildSessionMessages,
   getApiErrorMessage,
+  resolveSessionId,
 } from "../services/historyService";
 
 import {
@@ -53,6 +56,7 @@ import {
 
 import {
   askTarotQuestion,
+  followupSession,
 } from "../services/tarotService";
 import {
   getCurrentUser,
@@ -75,11 +79,12 @@ from "../services/dailyService";
 
 import toast from "react-hot-toast";
 
-import { Undo2 } from "lucide-react";
+import { Undo2, X } from "lucide-react";
 import useIsMobile from "../hooks/useIsMobile";
 import tarotReading from "../assets/images/homepage/the-magician.png";
 import whatIsTarotContent from "../assets/text/what_is_tarot.md?raw";
 import catarotContent from "../assets/text/catarot.md?raw";
+import guidelineContent from "../assets/text/guideline.md?raw";
 import "./HomePage.css";
 import { useAppSettings } from "../context/AppSettingsContext";
 
@@ -172,6 +177,16 @@ export default function HomePage() {
   const [showResult, setShowResult] =
     useState(false);
 
+  // Khoá ĐỒNG BỘ chống double-submit: prop `disabled` của nút cập nhật bất đồng bộ nên 2 cú
+  // bấm nhanh có thể lọt 2 request /api/ask (2 phiên, tốn LLM). Ref khoá ngay trong cùng tick.
+  const submittingRef = useRef(false);
+
+  // Nhãn loader theo ngữ cảnh: trải bài / mở phiên cũ / tải lá hằng ngày là 3 việc khác nhau,
+  // không nên cùng hiện "Đang luận giải...".
+  const [loadingLabel, setLoadingLabel] = useState(
+    "Đang luận giải lá bài của bạn"
+  );
+
   const [isToastVisible, setIsToastVisible] = useState(false);
 
   const [showProfile, setShowProfile] = useState(false);
@@ -192,6 +207,7 @@ export default function HomePage() {
 
   // Contact Panel
   const [showContact, setShowContact] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [activeMarkdownDoc, setActiveMarkdownDoc] =
     useState(null);
 
@@ -226,7 +242,7 @@ export default function HomePage() {
   const [dailyInfoNote, setDailyInfoNote] =
     useState("");
 
-  // eslint-disable-next-line no-unused-vars -- TODO: hook up session reuse
+  // currentSession: phiên hiện tại để HỎI TIẾP (follow-up) trên cùng bài đọc.
   const [currentSession, setCurrentSession] = useState(null);
 
   // --- Đồng bộ nút Back của TRÌNH DUYỆT với điều hướng nội bộ của HomePage ---
@@ -335,24 +351,26 @@ export default function HomePage() {
     };
   }, [anyScreenOpen, closeTopScreen]);
 
-  const buildAssistantMessage = (
-    content,
-    shouldUseSpeech = false
-  ) => ({
-    role: "assistant",
-    content,
-    speechPlaybackEnabled: Boolean(
-      shouldUseSpeech &&
-      settings.speechPlaybackEnabled
-    ),
-    speechKey:
-      shouldUseSpeech &&
-      settings.speechPlaybackEnabled
-        ? `${Date.now()}-${Math.random()
-            .toString(36)
-            .slice(2)}`
-        : "",
-  });
+  // useCallback theo settings.speechPlaybackEnabled: để các effect dùng hàm này (vd tải bài
+  // hằng ngày) chạy lại khi bật/tắt TTS trong Cài đặt → có hiệu lực ngay, không cần reload.
+  const buildAssistantMessage = useCallback(
+    (content, shouldUseSpeech = false) => ({
+      role: "assistant",
+      content,
+      speechPlaybackEnabled: Boolean(
+        shouldUseSpeech &&
+        settings.speechPlaybackEnabled
+      ),
+      speechKey:
+        shouldUseSpeech &&
+        settings.speechPlaybackEnabled
+          ? `${Date.now()}-${Math.random()
+              .toString(36)
+              .slice(2)}`
+          : "",
+    }),
+    [settings.speechPlaybackEnabled]
+  );
 
   const requiredCards =
     selectedCard?.mode === "daily" ? 1 : 3;
@@ -437,15 +455,22 @@ export default function HomePage() {
       return;
     }
 
+    // Cờ huỷ: nếu user quay lại/đổi mode trong lúc đang tải, KHÔNG ghi đè màn hình bằng
+    // kết quả về muộn (tránh panel daily tự nhảy lại sau khi đã rời).
+    let isCancelled = false;
+
     const loadTodayDailyReading =
       async () => {
         try {
           setIsBackendLoading(true);
+          setLoadingLabel("Đang tải lá bài hằng ngày…");
 
           const result =
             await getTodayDailyReadingState(
               userProfile
             );
+
+          if (isCancelled) return;
 
           if (!result?.hasTodayReading || !result?.item) {
             setHasTodayDailyReading(false);
@@ -486,6 +511,7 @@ export default function HomePage() {
           setShowSpreadGrid(false);
           setPendingInput(null);
         } catch (error) {
+          if (isCancelled) return;
           console.error(
             "Failed to load today's daily reading",
             error
@@ -493,12 +519,43 @@ export default function HomePage() {
           setHasTodayDailyReading(false);
           setDailyInfoNote("");
         } finally {
-          setIsBackendLoading(false);
+          // Chỉ tắt loading nếu effect chưa bị huỷ → tránh setState sau unmount/đổi mode.
+          if (!isCancelled) {
+            setIsBackendLoading(false);
+          }
         }
       };
 
     loadTodayDailyReading();
-  }, [selectedCard?.mode, userProfile]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedCard?.mode, userProfile, buildAssistantMessage]);
+
+  // Khoá cuộn nền khi mở overlay rút bài: chống iOS cuộn xuyên nền (scroll bleed-through)
+  // làm trang phía dưới bị lệch khi đóng overlay. touchAction='none' mới chặn rubber-band iOS.
+  // Khoá cuộn nền khi mở BẤT KỲ overlay/drawer nào (không chỉ rút bài) → chống iOS cuộn
+  // xuyên nền làm trang phía dưới lệch + làm drawer khó đóng cảm giác như hỏng.
+  const anyOverlayOpen =
+    showSpreadGrid ||
+    showProfile ||
+    showHistory ||
+    showReflectionHistory ||
+    showContact ||
+    showSettings ||
+    Boolean(activeMarkdownDoc);
+  useEffect(() => {
+    if (!anyOverlayOpen) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    const prevTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.touchAction = prevTouchAction;
+    };
+  }, [anyOverlayOpen]);
 
     const handleReflectSubmit =
   async (
@@ -714,6 +771,11 @@ const handleChatSubmitDraft =
     // -> skip spread grid
     if (hasImages) {
 
+      if (submittingRef.current) return;
+      submittingRef.current = true;
+
+      setLoadingLabel("Đang luận giải lá bài của bạn");
+
       try {
 
         setIsBackendLoading(true);
@@ -788,7 +850,7 @@ const handleChatSubmitDraft =
         console.error(error);
 
         toast.error(
-          "Đã có lỗi xảy ra"
+          getApiErrorMessage(error)
         );
 
         // Ném lại để ChatBox KHÔNG xoá câu hỏi/ảnh khi gửi ảnh thất bại.
@@ -797,13 +859,41 @@ const handleChatSubmitDraft =
       } finally {
 
         setIsBackendLoading(false);
+        submittingRef.current = false;
       }
 
       return;
     }
 
     // TEXT / AUDIO
-    // -> still open spread grid
+    // FOLLOW-UP: đang xem một phiên ĐÃ có kết quả + gõ tiếp (text) → HỎI TIẾP trên CÙNG phiên
+    // (gọi /followup) thay vì mở lại màn rút bài. Lượt đọc MỚI thì bắt đầu lại từ gallery.
+    const followupSessionId = showResult ? resolveSessionId(currentSession) : null;
+    const followupMessage = (draft.question || "").trim();
+    if (followupSessionId && followupMessage) {
+      if (submittingRef.current) return;
+      submittingRef.current = true;
+      setLoadingLabel("Đang hỏi tiếp…");
+      try {
+        setIsBackendLoading(true);
+        const data = await followupSession(followupSessionId, followupMessage);
+        setMessages((prev) => [
+          ...prev,
+          { role: "user", content: followupMessage },
+          { ...buildAssistantMessage(data.assistant_answer, true) },
+        ]);
+      } catch (error) {
+        console.error(error);
+        toast.error(getApiErrorMessage(error));
+        throw error; // ném lại để ChatBox giữ lại câu hỏi đã gõ
+      } finally {
+        setIsBackendLoading(false);
+        submittingRef.current = false;
+      }
+      return;
+    }
+
+    // -> lượt đọc MỚI: mở màn rút bài
     setPendingInput(draft);
 
     setShowSpreadGrid(true);
@@ -818,6 +908,15 @@ const handleChatSubmitDraft =
       );
       return;
     }
+
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+
+    setLoadingLabel(
+      selectedCard?.mode === "daily"
+        ? "Đang rút lá bài hằng ngày…"
+        : "Đang luận giải lá bài của bạn"
+    );
 
     try {
       setIsBackendLoading(true);
@@ -949,6 +1048,7 @@ const handleChatSubmitDraft =
       );
     } finally {
       setIsBackendLoading(false);
+      submittingRef.current = false;
     }
   };
 
@@ -959,15 +1059,16 @@ const handleChatSubmitDraft =
 
       setShowHistory(false);
       setIsBackendLoading(true);
+      setLoadingLabel("Đang mở lại phiên trải bài…");
       setPendingInput(null);
       setCurrentSession(session);
       setMessages([]);
       setRevealedCards([]);
-      openReadingSession(
-        session.title
-      );
       setShowResult(true);
       setShowDeepReadingPanel(false);
+      // KHÔNG gọi openReadingSession ở đây với title tạm: loader (isBackendLoading) đã hiện
+      // phản hồi chờ. Chỉ mở phiên MỘT lần sau khi có sessionDetail đầy đủ (tránh 2 batch
+      // render + setState sau unmount nếu rời trang giữa lúc await).
 
       const [
         sessionDetail,
@@ -1074,6 +1175,18 @@ const handleChatSubmitDraft =
         { label: t("nav_more_info"),
           onClick: () => playScene({ onCover: () => setShowContact(true) }),
         },
+        // Lối vào Cài đặt + Hướng dẫn cho MOBILE (mascot bị ẩn trên điện thoại nên
+        // trước đây không tới được — gồm tắt nhạc nền / âm lượng / đọc TTS).
+        { label: t("settings_title"),
+          onClick: () => setShowSettings(true),
+        },
+        { label: t("guide_title"),
+          onClick: () =>
+            setActiveMarkdownDoc({
+              title: t("guide_title"),
+              content: guidelineContent,
+            }),
+        },
       ],
     },
   ];
@@ -1094,6 +1207,9 @@ const handleChatSubmitDraft =
         `,
       }}
     >
+
+      {/* Nền cực quang sống động — chỉ mobile, nằm sau nội dung (z-index -1). */}
+      {isMobile && <MobileAuroraBackground />}
 
       {/* NAVBAR */}
       <CardNav
@@ -1154,7 +1270,12 @@ const handleChatSubmitDraft =
         }
       />
 
-      <MascotHelper />
+      {/* Mascot mèo: desktop luôn hiện. Mobile CHỈ hiện ở màn gallery (ẩn khi đã
+          chọn lá/mở overlay) để KHÔNG che ô nhập chat ghim đáy — chạm mèo để rút
+          nhanh 1 lá ngẫu nhiên. */}
+      {(!isMobile || (!selectedCard && !anyOverlayOpen)) && (
+        <MascotHelper mobile={isMobile} />
+      )}
 
       <ContactPanel
         isOpen={showContact}
@@ -1162,6 +1283,11 @@ const handleChatSubmitDraft =
         onClose={() => {
           setShowContact(false);
         }}
+      />
+
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
       />
 
       <MarkdownOverlay
@@ -1195,14 +1321,32 @@ const handleChatSubmitDraft =
 
         pointerEvents:
           hideGallery ? "none" : "auto",
+
+        // Mobile: khi mở phòng/trải bài, gallery ẩn bằng opacity nhưng VẪN chiếm
+        // ~980px trong dòng chảy tĩnh → đẩy panel (duo/community/visions) xuống dưới
+        // fold, phải cuộn mới tới ô nhập. Gỡ hẳn khỏi flow (CosmicVeil che lúc đổi
+        // nên không thấy giật). Desktop giữ fade (panel desktop position:absolute).
+        ...(isMobile && hideGallery ? { display: "none" } : null),
       }}
     >
+      {/* Lời chào + định hướng — chỉ mobile (desktop có mascot dẫn dắt riêng). */}
+      {isMobile && (
+        <div className="home-mobile-greeting">
+          <p className="home-mobile-greeting__hello">
+            Chào, <span>{username}</span>
+          </p>
+          <p className="home-mobile-greeting__tagline">
+            Hôm nay những lá bài muốn thì thầm điều gì với bạn?
+          </p>
+        </div>
+      )}
+
       <TarotGallery
         onCardClick={handleCardClick}
       />
     </div>
 
-    {selectedCard && (
+    {selectedCard && !showSpreadGrid && (
       <Undo2
       onClick={resetReadingToGallery}
       role="button"
@@ -1271,9 +1415,12 @@ const handleChatSubmitDraft =
   
 
    {(showChatUI ||
-      selectedCard?.mode === "duo" ||
+      // Mobile: KHÔNG hiện ảnh+tên lá phía trên panel phòng (duo/community/visions) —
+      // nó chiếm ~270px đẩy panel xuống dưới fold. Panel đã có tiêu đề riêng. Desktop
+      // vẫn hiện (định vị absolute ở góc, không chiếm dòng chảy).
+      (!isMobile && (selectedCard?.mode === "duo" ||
       selectedCard?.mode === "community" ||
-      selectedCard?.mode === "visions") && selectedCard && (
+      selectedCard?.mode === "visions"))) && selectedCard && (
       <div
         style={{
           position: "absolute",
@@ -1440,22 +1587,44 @@ const handleChatSubmitDraft =
     {showSpreadGrid && (
       <div
         style={{
-          position: "absolute",
+          // Overlay phủ TOÀN màn hình + cho CUỘN DỌC (cả desktop lẫn mobile) để luôn thấy
+          // nút "Xác nhận" khi lưới bài cao hơn viewport. Trước đây desktop dùng position
+          // absolute + overflow mặc định → nút bị đẩy xuống dưới đáy, không cuộn tới được.
+          position: "fixed",
           inset: 0,
           zIndex: 18,
-          background:
-            "rgba(5, 5, 16, 0.68)",
+          background: "rgba(5, 5, 16, 0.68)",
           backdropFilter: "blur(12px)",
-
-          // Mobile: phủ kín nhưng cho cuộn dọc để xem hết lưới bài.
-          ...(isMobile
-            ? {
-                position: "fixed",
-                overflowY: "auto",
-              }
-            : null),
+          overflowY: "auto",
         }}
       >
+        {/* Nút Huỷ rõ ràng (thay cho nút back bị ẩn khi mở overlay) → không bấm nhầm mất lựa chọn. */}
+        <button
+          type="button"
+          onClick={resetReadingToGallery}
+          aria-label="Huỷ rút bài"
+          style={{
+            position: "fixed",
+            top: isMobile ? "10px" : "24px",
+            left: isMobile ? "10px" : "24px",
+            zIndex: 25,
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: isMobile ? "8px 14px" : "10px 18px",
+            borderRadius: "999px",
+            border: "1px solid rgba(255,255,255,0.18)",
+            background: "rgba(20,10,35,0.72)",
+            backdropFilter: "blur(6px)",
+            color: "#f3d0ff",
+            fontSize: isMobile ? "0.85rem" : "0.92rem",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          <X size={isMobile ? 16 : 18} /> Huỷ
+        </button>
+
         <TarotSpreadGrid
           requiredCards={requiredCards}
           disabled={isBackendLoading}
@@ -1510,17 +1679,23 @@ const handleChatSubmitDraft =
 
       zIndex: 20,
 
-      // Mobile: ô nhập dính đáy, full chiều ngang.
+      // Mobile: ô nhập GHIM CỐ ĐỊNH đáy màn (fixed) để LUÔN thấy ngay khi mở Trải Bài.
+      // Trước dùng sticky → khi nội dung ngắn, ô nhập không được kéo lên đáy mà nằm khuất
+      // dưới fold, phải cuộn mới thấy → tưởng app bị đơ.
       ...(isMobile
         ? {
-            position: "sticky",
+            position: "fixed",
             bottom: 0,
-            left: "auto",
+            left: 0,
+            right: 0,
             transform: "none",
             width: "100%",
             maxWidth: "100%",
-            padding: "0 10px 12px",
+            padding: "8px 10px calc(10px + env(safe-area-inset-bottom, 0px))",
             boxSizing: "border-box",
+            zIndex: 30,
+            background:
+              "linear-gradient(to top, rgba(5,5,16,0.97) 62%, rgba(5,5,16,0))",
           }
         : null),
     }}
@@ -1544,9 +1719,10 @@ const handleChatSubmitDraft =
           // Mobile: bỏ giới hạn chiều cao + dịch chuyển để hội thoại chảy tự nhiên.
           ...(isMobile
             ? {
-                maxHeight: "none",
+                maxHeight: "calc(100dvh - 210px)",
+                overflowY: "auto",
                 transform: "none",
-                marginBottom: "18px",
+                marginBottom: "10px",
               }
             : null),
         }}
@@ -1606,7 +1782,7 @@ const handleChatSubmitDraft =
       />
     )}
 
-    {isBackendLoading && <MysticLoader />}
+    {isBackendLoading && <MysticLoader label={loadingLabel} />}
 
       {/* stars */}
       <div

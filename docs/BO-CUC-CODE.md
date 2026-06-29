@@ -1,6 +1,6 @@
-# Bố cục mã nguồn — CATAROT
+# [CATAROT] BỐ CỤC MÃ NGUỒN
 
-> Bản đồ code để đọc nhanh: thư mục nào làm gì, file nào chịu trách nhiệm gì, một request đi qua đâu. Dùng khi review/chấm code.
+Đây là bản đồ code để đọc nhanh: thư mục nào làm gì, file nào lo việc gì, và một request đọc bài đi qua những đâu. Dùng khi cần review hoặc chấm code mà không muốn lội từ đầu.
 
 ## Tổng quan repo (monorepo)
 
@@ -8,12 +8,13 @@
 llm-tarot-reader/
 ├── backend/        # API + AI (FastAPI, Python) — phần xử lý
 ├── frontend/       # Giao diện (React + Vite) — phần hiển thị
+├── mobile/         # Gói APK Android (TWA bọc web) — xem docs/BAO-CAO-MOBILE.md
 ├── alembic/        # Migration cơ sở dữ liệu (5 revision)
 ├── docs/           # Báo cáo, sơ đồ, hướng dẫn, bố cục (file này)
 └── docker-compose.yml   # Chạy full-stack 1 lệnh
 ```
 
-Backend **phân 3 tầng**: `main.py` (HTTP/route) → `advanced/*` + `pipeline/*` (nghiệp vụ) → `db/*` (dữ liệu).
+Backend chia làm ba tầng. `main.py` lo phần HTTP và định tuyến, gọi xuống `advanced/*` và `pipeline/*` xử lý nghiệp vụ, dưới cùng là `db/*` lo dữ liệu.
 
 ---
 
@@ -99,8 +100,9 @@ Backend **phân 3 tầng**: `main.py` (HTTP/route) → `advanced/*` + `pipeline/
 | Thư mục / file | Vai trò |
 |----------------|---------|
 | `main.jsx` · `App.jsx` | Entry + **routing** (React Router v7, lazy-load), route guard `RequireAuth`. |
-| `pages/` | 5 trang: `LandingPage`, `LoginPage`, `SigninPage`, `ForgotPasswordPage`, **`HomePage`** (màn chính, gộp mọi tính năng). |
-| `services/` | Gọi API theo domain: `api.js` (axios + interceptor JWT), `authService`, `tarotService`, `dailyService`, `communityService`, `duoService`, `historyService`, `visionsService`, `sessionCache`. |
+| `pages/` | 6 trang: `LandingPage`, `LoginPage`, `SigninPage`, `ForgotPasswordPage`, `ResetPasswordPage`, **`HomePage`** (màn chính, gộp mọi tính năng). |
+| `services/` | Gọi API theo domain: `api.js` (axios + interceptor JWT), `authService`, `tarotService`, `dailyService`, `communityService`, `duoService`, `historyService`, `visionsService`, `speechService` (TTS đọc kết quả), `sessionCache`. |
+| `context/` | `AppSettingsContext` — cài đặt toàn cục (âm thanh mèo, hiệu ứng con trỏ, đọc kết quả TTS, âm lượng nhạc) + chuỗi văn bản tiếng Việt (i18n). |
 | `features/login/` | Form đăng nhập/đăng ký/quên mật khẩu + `GoogleLoginButton`. |
 | `components/ui/` | Component giao diện: `ChatBox`, `ChatConversation`, `TarotSpreadGrid`, `TarotResultPanel`, `DailyResultPanel`, `DeepReadingPanel`, `DreamJournalComposer`, `DreamEntryCard`, `VisionsVaultPanel`, `CommunityReadingPanel`, `DuoReadingPanel`, … |
 | `components/transition/` · `layout/` · `common/` | Hiệu ứng chuyển cảnh, navbar, con trỏ WebGL. |

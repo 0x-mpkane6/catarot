@@ -1,8 +1,10 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
+import BackGroundMusic from "./components/common/BackGroundMusic";
 import SplashCursor from "./components/common/SplashCursor";
 import RouteTransition from "./components/transition/RouteTransition";
+import CosmicVeil from "./components/transition/CosmicVeil";
 import MysticLoader from "./components/ui/MysticLoader";
 import { useAppSettings } from "./context/AppSettingsContext";
 
@@ -40,6 +42,11 @@ function App() {
 
   return (
     <>
+      <BackGroundMusic />
+
+      {/* Host hiệu ứng chuyển cảnh trong trang — tự kích hoạt CHỈ trên mobile. */}
+      <CosmicVeil />
+
       {settings.cursorEffectsEnabled && (
         <SplashCursor
           DENSITY_DISSIPATION={3.5}
@@ -57,6 +64,10 @@ function App() {
 
       <Toaster
         position="top-center"
+        containerStyle={{
+          // Đẩy toast xuống dưới thanh nav cố định (+ safe-area) để không che nav/nút.
+          top: "calc(env(safe-area-inset-top, 0px) + 78px)",
+        }}
         toastOptions={{
           style: {
             background: "rgba(20, 8, 35, 0.92)",

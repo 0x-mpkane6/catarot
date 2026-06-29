@@ -53,8 +53,17 @@ def _jwt_secret() -> str:
     return raw
 
 
+# Chỉ cho phép họ HMAC-SHA (đối xứng, khớp cách ký bằng JWT_SECRET_KEY). Chặn 'none'
+# (token không chữ ký → mạo danh bất kỳ user) và thuật toán bất đối xứng cấu hình nhầm.
+_ALLOWED_JWT_ALGORITHMS = {"HS256", "HS384", "HS512"}
+
+
 def _jwt_algorithm() -> str:
-    return os.getenv("JWT_ALGORITHM", "HS256").strip() or "HS256"
+    raw = (os.getenv("JWT_ALGORITHM", "HS256") or "").strip()
+    if raw in _ALLOWED_JWT_ALGORITHMS:
+        return raw
+    # Giá trị ngoài whitelist (kể cả 'none') bị từ chối; ép về HS256 an toàn.
+    return "HS256"
 
 
 def _jwt_expire_minutes() -> int:

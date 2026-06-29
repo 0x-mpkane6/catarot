@@ -13,6 +13,7 @@ import "./MagicCat.css";
 
 export default function MagicCat({
   onClick,
+  showBubble = true,
 }) {
   const { settings, t } = useAppSettings();
 
@@ -58,10 +59,12 @@ export default function MagicCat({
       onClick={handleCatClick}
     >
 
-      <SpeechBubble
-        text={message}
-        visible={visible}
-      />
+      {showBubble && (
+        <SpeechBubble
+          text={message}
+          visible={visible}
+        />
+      )}
 
       <div className="magic-cat-glow" />
 

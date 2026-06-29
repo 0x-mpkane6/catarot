@@ -4,7 +4,7 @@ import {
   getCachedSessions,
 } from "./sessionCache";
 
-const resolveSessionId = (
+export const resolveSessionId = (
   sessionOrId
 ) => {
   if (

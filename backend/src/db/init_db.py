@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import threading
 
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 from sqlalchemy.exc import IntegrityError
 
 from src.db.models import Base
@@ -96,10 +96,98 @@ def _recreate_daily_deep_readings_if_stale() -> None:
         LOGGER.warning("Không tái tạo được daily_deep_readings: %s", exc)
 
 
+def _apply_unique_constraints() -> None:
+    """Thêm các UNIQUE constraint còn thiếu trên DB Postgres ĐÃ TỒN TẠI.
+
+    Bảng được tạo TRƯỚC khi constraint được thêm vào model thì create_all() KHÔNG ALTER để
+    bổ sung constraint → trên prod cũ constraint không tồn tại, làm việc chống đua/đúp request
+    (dựa vào IntegrityError) bị vô hiệu. Idempotent: kiểm tra pg_constraint trước. Bọc
+    try/except từng cái (vd đã có dữ liệu trùng) để KHÔNG chặn startup. SQLite bỏ qua vì
+    create_all đã tạo constraint cho DB mới.
+    """
+    engine = get_engine()
+    if engine.dialect.name != "postgresql":
+        return
+
+    targets = [
+        ("duo_cards", "uq_duo_card_session_participant", "duo_session_id, participant_id"),
+        ("community_votes", "uq_community_votes_interp_user", "interpretation_id, user_id"),
+        ("daily_cards", "uq_daily_cards_user_date", "user_id, draw_date"),
+        ("conversation_turns", "uq_conversation_turns_session_idx", "session_id, turn_index"),
+    ]
+    existing_tables = set(inspect(engine).get_table_names())
+
+    for table_name, constraint_name, columns in targets:
+        if table_name not in existing_tables:
+            continue
+        try:
+            with engine.begin() as conn:
+                already = conn.execute(
+                    text("SELECT 1 FROM pg_constraint WHERE conname = :name"),
+                    {"name": constraint_name},
+                ).fetchone()
+                if already:
+                    continue
+                # Tên bảng/cột/constraint đều là hằng cố định trong code (không phải input) → an toàn.
+                conn.exec_driver_sql(
+                    f"ALTER TABLE {table_name} "
+                    f"ADD CONSTRAINT {constraint_name} UNIQUE ({columns})"
+                )
+            LOGGER.info(
+                "Applied unique constraint: %s on %s", constraint_name, table_name
+            )
+        except Exception as exc:  # pragma: no cover - phòng thủ, không chặn startup
+            LOGGER.warning(
+                "Không thêm được unique constraint %s trên %s (có thể do dữ liệu trùng sẵn): %s",
+                constraint_name,
+                table_name,
+                exc,
+            )
+
+
+def _apply_indexes() -> None:
+    """Thêm các index còn thiếu trên DB ĐÃ TỒN TẠI (mọi dialect).
+
+    Bảng được tạo TRƯỚC khi index được thêm vào model thì create_all() KHÔNG ALTER để bổ
+    sung index → trên prod cũ các cột scheduler/feed query thường xuyên (status, remind_at,
+    scheduled_for) thiếu index, gây full scan. Idempotent nhờ "CREATE INDEX IF NOT EXISTS"
+    (Postgres lẫn SQLite đều hỗ trợ). Bọc try/except từng cái + LOGGER.warning khi lỗi để
+    KHÔNG chặn startup. Tên bảng/cột/index đều là hằng cố định trong code → an toàn.
+    """
+    engine = get_engine()
+    targets = [
+        ("community_posts", "ix_community_posts_status", "status"),
+        ("rating_reminders", "ix_rating_reminders_status_remind_at", "status, remind_at"),
+        ("notifications", "ix_notifications_status_scheduled_for", "status, scheduled_for"),
+        ("time_capsules", "ix_time_capsules_status", "status"),
+    ]
+    existing_tables = set(inspect(engine).get_table_names())
+
+    for table_name, index_name, columns in targets:
+        if table_name not in existing_tables:
+            continue
+        try:
+            with engine.begin() as conn:
+                conn.exec_driver_sql(
+                    f"CREATE INDEX IF NOT EXISTS {index_name} "
+                    f"ON {table_name} ({columns})"
+                )
+            LOGGER.info("Applied index: %s on %s", index_name, table_name)
+        except Exception as exc:  # pragma: no cover - phòng thủ, không chặn startup
+            LOGGER.warning(
+                "Không thêm được index %s trên %s: %s",
+                index_name,
+                table_name,
+                exc,
+            )
+
+
 def initialize_database(seed_reference_data: bool = True) -> None:
     _recreate_daily_deep_readings_if_stale()
     Base.metadata.create_all(bind=get_engine())
     _apply_lightweight_migrations()
+    _apply_unique_constraints()
+    _apply_indexes()
 
     if not seed_reference_data:
         return

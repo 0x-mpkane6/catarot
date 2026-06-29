@@ -162,7 +162,11 @@ def join_duo_session(duo_session_id: int, user_id: int) -> dict[str, Any]:
             # remain "waiting_partner" until a real second player arrives.
             row.status = "waiting_cards"
             row.updated_at = datetime.now(timezone.utc)
-        session.flush()
+        try:
+            session.flush()
+        except IntegrityError as exc:
+            # Đua 2 người cùng join slot B → trả lỗi nghiệp vụ (400) thay vì IntegrityError → 500.
+            raise ValueError("duo session already has 2 participants") from exc
 
     reloaded = _load_duo_session(duo_session_id)
     assert reloaded is not None
@@ -183,33 +187,19 @@ def _generate_duo_reading(cards: list[DuoCard]) -> tuple[str, str]:
         + "\nHãy nêu điểm hòa hợp, điểm dễ va chạm và một lời khuyên thực tế cho cả hai."
     )
 
-    if reader.gemini_api_key:
-        try:
-            text = reader._generate_gemini(system_prompt, user_prompt)  # type: ignore[attr-defined]
-            if text.strip():
-                return text.strip(), f"gemini:{reader.gemini_model}"
-        except Exception:
-            pass
-    if reader.api_key:
-        try:
-            text = reader._generate_openai(system_prompt, user_prompt)  # type: ignore[attr-defined]
-            if text.strip():
-                return text.strip(), f"openai:{reader.model}"
-        except Exception:
-            pass
-    if reader.ollama_enabled:
-        try:
-            text = reader._generate_ollama(system_prompt, user_prompt)  # type: ignore[attr-defined]
-            if text.strip():
-                return text.strip(), f"ollama:{reader.ollama_model}"
-        except Exception:
-            pass
-
     fallback = (
         f"Sự kết hợp giữa {cards[0].card_name} và {cards[1].card_name} cho thấy một mối quan hệ "
         "nhiều sắc thái. Hãy thẳng thắn nhìn nhận khác biệt và cùng chọn một hành động chung trong tuần này."
     )
-    return fallback, "deterministic-fallback"
+    # Tái dùng ĐÚNG chuỗi fallback chuẩn: Gemini (xoay nhiều key) → OpenAI → Groq → Ollama →
+    # fallback. Trước đây tự gọi lẻ nên BỎ SÓT Groq và chỉ dùng 1 key Gemini → rớt fallback 2 câu
+    # dù Groq vẫn chạy.
+    text, model_used, _warnings = reader.generate_custom(
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        fallback_text=fallback,
+    )
+    return text, (model_used or "deterministic-fallback")
 
 
 def submit_duo_card(
@@ -281,72 +271,101 @@ def submit_duo_card(
             select(DuoParticipant).where(DuoParticipant.duo_session_id == duo_session_id)
         ).all()
         if len(cards) >= 2 and len(participants) >= 2:
+            # Đủ 2 lá → CHỈ chuyển trạng thái "generating". Việc gọi LLM (chậm ~35-120s)
+            # được tách ra chạy NỀN ở tầng endpoint (BackgroundTasks). Trước đây sinh ĐỒNG BỘ
+            # ngay trong request của người tải lá thứ hai → request đó treo/timeout, trong khi
+            # người kia chỉ poll nên thấy mượt → "1 bên bị treo". Tách nền giúp cả hai đối xứng.
             duo.status = "generating"
-            duo.updated_at = datetime.now(timezone.utc)
-            # Capture card data before closing the session so the LLM call
-            # happens *outside* the DB transaction (avoids holding the write
-            # lock for the full LLM latency of up to ~120 s).
-            cards_for_reading = [(c.card_name, c.orientation) for c in cards[:2]]
-            generate_reading = True
         else:
             duo.status = "waiting_cards"
-            duo.updated_at = datetime.now(timezone.utc)
-            cards_for_reading = []
-            generate_reading = False
+        duo.updated_at = datetime.now(timezone.utc)
         session.flush()
-
-    # Phase 2: LLM generation is intentionally outside any session_scope so
-    # the database connection is not held during the potentially slow call.
-    if generate_reading:
-        # Build lightweight DuoCard-like objects to pass into the generator.
-        class _CardProxy:
-            def __init__(self, name: str, orientation: str) -> None:
-                self.card_name = name
-                self.orientation = orientation
-
-        proxy_cards = [_CardProxy(n, o) for n, o in cards_for_reading]
-        narrative, llm_model = _generate_duo_reading(proxy_cards)  # type: ignore[arg-type]
-
-        try:
-            with session_scope() as session:
-                duo = session.scalar(select(DuoSession).where(DuoSession.id == duo_session_id))
-                if duo is not None:
-                    duo.status = "completed"
-                    duo.updated_at = datetime.now(timezone.utc)
-                existing_reading = session.scalar(
-                    select(DuoReading).where(DuoReading.duo_session_id == duo_session_id)
-                )
-                if existing_reading is None:
-                    session.add(
-                        DuoReading(
-                            duo_session_id=duo_session_id,
-                            generated_text=narrative,
-                            llm_model=llm_model,
-                        )
-                    )
-                    session.flush()
-                else:
-                    existing_reading.generated_text = narrative
-                    existing_reading.llm_model = llm_model
-        except IntegrityError:
-            # Đua: 2 người nộp lá cuối gần như cùng lúc, cả hai cùng INSERT DuoReading
-            # (bảng unique theo duo_session_id). Bản thua → đọc lại bản đã tồn tại và UPDATE,
-            # thay vì để IntegrityError lọt thành HTTP 500 (đồng nhất daily_deep_reading.py).
-            with session_scope() as session:
-                duo = session.scalar(select(DuoSession).where(DuoSession.id == duo_session_id))
-                if duo is not None:
-                    duo.status = "completed"
-                    duo.updated_at = datetime.now(timezone.utc)
-                existing_reading = session.scalar(
-                    select(DuoReading).where(DuoReading.duo_session_id == duo_session_id)
-                )
-                if existing_reading is not None:
-                    existing_reading.generated_text = narrative
-                    existing_reading.llm_model = llm_model
 
     reloaded = _load_duo_session(duo_session_id)
     assert reloaded is not None
     return _duo_payload(reloaded)
+
+
+def generate_duo_reading_for_session(duo_session_id: int) -> dict[str, Any] | None:
+    """Sinh luận giải Trải Bài Đôi (gọi LLM) rồi lưu kết quả. An toàn chạy NỀN + idempotent.
+
+    - Bỏ qua (trả None) nếu phiên không tồn tại, chưa đủ 2 lá/2 người, hoặc đã có reading.
+    - Gọi LLM NGOÀI transaction để không giữ khoá DB suốt thời gian chờ (~35-120s).
+    - Xử lý đua (2 request cùng sinh) y như cũ: bản thua UPDATE thay vì để IntegrityError → 500.
+    Trả về payload đã cập nhật, hoặc None nếu không sinh gì.
+    """
+    with session_scope() as session:
+        duo = session.scalar(select(DuoSession).where(DuoSession.id == duo_session_id))
+        if duo is None:
+            return None
+        # Đã có kết quả rồi (đã sinh trước đó) → không làm lại.
+        if duo.reading is not None:
+            return None
+        cards = session.scalars(
+            select(DuoCard).where(DuoCard.duo_session_id == duo_session_id)
+        ).all()
+        participants = session.scalars(
+            select(DuoParticipant).where(DuoParticipant.duo_session_id == duo_session_id)
+        ).all()
+        if len(cards) < 2 or len(participants) < 2:
+            return None
+        if duo.status != "generating":
+            duo.status = "generating"
+            duo.updated_at = datetime.now(timezone.utc)
+        # Lấy dữ liệu lá trước khi đóng session để gọi LLM ngoài transaction.
+        cards_for_reading = [(c.card_name, c.orientation) for c in cards[:2]]
+        session.flush()
+
+    # Build lightweight DuoCard-like objects to pass into the generator.
+    class _CardProxy:
+        def __init__(self, name: str, orientation: str) -> None:
+            self.card_name = name
+            self.orientation = orientation
+
+    proxy_cards = [_CardProxy(n, o) for n, o in cards_for_reading]
+    narrative, llm_model = _generate_duo_reading(proxy_cards)  # type: ignore[arg-type]
+
+    try:
+        with session_scope() as session:
+            duo = session.scalar(select(DuoSession).where(DuoSession.id == duo_session_id))
+            if duo is not None:
+                duo.status = "completed"
+                duo.updated_at = datetime.now(timezone.utc)
+            existing_reading = session.scalar(
+                select(DuoReading).where(DuoReading.duo_session_id == duo_session_id)
+            )
+            if existing_reading is None:
+                session.add(
+                    DuoReading(
+                        duo_session_id=duo_session_id,
+                        generated_text=narrative,
+                        llm_model=llm_model,
+                    )
+                )
+                session.flush()
+            else:
+                existing_reading.generated_text = narrative
+                existing_reading.llm_model = llm_model
+    except IntegrityError:
+        # Đua: 2 nguồn cùng INSERT DuoReading (bảng unique theo duo_session_id).
+        # Bản thua → đọc lại bản đã tồn tại và UPDATE, thay vì để IntegrityError → HTTP 500.
+        with session_scope() as session:
+            duo = session.scalar(select(DuoSession).where(DuoSession.id == duo_session_id))
+            existing_reading = session.scalar(
+                select(DuoReading).where(DuoReading.duo_session_id == duo_session_id)
+            )
+            if duo is not None:
+                # CHỈ chốt "completed" khi đã có DuoReading thật. Nếu chưa có (đua hiếm: INSERT
+                # phía kia rollback) thì giữ "generating" để lần poll/retry sau sinh lại — tránh
+                # kẹt phiên ở "completed" mà KHÔNG có reading nào.
+                duo.status = "completed" if existing_reading is not None else "generating"
+                duo.updated_at = datetime.now(timezone.utc)
+            if existing_reading is not None:
+                existing_reading.generated_text = narrative
+                existing_reading.llm_model = llm_model
+
+    reloaded = _load_duo_session(duo_session_id)
+    return _duo_payload(reloaded) if reloaded is not None else None
 
 
 def get_duo_session(duo_session_id: int, user_id: int | None = None) -> dict[str, Any]:

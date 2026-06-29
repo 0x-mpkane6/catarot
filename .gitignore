@@ -7,6 +7,9 @@
 backend/.env
 frontend/.env
 
+# Ghi chú khoá ký APK/TWA (chứa mật khẩu keystore) — KHÔNG commit
+APK-BUILD-CREDENTIALS.md
+
 # ============================================
 # Python
 # ============================================

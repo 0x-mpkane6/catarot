@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import os
-import smtplib
 from datetime import datetime, timezone
-from email.message import EmailMessage
 from typing import Any
 
 try:
@@ -14,6 +12,7 @@ from sqlalchemy import select
 
 from src.db.models import RatingReminder, Reading, ReadingSession, User
 from src.db.session import session_scope
+from src.utils.email import send_email
 from src.utils.logging import get_logger
 from src.utils.timezone import get_app_timezone
 
@@ -38,50 +37,28 @@ def _app_timezone():
     return get_app_timezone(logger=LOGGER)
 
 
-def _smtp_port() -> int:
-    try:
-        return int(os.getenv("SMTP_PORT", "587"))
-    except ValueError:
-        return 587
-
-
 def _send_rating_email(*, to_email: str, question_text: str, session_id: int) -> None:
-    host = os.getenv("SMTP_HOST", "").strip()
-    sender = os.getenv("SMTP_FROM", "").strip()
-    username = os.getenv("SMTP_USERNAME", "").strip()
-    password = os.getenv("SMTP_PASSWORD", "")
-    use_tls = _as_bool(os.getenv("SMTP_USE_TLS", "true"), default=True)
-
-    if not host or not sender:
-        raise RuntimeError("SMTP is not configured (SMTP_HOST/SMTP_FROM missing).")
-
-    msg = EmailMessage()
-    msg["Subject"] = "Nhắc đánh giá: buổi đọc bài tarot vừa rồi chính xác đến đâu?"
-    msg["From"] = sender
-    msg["To"] = to_email
-    msg.set_content(
-        "\n".join(
-            [
-                "Xin chào,",
-                "",
-                "Hãy đánh giá buổi đọc bài tarot của bạn từ 1 đến 5 sao.",
-                f"Mã phiên: {session_id}",
-                f"Câu hỏi: {question_text}",
-                "",
-                "Bạn có thể gửi đánh giá ngay trong ứng dụng khi lời nhắc này xuất hiện.",
-                "",
-                "Trân trọng,",
-                "Tarot AI",
-            ]
-        )
+    # Gửi qua kênh dùng chung (Resend → SMTP). Ném RuntimeError nếu chưa cấu hình kênh nào;
+    # người gọi (process_due_rating_reminders) bắt lỗi → đánh dấu 'failed'.
+    body = "\n".join(
+        [
+            "Xin chào,",
+            "",
+            "Hãy đánh giá buổi đọc bài tarot của bạn từ 1 đến 5 sao.",
+            f"Mã phiên: {session_id}",
+            f"Câu hỏi: {question_text}",
+            "",
+            "Bạn có thể gửi đánh giá ngay trong ứng dụng khi lời nhắc này xuất hiện.",
+            "",
+            "Trân trọng,",
+            "Tarot AI",
+        ]
     )
-
-    with smtplib.SMTP(host=host, port=_smtp_port(), timeout=15) as server:
-        if use_tls:
-            server.starttls()
-        if username:
-            server.login(username, password)
-        server.send_message(msg)
+    send_email(
+        to_email=to_email,
+        subject="Nhắc đánh giá: buổi đọc bài tarot vừa rồi chính xác đến đâu?",
+        body=body,
+    )
 
 
 def save_rating(*, session_id: int, score: int, note: str | None) -> dict[str, Any]:
@@ -159,10 +136,13 @@ def process_due_rating_reminders(max_batch: int = 100) -> dict[str, int]:
     now = datetime.now(timezone.utc)
     stats = {"sent": 0, "failed": 0, "skipped": 0}
 
+    # 1) Lấy ứng viên trong 1 session NGẮN — KHÔNG giữ kết nối DB suốt lúc gửi email (15s/lần).
     with session_scope() as session:
         rows = session.execute(
             select(
-                RatingReminder,
+                RatingReminder.id,
+                RatingReminder.session_id,
+                RatingReminder.user_id,
                 User.email,
                 ReadingSession.question_text,
             )
@@ -177,30 +157,42 @@ def process_due_rating_reminders(max_batch: int = 100) -> dict[str, int]:
             .order_by(RatingReminder.remind_at.asc())
             .limit(max_batch)
         ).all()
+    candidates = [tuple(row) for row in rows]
 
-        for reminder, email, question_text in rows:
-            if not reminder.user_id or not email:
-                reminder.status = "skipped"
-                reminder.last_error = "missing user email"
-                stats["skipped"] += 1
-                continue
+    # 2) Gửi + cập nhật TỪNG reminder trong session RIÊNG, commit ngay → tiến độ không bị
+    #    rollback nếu kết nối DB rớt giữa chừng (tránh gửi email TRÙNG ở lần chạy sau).
+    for reminder_id, session_id, user_id, email, question_text in candidates:
+        if not user_id or not email:
+            with session_scope() as session:
+                reminder = session.get(RatingReminder, reminder_id)
+                if reminder is not None:
+                    reminder.status = "skipped"
+                    reminder.last_error = "missing user email"
+            stats["skipped"] += 1
+            continue
 
-            try:
-                _send_rating_email(
-                    to_email=email,
-                    question_text=question_text or "(no question)",
-                    session_id=reminder.session_id,
-                )
+        try:
+            _send_rating_email(
+                to_email=email,
+                question_text=question_text or "(no question)",
+                session_id=session_id,
+            )
+            sent_ok, send_error = True, None
+        except Exception as exc:
+            sent_ok, send_error = False, str(exc)[:500]
+
+        with session_scope() as session:
+            reminder = session.get(RatingReminder, reminder_id)
+            if reminder is not None:
                 reminder.attempts = int(reminder.attempts or 0) + 1
-                reminder.status = "sent"
-                reminder.sent_at = now
-                reminder.last_error = None
-                stats["sent"] += 1
-            except Exception as exc:
-                reminder.attempts = int(reminder.attempts or 0) + 1
-                reminder.status = "failed"
-                reminder.last_error = str(exc)[:500]
-                stats["failed"] += 1
+                if sent_ok:
+                    reminder.status = "sent"
+                    reminder.sent_at = now
+                    reminder.last_error = None
+                else:
+                    reminder.status = "failed"
+                    reminder.last_error = send_error
+        stats["sent" if sent_ok else "failed"] += 1
 
     if any(stats.values()):
         LOGGER.info("Rating reminder job summary: %s", stats)
@@ -217,6 +209,15 @@ def start_rating_scheduler() -> None:
         return
     if _SCHEDULER is not None:
         return
+
+    try:
+        if int(os.getenv("WEB_CONCURRENCY", "1") or "1") > 1:
+            LOGGER.warning(
+                "WEB_CONCURRENCY>1: rating reminder scheduler chạy trên MỖI worker → có thể gửi "
+                "email nhắc TRÙNG. Khuyến nghị WEB_CONCURRENCY=1 hoặc tách scheduler ra tiến trình riêng."
+            )
+    except ValueError:
+        pass
 
     scheduler = BackgroundScheduler(timezone=_app_timezone())
     scheduler.add_job(

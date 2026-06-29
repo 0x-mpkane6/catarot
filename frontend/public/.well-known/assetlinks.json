@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "me.catarot.app",
+      "sha256_cert_fingerprints": [
+        "27:7B:BE:F3:E0:21:B3:5F:68:2F:7B:00:EC:57:2E:8D:E9:CA:5B:7F:42:96:18:AD:6E:79:3E:31:65:76:F6:8A"
+      ]
+    }
+  }
+]

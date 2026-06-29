@@ -1,232 +1,389 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import toast from "react-hot-toast";
 
-import { useAppSettings } from "../../context/AppSettingsContext";
 import { synthesizeSpeech } from "../../services/speechService";
-
-const REVEAL_INTERVAL_MS = 32;
-const FALLBACK_MS_PER_TOKEN = 24;
-const MIN_FALLBACK_DURATION_MS = 1800;
+import "./SpeechPlaybackMessage.css";
 
 function renderMarkdownLink(props) {
-  return (
-    <a
-      {...props}
-      target="_blank"
-      rel="noopener noreferrer"
-    />
-  );
+  return <a {...props} target="_blank" rel="noopener noreferrer" />;
 }
 
-function getVisibleText(fullText, progress) {
-  if (!fullText) return "";
-  const tokens =
-    fullText.match(/\S+\s*/g) || [];
-  const nextCount = Math.max(
-    1,
-    Math.min(
-      tokens.length,
-      Math.floor(tokens.length * progress)
-    )
-  );
-  return tokens
-    .slice(0, nextCount)
-    .join("")
-    .trimEnd();
+// Rehype plugin: bọc MỖI TỪ trong <span class="kw"> để karaoke tô sáng từng từ. Chạy SAU khi
+// markdown đã parse nên không còn dấu cú pháp → luôn render markdown HỢP LỆ. Bỏ qua code/pre.
+function rehypeKaraokeWords() {
+  return (tree) => {
+    const wrap = (node) => {
+      if (!node.children || !Array.isArray(node.children)) return;
+      if (node.type === "element" && (node.tagName === "code" || node.tagName === "pre")) {
+        return;
+      }
+      const out = [];
+      for (const child of node.children) {
+        if (child.type === "text") {
+          for (const part of child.value.split(/(\s+)/)) {
+            if (!part) continue;
+            if (/^\s+$/.test(part)) {
+              out.push({ type: "text", value: part });
+            } else {
+              out.push({
+                type: "element",
+                tagName: "span",
+                properties: { className: ["kw"] },
+                children: [{ type: "text", value: part }],
+              });
+            }
+          }
+        } else {
+          wrap(child);
+          out.push(child);
+        }
+      }
+      node.children = out;
+    };
+    wrap(tree);
+  };
 }
 
-function cleanupPreviewMarkdown(value) {
-  return String(value || "")
-    .replace(/\n{3,}/g, "\n\n")
-    .replace(/\[[^\]]*$/, "")
-    .replace(/\([^(]*$/, "")
-    .replace(/\*\*[^*]*$/, "")
-    .replace(/_[^_]*$/, "")
-    .replace(/`[^`]*$/, "")
-    .trimEnd();
+const REHYPE_PLUGINS = [rehypeKaraokeWords];
+const MARKDOWN_COMPONENTS = { a: renderMarkdownLink };
+
+const FIRST_CHUNK_CHARS = 320; // đoạn đầu nhỏ → có tiếng nhanh (~vài giây)
+const MAX_CHUNK_CHARS = 600; // các đoạn sau (đều DƯỚI TTS_MAX_CHARS backend → không bị cắt)
+const MIN_CUT = 160; // không cắt thành đoạn quá ngắn
+
+// Chia text thành các đoạn tại ranh giới (xuống dòng > dấu câu > khoảng trắng) để ĐỌC FULL
+// mà vẫn nhanh: tổng hợp đoạn đầu rồi phát ngay, các đoạn sau tổng hợp ngầm khi đang đọc.
+// Trả [{ text, start, len }] với start = vị trí ký tự trong text gốc (để karaoke ánh xạ).
+function splitIntoChunks(text) {
+  const chunks = [];
+  const n = text.length;
+  let i = 0;
+  while (i < n) {
+    const size = chunks.length === 0 ? FIRST_CHUNK_CHARS : MAX_CHUNK_CHARS;
+    let end = Math.min(i + size, n);
+    if (end < n) {
+      const slice = text.slice(i, end);
+      const nl = slice.lastIndexOf("\n");
+      const punct = Math.max(
+        slice.lastIndexOf(". "),
+        slice.lastIndexOf("! "),
+        slice.lastIndexOf("? "),
+        slice.lastIndexOf("; ")
+      );
+      const sp = slice.lastIndexOf(" ");
+      const cut =
+        nl >= MIN_CUT ? nl + 1 : punct >= MIN_CUT ? punct + 2 : sp >= MIN_CUT ? sp + 1 : slice.length;
+      end = i + cut;
+    }
+    const piece = text.slice(i, end);
+    if (piece.trim()) chunks.push({ text: piece, start: i, len: piece.length });
+    i = end;
+  }
+  return chunks.length ? chunks : [{ text, start: 0, len: text.length }];
 }
 
+// Luận giải LUÔN hiển thị đầy đủ. Bấm loa: đọc HẾT bài bằng cách chia đoạn — tổng hợp đoạn đầu
+// phát ngay, prefetch đoạn kế khi đang đọc → không đợi lâu, không timeout. Karaoke tô sáng dần
+// theo vị trí ký tự toàn cục (xuyên các đoạn); thao tác trực tiếp DOM, không re-render.
 export default function SpeechPlaybackMessage({
   text = "",
-  autoPlay = false,
   speechKey = "",
   replaySignal = 0,
 }) {
-  const { settings } = useAppSettings();
   const safeText = String(text || "");
-  const shouldAutoPlay = autoPlay && settings.speechPlaybackEnabled;
-  const shouldReplay = replaySignal > 0;
-  const shouldPlay = Boolean(
-    safeText &&
-    speechKey &&
-    (shouldAutoPlay || shouldReplay)
-  );
-  const audioRef = useRef(null);
-  const audioUrlRef = useRef("");
-  const [displayText, setDisplayText] = useState(shouldPlay ? "" : safeText);
-  const [isStreaming, setIsStreaming] = useState(Boolean(shouldPlay && safeText));
+  const containerRef = useRef(null);
+  const audioRef = useRef(null); // Audio đang phát
+  const chunkUrlsRef = useRef([]); // mọi blob URL đã tạo → revoke khi dừng
+  const rafRef = useRef(null);
+  const wordsRef = useRef([]); // các <span class="kw"> theo thứ tự
+  const totalWordsRef = useRef(0);
+  const wordsCollectedRef = useRef(false); // đã thu thập span chưa (phân biệt với "0 từ")
+  const revealedRef = useRef(0); // số từ đã tô sáng
+  // Mốc replaySignal đã xử lý — khởi tạo = giá trị hiện tại để mount/remount KHÔNG tự phát.
+  const lastReplayRef = useRef(replaySignal);
+  const [isSynthesizing, setIsSynthesizing] = useState(false);
+  // Cảnh báo mềm từ backend (vd cắt bớt) — gần như không xảy ra nữa vì mỗi đoạn < ngưỡng.
+  const [warningNote, setWarningNote] = useState("");
+  const [isPlaying, setIsPlaying] = useState(false); // đang phát → hiện nút Dừng
+  // Tăng để YÊU CẦU dừng: effect chạy lại → cleanup dừng audio; lần chạy mới willPlay=false
+  // (replaySignal không đổi) nên KHÔNG tự phát lại → dừng sạch mà không khởi động lại.
+  const [stopCounter, setStopCounter] = useState(0);
 
-  // Định danh một "phiên phát": đổi khi đổi nội dung hoặc khi người dùng bấm phát lại.
-  const playbackToken = `${speechKey}|${replaySignal}|${safeText.length}`;
-  const [activeToken, setActiveToken] = useState(playbackToken);
-
-  // Đặt lại trạng thái "gõ dần" NGAY TRONG RENDER khi mở một phiên phát mới — đây là mẫu
-  // React khuyến nghị cho "reset state khi prop đổi" (KHÔNG đặt state đồng bộ trong effect).
-  // Guard playbackToken !== activeToken đảm bảo không lặp render vô hạn.
-  if (shouldPlay && playbackToken !== activeToken) {
-    setActiveToken(playbackToken);
-    setDisplayText("");
-    setIsStreaming(true);
-  }
+  const handleStop = () => {
+    setIsPlaying(false);
+    setStopCounter((c) => c + 1);
+  };
 
   useEffect(() => {
-    const previousAudio = audioRef.current;
-    if (previousAudio) {
-      previousAudio.pause();
-      audioRef.current = null;
-    }
-
-    if (audioUrlRef.current) {
-      URL.revokeObjectURL(audioUrlRef.current);
-      audioUrlRef.current = "";
-    }
-
-    if (!shouldPlay) {
-      // Không phát: chỉ dọn audio (đã làm ở trên) rồi thoát. KHÔNG gọi setState đồng bộ ở
-      // đây — trạng thái hiển thị được SUY RA từ prop qua `streaming` bên dưới, nên không
-      // cần đặt lại state (tránh cascade render & lỗi react-hooks/set-state-in-effect).
-      return undefined;
-    }
-
     let isCancelled = false;
-    let intervalId = null;
-    let fallbackStartedAt = 0;
-    const tokenCount =
-      safeText.match(/\S+\s*/g)?.length || 1;
-    let fallbackDurationMs = Math.max(
-      MIN_FALLBACK_DURATION_MS,
-      tokenCount * FALLBACK_MS_PER_TOKEN
-    );
 
-    const finishPlayback = () => {
-      if (isCancelled) return;
-      setDisplayText(safeText);
-      setIsStreaming(false);
-    };
-
-    const updateVisibleText = () => {
-      if (isCancelled) return;
-
-      const audio = audioRef.current;
-      let progress = 0;
-
-      if (audio && Number.isFinite(audio.duration) && audio.duration > 0) {
-        progress = audio.currentTime / audio.duration;
-      } else if (fallbackStartedAt > 0) {
-        progress = (Date.now() - fallbackStartedAt) / fallbackDurationMs;
+    const clearHighlight = () => {
+      const container = containerRef.current;
+      if (container) {
+        container.classList.remove("karaoke-active");
+        container
+          .querySelectorAll("span.kw.kw--spoken")
+          .forEach((w) => w.classList.remove("kw--spoken"));
       }
-
-      if (progress >= 1) {
-        finishPlayback();
-        return;
-      }
-
-      setDisplayText((previous) => {
-        const nextText = cleanupPreviewMarkdown(
-          getVisibleText(
-            safeText,
-            Math.max(progress, 0)
-          )
-        );
-        return nextText.length >= previous.length ? nextText : previous;
-      });
+      revealedRef.current = 0;
+      totalWordsRef.current = 0;
+      wordsRef.current = [];
+      wordsCollectedRef.current = false;
     };
 
-    const startRevealLoop = () => {
-      fallbackStartedAt = Date.now();
-      intervalId = window.setInterval(updateVisibleText, REVEAL_INTERVAL_MS);
-    };
-
-    const startSilentRevealFallback = () => {
-      if (intervalId) return;
-      startRevealLoop();
-    };
-
-    const startSpeechPlayback = async () => {
-      try {
-        const { audioBlob, warnings } = await synthesizeSpeech(safeText);
-        if (isCancelled) return;
-
-        if (warnings.length) {
-          console.warn("TTS warnings:", warnings);
-        }
-
-        const audioUrl = URL.createObjectURL(audioBlob);
-        audioUrlRef.current = audioUrl;
-
-        const audio = new Audio(audioUrl);
-        audioRef.current = audio;
-        audio.preload = "auto";
-
-        audio.addEventListener("loadedmetadata", () => {
-          if (audio.duration > 0) {
-            fallbackDurationMs = audio.duration * 1000;
-          }
-        });
-
-        audio.addEventListener("ended", finishPlayback);
-        audio.addEventListener("error", finishPlayback);
-
-        startRevealLoop();
-
-        await audio.play();
-      } catch (error) {
-        console.error("Speech playback failed", error);
-        startSilentRevealFallback();
-      }
-    };
-
-    startSpeechPlayback();
-
-    return () => {
-      isCancelled = true;
-      if (intervalId) {
-        window.clearInterval(intervalId);
+    const stopPlayback = () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
       }
       const activeAudio = audioRef.current;
       if (activeAudio) {
         activeAudio.pause();
         audioRef.current = null;
       }
-      if (audioUrlRef.current) {
-        URL.revokeObjectURL(audioUrlRef.current);
-        audioUrlRef.current = "";
+      chunkUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      chunkUrlsRef.current = [];
+      clearHighlight();
+    };
+
+    stopPlayback();
+
+    const isFreshReplay = replaySignal > lastReplayRef.current;
+    lastReplayRef.current = replaySignal;
+    const willPlay = isFreshReplay && Boolean(safeText) && Boolean(speechKey);
+
+    const collectWords = () => {
+      const container = containerRef.current;
+      if (!container) return;
+      wordsRef.current = Array.from(container.querySelectorAll("span.kw"));
+      totalWordsRef.current = wordsRef.current.length;
+      revealedRef.current = 0;
+      wordsCollectedRef.current = true;
+      if (totalWordsRef.current > 0) container.classList.add("karaoke-active");
+    };
+
+    const highlightTo = (count) => {
+      const target = Math.min(totalWordsRef.current, Math.max(0, count));
+      while (revealedRef.current < target) {
+        const word = wordsRef.current[revealedRef.current];
+        if (word) word.classList.add("kw--spoken");
+        revealedRef.current += 1;
       }
     };
-  }, [replaySignal, safeText, shouldPlay, speechKey]);
 
-  // Chỉ "gõ dần" khi thực sự đang phát; mọi trường hợp khác hiện full text. Suy ra từ prop
-  // (shouldPlay) thay vì lệ thuộc state isStreaming có thể còn sót lại từ lần phát trước.
-  const streaming = shouldPlay && isStreaming;
-  if (!streaming) {
-    return (
-      <ReactMarkdown
-        components={{
-          a: renderMarkdownLink,
-        }}
-      >
-        {safeText}
-      </ReactMarkdown>
-    );
-  }
+    (async () => {
+      // Tách khỏi luồng đồng bộ của effect (tránh setState đồng bộ trong effect body).
+      await Promise.resolve();
+      if (isCancelled) return;
+      setWarningNote("");
+      if (!willPlay) {
+        setIsPlaying(false);
+        return;
+      }
+
+      const chunks = splitIntoChunks(safeText);
+      const totalChars = Math.max(1, safeText.length);
+      setIsSynthesizing(true);
+      setIsPlaying(true);
+
+      // Tổng hợp 1 đoạn → { audio, spokenLen } (null nếu bị huỷ giữa chừng).
+      // spokenLen = số ký tự ĐOẠN THỰC SỰ được đọc: nếu backend cắt bớt (spokenEnd) thì
+      // dùng spokenEnd (giới hạn trong độ dài đoạn), ngược lại = toàn bộ độ dài đoạn.
+      const synthChunk = async (chunkText) => {
+        const { audioBlob, spokenEnd, warnings } = await synthesizeSpeech(chunkText);
+        if (isCancelled) return null;
+        if (warnings && warnings.length > 0) setWarningNote(warnings.join(" • "));
+        const url = URL.createObjectURL(audioBlob);
+        chunkUrlsRef.current.push(url);
+        const spokenLen =
+          spokenEnd != null ? Math.min(spokenEnd, chunkText.length) : chunkText.length;
+        return { audio: new Audio(url), spokenLen };
+      };
+
+      // Phát 1 đoạn + tô sáng theo vị trí ký tự TOÀN CỤC; resolve khi đoạn kết thúc.
+      // spokenLen = số ký tự THỰC SỰ được audio đoạn này đọc (có thể < chunk.len khi backend
+      // cắt bớt) → highlight bám đúng phần audio thực đọc và chạm tới cuối phần đó.
+      const playChunk = (audio, chunk, spokenLen) =>
+        new Promise((resolve, reject) => {
+          let karaokeStarted = false;
+          let watchdog = null;
+          let lastCt = -1;
+          const armWatchdog = () => {
+            if (watchdog) clearTimeout(watchdog);
+            // Không tiến triển 20s (play() treo / 'ended' không bắn trên mạng chập chờn) →
+            // bỏ đoạn, báo lỗi thay vì treo cả hàng đợi.
+            watchdog = setTimeout(
+              () => finish(() => reject(new Error("audio stalled"))),
+              20000
+            );
+          };
+          const finish = (done) => {
+            if (watchdog) {
+              clearTimeout(watchdog);
+              watchdog = null;
+            }
+            audio.removeEventListener("ended", onEnded);
+            audio.removeEventListener("error", onError);
+            if (rafRef.current) {
+              cancelAnimationFrame(rafRef.current);
+              rafRef.current = null;
+            }
+            done();
+          };
+          const onEnded = () => finish(resolve);
+          const onError = () => finish(() => reject(new Error("audio decode error")));
+          audio.addEventListener("ended", onEnded);
+          audio.addEventListener("error", onError);
+
+          const tick = () => {
+            if (isCancelled || audioRef.current !== audio) {
+              audio.pause(); // huỷ/đã chuyển đoạn → dừng hẳn, không để phát ngầm
+              finish(resolve);
+              return;
+            }
+            const dur = audio.duration;
+            // Chỉ tô sáng khi đã có metadata VÀ audio thật sự chạy (currentTime>0).
+            if (!Number.isFinite(dur) || dur <= 0 || audio.currentTime <= 0) {
+              rafRef.current = requestAnimationFrame(tick);
+              return;
+            }
+            if (audio.currentTime !== lastCt) {
+              lastCt = audio.currentTime; // có tiến triển → gia hạn watchdog
+              armWatchdog();
+            }
+            if (!karaokeStarted) {
+              karaokeStarted = true;
+              setIsSynthesizing(false); // có tiếng đoạn đầu → tắt spinner
+              if (!wordsCollectedRef.current) collectWords(); // thu thập 1 lần
+            }
+            const p = Math.min(1, audio.currentTime / dur);
+            const effectiveLen = spokenLen != null ? spokenLen : chunk.len;
+            const globalFrac = Math.min(1, (chunk.start + effectiveLen * p) / totalChars);
+            highlightTo(Math.round(totalWordsRef.current * globalFrac));
+            rafRef.current = requestAnimationFrame(tick);
+          };
+
+          audioRef.current = audio;
+          armWatchdog();
+          audio
+            .play()
+            .then(() => {
+              if (isCancelled) {
+                audio.pause();
+                finish(resolve);
+                return;
+              }
+              rafRef.current = requestAnimationFrame(tick);
+            })
+            .catch((err) => finish(() => reject(err)));
+        });
+
+      try {
+        // 1 đoạn "đi trước": prefetch đoạn kế trong lúc đoạn hiện tại đang phát.
+        let nextAudioPromise = synthChunk(chunks[0].text);
+        for (let idx = 0; idx < chunks.length; idx += 1) {
+          const result = await nextAudioPromise;
+          if (isCancelled) return;
+          if (!result) throw new Error("Không tạo được giọng đọc.");
+
+          nextAudioPromise =
+            idx + 1 < chunks.length ? synthChunk(chunks[idx + 1].text) : Promise.resolve(null);
+          // Bắt sẵn lỗi prefetch để không bị "unhandled rejection" khi đang phát đoạn này;
+          // lỗi thật sẽ nổi lại khi `await nextAudioPromise` ở vòng sau.
+          nextAudioPromise.catch(() => {});
+
+          await playChunk(result.audio, chunks[idx], result.spokenLen);
+          if (isCancelled) return;
+        }
+        stopPlayback(); // đọc xong hết → bỏ mờ + giải phóng mọi blob ngay (không đợi lần dừng sau)
+        setIsPlaying(false);
+      } catch (error) {
+        console.error("Speech playback failed", error);
+        if (!isCancelled) {
+          stopPlayback();
+          const status = error?.response?.status;
+          toast.error(
+            status === 429
+              ? "Bạn bấm đọc hơi nhanh, thử lại sau giây lát."
+              : status === 503
+                ? "Giọng đọc tạm thời không khả dụng, thử lại sau."
+                : "Không tạo được giọng đọc, vui lòng thử lại."
+          );
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsSynthesizing(false);
+          setIsPlaying(false);
+        }
+      }
+    })();
+
+    return () => {
+      isCancelled = true;
+      stopPlayback();
+    };
+  }, [replaySignal, safeText, speechKey, stopCounter]);
 
   return (
-    <ReactMarkdown
-      components={{
-        a: renderMarkdownLink,
-      }}
-    >
-      {displayText}
-    </ReactMarkdown>
+    <>
+      <div ref={containerRef} className="karaoke-text">
+        <ReactMarkdown rehypePlugins={REHYPE_PLUGINS} components={MARKDOWN_COMPONENTS}>
+          {safeText}
+        </ReactMarkdown>
+      </div>
+
+      {isSynthesizing && (
+        <div
+          aria-live="polite"
+          style={{
+            marginTop: "8px",
+            fontSize: "0.82rem",
+            fontStyle: "italic",
+            color: "rgba(196,181,253,0.92)",
+          }}
+        >
+          🔊 Đang tạo giọng đọc…
+        </div>
+      )}
+
+      {(isPlaying || isSynthesizing) && (
+        <button
+          type="button"
+          onClick={handleStop}
+          aria-label="Dừng đọc"
+          style={{
+            marginTop: "8px",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "6px 14px",
+            borderRadius: "999px",
+            border: "1px solid rgba(255,255,255,0.18)",
+            background: "rgba(20,10,35,0.6)",
+            color: "#f3d0ff",
+            fontSize: "0.82rem",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          ⏹ Dừng đọc
+        </button>
+      )}
+
+      {warningNote && (
+        <div
+          aria-live="polite"
+          style={{
+            marginTop: "8px",
+            fontSize: "0.8rem",
+            fontStyle: "italic",
+            color: "rgba(251,191,36,0.92)",
+          }}
+        >
+          ⚠️ {warningNote}
+        </div>
+      )}
+    </>
   );
 }

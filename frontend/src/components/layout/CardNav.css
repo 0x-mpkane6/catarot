@@ -194,16 +194,15 @@
 @media (max-width: 768px) {
   .card-nav-container {
     width: 90%;
-    top: min(var(--navbar-top, 1.2em), 1.2em);
+    /* + safe-area: trong app (TWA Android edge-to-edge) thanh nav KHÔNG nằm dưới
+       thanh trạng thái (giờ/pin) → tránh khuất logo + nút. env = 0 trên web thường. */
+    top: calc(min(var(--navbar-top, 1.2em), 1.2em) + env(safe-area-inset-top, 0px));
   }
 
   .card-nav-top {
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 0.75rem;
     justify-content: space-between;
-  }
-
-  .hamburger-menu {
-    order: 2;
+    gap: 8px;
   }
 
   .logo-container {
@@ -212,8 +211,32 @@
     order: 1;
   }
 
+  /* TRƯỚC ĐÂY: display:none → mất hẳn nút "Đăng nhập" (landing) / nút hồ sơ (home)
+     trên điện thoại. Cho hiện lại, thu gọn để vừa thanh nav hẹp + cắt bớt tên dài. */
   .card-nav-cta-button {
-    display: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    order: 2;
+    /* flex-shrink:0 + min-width:max-content: giữ nút đủ rộng hiện trọn chữ
+       ("Đăng nhập" / tên người dùng). Trước đây overflow:hidden + max-width:vw
+       làm nút co còn ~31px → chữ bị cắt. Logo (dưới) co/cắt để nhường chỗ. */
+    flex-shrink: 0;
+    min-width: max-content;
+    height: 40px;
+    padding: 0 0.9rem;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  /* Logo nhường chỗ (co được) để nút CTA luôn đủ rộng hiện chữ. */
+  .logo-container {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .hamburger-menu {
+    order: 3;
   }
 
   .card-nav-content {

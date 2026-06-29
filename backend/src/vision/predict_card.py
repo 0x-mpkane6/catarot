@@ -101,6 +101,14 @@ class CardPredictor:
         self.available = False
         self._candidate_pool = _load_candidate_pool(self.tarot_images_json_path)
 
+        if not self._load_index_files():
+            LOGGER.warning("Vision index or metadata not found; predictor in fallback mode.")
+
+    def _load_index_files(self) -> bool:
+        """(Re)nạp index+meta từ đĩa. Trả True nếu nạp được. Gọi lại được ở predict() để bắt
+        trường hợp index VỪA được build ở thread nền (xem ensure_vision_index_built)."""
+        if self.available and self.index is not None:
+            return True
         try:
             resolved_index = resolve_path(self.index_path)
             resolved_meta = resolve_path(self.meta_path)
@@ -108,10 +116,10 @@ class CardPredictor:
                 self.index = load_index(resolved_index)
                 self.meta = load_meta(resolved_meta)
                 self.available = True
-            else:
-                LOGGER.warning("Vision index or metadata not found; predictor in fallback mode.")
+                return True
         except Exception as exc:
             LOGGER.warning("Failed to load vision index: %s", exc)
+        return False
 
     def _fallback_result(self) -> dict:
         candidates = [
@@ -140,6 +148,8 @@ class CardPredictor:
         return output
 
     def predict(self, image_path: str) -> dict:
+        if not self.available:
+            self._load_index_files()  # index có thể vừa được build ở thread nền
         if not self.available or self.index is None:
             return self._fallback_result()
 

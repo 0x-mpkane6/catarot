@@ -248,7 +248,9 @@ def draw_today_card(*, user_id: int, mood_pre: Any = None) -> dict[str, Any]:
                 )
                 if existing is not None:
                     return _serialize_daily_card(existing)
-            raise
+            # Đua hiếm: trúng IntegrityError nhưng session mới vẫn không thấy bản ghi.
+            # Trả lỗi nghiệp vụ (endpoint map sang HTTP 400) thay vì re-raise → tránh 500.
+            raise ValueError("Bạn đã rút lá bài hôm nay rồi.")
         return _serialize_daily_card(record)
 
 

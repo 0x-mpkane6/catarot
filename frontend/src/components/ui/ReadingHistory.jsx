@@ -91,7 +91,7 @@ export default function ReadingHistory({
           right: 0,
 
           width: "22%",
-          minWidth: "360px",
+          minWidth: "min(360px, 100vw)",
 
           height: "100vh",
 
@@ -119,6 +119,33 @@ export default function ReadingHistory({
           boxSizing: "border-box",
         }}
       >
+
+        {/* Nút đóng (trước đây chỉ đóng được bằng backdrop — bị panel full màn che). */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Đóng"
+          style={{
+            position: "fixed",
+            top: "calc(12px + env(safe-area-inset-top, 0px))",
+            right: "12px",
+            width: "44px",
+            height: "44px",
+            borderRadius: "50%",
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(20,12,36,0.65)",
+            color: "#fff",
+            fontSize: "20px",
+            lineHeight: 1,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            zIndex: 5,
+          }}
+        >
+          ✕
+        </button>
 
         {/* TITLE */}
         <div

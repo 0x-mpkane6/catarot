@@ -73,15 +73,17 @@ def test_waveform_to_wav_bytes_clips_out_of_range() -> None:
 
 def test_synthesize_disabled_returns_none(monkeypatch) -> None:
     monkeypatch.setenv("TTS_ENABLED", "false")
-    audio, warnings = tts.synthesize_vietnamese("Xin chào")
+    audio, spoken_end, warnings = tts.synthesize_vietnamese("Xin chào")
     assert audio is None
+    assert spoken_end == 0
     assert any("tắt" in w for w in warnings)
 
 
 def test_synthesize_empty_text_returns_none(monkeypatch) -> None:
     monkeypatch.setenv("TTS_ENABLED", "true")
-    audio, warnings = tts.synthesize_vietnamese("   ")
+    audio, spoken_end, warnings = tts.synthesize_vietnamese("   ")
     assert audio is None
+    assert spoken_end == 0
     assert warnings
 
 
@@ -89,34 +91,37 @@ def test_synthesize_handles_model_failure_gracefully(monkeypatch) -> None:
     monkeypatch.setenv("TTS_ENABLED", "true")
     monkeypatch.setattr(tts, "_module_available", lambda name: True)
 
-    def _boom():
-        raise RuntimeError("model load failed")
+    def _boom(*args, **kwargs):
+        raise RuntimeError("synthesis failed")
 
-    tts._get_model_and_tokenizer.cache_clear()
-    monkeypatch.setattr(tts, "_get_model_and_tokenizer", _boom)
+    monkeypatch.setattr(tts, "_edge_synthesize", _boom)
 
-    audio, warnings = tts.synthesize_vietnamese("Xin chào")
+    audio, spoken_end, warnings = tts.synthesize_vietnamese("Xin chào")
     assert audio is None
+    assert spoken_end == 0
     assert warnings  # đã ghi cảnh báo thay vì ném lỗi
 
 
 # --- Endpoint /api/tts ----------------------------------------------------------
 
-def test_tts_endpoint_returns_wav(monkeypatch) -> None:
+def test_tts_endpoint_returns_audio(monkeypatch) -> None:
     pytest.importorskip("fastapi")
     import src.main as main_module
 
     main_module = importlib.reload(main_module)
-    fake_wav = b"RIFF\x00\x00\x00\x00WAVEfake-pcm"
-    monkeypatch.setattr(main_module, "synthesize_vietnamese", lambda text: (fake_wav, []))
+    fake_audio = b"ID3fake-mp3-bytes"
+    monkeypatch.setattr(
+        main_module, "synthesize_vietnamese", lambda text: (fake_audio, len(text), [])
+    )
 
     response = main_module.text_to_speech(
         req=main_module.TtsRequest(text="Xin chào"),
         request=None,
     )
 
-    assert response.media_type == "audio/wav"
-    assert response.body == fake_wav
+    assert response.media_type == "audio/mpeg"
+    assert response.body == fake_audio
+    assert response.headers["X-TTS-Spoken-End"] == str(len("Xin chào"))
 
 
 def test_tts_endpoint_empty_text_returns_400() -> None:
@@ -142,7 +147,7 @@ def test_tts_endpoint_unavailable_returns_503(monkeypatch) -> None:
     monkeypatch.setattr(
         main_module,
         "synthesize_vietnamese",
-        lambda text: (None, ["Thiếu thư viện transformers; không thể tạo giọng đọc."]),
+        lambda text: (None, 0, ["Thiếu thư viện transformers; không thể tạo giọng đọc."]),
     )
 
     with pytest.raises(HTTPException) as exc_info:
@@ -167,7 +172,7 @@ def test_tts_endpoint_vietnamese_warning_header_is_latin1_safe(monkeypatch) -> N
     fake_wav = b"RIFF\x00\x00\x00\x00WAVEfake-pcm"
     warning = "Văn bản dài hơn 1200 ký tự nên đã được cắt bớt khi đọc."
     monkeypatch.setattr(
-        main_module, "synthesize_vietnamese", lambda text: (fake_wav, [warning])
+        main_module, "synthesize_vietnamese", lambda text: (fake_wav, len(text), [warning])
     )
 
     response = main_module.text_to_speech(
@@ -184,14 +189,11 @@ def test_tts_endpoint_vietnamese_warning_header_is_latin1_safe(monkeypatch) -> N
 def test_synthesize_real_model_integration() -> None:
     flag = os.getenv("TTS_INTEGRATION_TEST", "").strip().lower()
     if flag not in {"1", "true", "yes"}:
-        pytest.skip("Đặt TTS_INTEGRATION_TEST=1 để chạy tổng hợp thật (tải ~145MB từ HF).")
-    if not tts._module_available("transformers"):
-        pytest.skip("Chưa cài transformers.")
+        pytest.skip("Đặt TTS_INTEGRATION_TEST=1 để chạy tổng hợp thật qua edge-tts (cần mạng).")
+    if not tts._module_available("edge_tts"):
+        pytest.skip("Chưa cài edge-tts.")
 
-    tts._get_model_and_tokenizer.cache_clear()
-    audio, _warnings = tts.synthesize_vietnamese("Xin chào, đây là một bài đọc thử.")
+    audio, _spoken_end, _warnings = tts.synthesize_vietnamese("Xin chào, đây là một bài đọc thử.")
 
     assert audio is not None
-    assert audio[:4] == b"RIFF"
-    with wave.open(io.BytesIO(audio), "rb") as handle:
-        assert handle.getnframes() > 0
+    assert len(audio) > 0

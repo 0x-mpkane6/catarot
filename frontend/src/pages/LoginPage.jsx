@@ -62,7 +62,7 @@ export default function LoginPage() {
           position: "relative",
           zIndex: 10,
 
-          width: "485px",
+          width: "min(485px, calc(100vw - 24px))",
 
           padding: "50px 40px",
 

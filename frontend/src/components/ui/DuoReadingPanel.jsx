@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   Check,
   Copy,
@@ -25,8 +26,13 @@ import {
 } from "../../services/duoService";
 import MysticLoader from "./MysticLoader";
 import SpeechPlaybackMessage from "./SpeechPlaybackMessage";
+import useIsMobile from "../../hooks/useIsMobile";
 
 const ACTIVE_DUO_SESSION_KEY = "active_duo_session_id";
+
+// Dưới ngưỡng này, panel kết quả CHẢY XUỐNG DƯỚI phòng (xếp dọc) thay vì neo nổi
+// bên phải — tránh đè lên nội dung phòng ở các màn hẹp/vừa (≤1100px).
+const DUO_RESULT_STACK_BREAKPOINT = 1100;
 
 const getErrorMessage = (error) =>
   error?.response?.data?.detail ||
@@ -163,6 +169,8 @@ export default function DuoReadingPanel() {
   const [error, setError] = useState("");
   const [copiedResult, setCopiedResult] = useState(false);
   const [replaySignal, setReplaySignal] = useState(0);
+  const [pollStalled, setPollStalled] = useState(false);
+  const pollCountRef = useRef(0);
 
   const storedUser = useMemo(
     () => getStoredUser(),
@@ -202,6 +210,17 @@ export default function DuoReadingPanel() {
     hasBothCards &&
     duoSession?.status !== "completed" &&
     duoSession?.status !== "failed";
+  const showFloatingResultSidebar =
+    view === "room" &&
+    duoSession?.status === "completed" &&
+    duoSession?.reading?.generated_text;
+
+  // Màn hẹp/vừa: xếp kết quả xuống dưới (tránh đè phòng). Màn rộng: neo nổi mép phải.
+  const stackResultBelow = useIsMobile(
+    DUO_RESULT_STACK_BREAKPOINT
+  );
+  const dockResultRight =
+    showFloatingResultSidebar && !stackResultBelow;
 
   const isOwner =
     currentUserId !== null &&
@@ -290,15 +309,36 @@ export default function DuoReadingPanel() {
       return undefined;
     }
 
+    // Mỗi lần (re)start poll: reset bộ đếm + cờ treo.
+    pollCountRef.current = 0;
+    setPollStalled(false);
+
+    // Sinh trải bài chung là đồng bộ (vài giây); nếu poll quá ngưỡng (~90s) coi như backend
+    // treo → DỪNG poll vô hạn + báo người dùng thay vì để dòng "Đang tạo..." xoay mãi.
+    const MAX_POLLS = 45;
+
     const intervalId =
       window.setInterval(
         async () => {
+          pollCountRef.current += 1;
+          if (pollCountRef.current > MAX_POLLS) {
+            window.clearInterval(intervalId);
+            setPollStalled(true);
+            return;
+          }
           try {
             const payload =
               await getDuoSession(
                 duoSession.id
               );
-            setDuoSession(payload);
+            // Chống đua: KHÔNG để snapshot poll CŨ ghi đè state MỚI hơn (vd vừa upload lá xong
+            // làm card chớp tắt). So updated_at — chỉ cập nhật nếu payload mới hơn (hoặc thiếu mốc).
+            setDuoSession((prev) => {
+              const prevTs = prev?.updated_at;
+              const nextTs = payload?.updated_at;
+              if (prevTs && nextTs && nextTs < prevTs) return prev;
+              return payload;
+            });
           } catch (err) {
             console.warn(
               "Duo polling failed",
@@ -435,6 +475,8 @@ export default function DuoReadingPanel() {
 
   const handleUploadMyCard =
     async () => {
+    if (loading) return;
+
     if (participants.length < 2) {
       toast.error("Đang chờ bạn đồng hành tham gia.");
       return;
@@ -560,56 +602,119 @@ export default function DuoReadingPanel() {
     </div>
   );
 
-  const renderRoom = () => (
-    <div className="duo-reading-panel__room-layout">
-      <div className="duo-reading-panel__room-main">
-        <div className="duo-reading-panel__room-header">
-          <div className="duo-reading-panel__invite-card">
-            <div>
-              <div className="duo-reading-panel__meta-title">
-                Mã mời
-              </div>
-
-              <div className="duo-reading-panel__meta-value">
-                {duoSession?.invite_code || "N/A"}
-              </div>
+  const renderResultSidebar = () => (
+    <aside className="duo-reading-panel__floating-sidebar">
+      <div className="duo-reading-panel__floating-sidebar-card">
+        <div className="duo-reading-panel__result">
+          <div className="duo-reading-panel__result-header">
+            <div className="duo-reading-panel__field-label duo-reading-panel__field-label--tight">
+              Kết quả Trải Bài Đôi
             </div>
 
-            <button
-              type="button"
-              className="duo-reading-panel__copy-button"
-              onClick={handleCopyInviteCode}
-              title="Sao chép mã mời"
-            >
-              <Copy size={16} />
-            </button>
+            <div className="duo-reading-panel__result-actions">
+              <button
+                type="button"
+                className="duo-reading-panel__icon-button"
+                title="Đọc kết quả"
+                aria-label="Đọc kết quả"
+                onClick={() =>
+                  setReplaySignal(
+                    (prev) => prev + 1
+                  )
+                }
+              >
+                <Volume2 size={18} aria-hidden="true" />
+              </button>
+
+              <button
+                type="button"
+                className="duo-reading-panel__icon-button"
+                title="Sao chép kết quả"
+                aria-label="Sao chép kết quả"
+                onClick={handleCopyReadingResult}
+              >
+                {copiedResult ? (
+                  <Check size={18} aria-hidden="true" />
+                ) : (
+                  <Copy size={18} aria-hidden="true" />
+                )}
+              </button>
+            </div>
           </div>
 
-          <div className="duo-reading-panel__header-actions">
-            <button
-              type="button"
-              className="duo-reading-panel__icon-button"
-              onClick={handleRefresh}
-              disabled={loading}
-              title="Làm mới phòng"
-            >
-              <RefreshCw size={18} />
-            </button>
-
-            <button
-              type="button"
-              className="duo-reading-panel__icon-button duo-reading-panel__icon-button--danger"
-              title="Rời phòng"
-              onClick={handleLeaveRoom}
-            >
-              <SquareArrowRightExit size={18} />
-            </button>
+          <div className="duo-reading-panel__result-text">
+            <SpeechPlaybackMessage
+              text={duoReadingText}
+              speechKey={duoSpeechKey}
+              replaySignal={replaySignal}
+            />
           </div>
         </div>
+      </div>
+    </aside>
+  );
 
-        <div className="duo-reading-panel__status-note">
-          {getStatusMessage(duoSession)}
+  const renderRoom = () => (
+    <>
+      <div className="duo-reading-panel__room-header">
+        <div className="duo-reading-panel__invite-card">
+          <div>
+            <div className="duo-reading-panel__meta-title">
+              Mã mời
+            </div>
+
+            <div className="duo-reading-panel__meta-value">
+              {duoSession?.invite_code || "N/A"}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="duo-reading-panel__copy-button"
+            onClick={handleCopyInviteCode}
+            title="Sao chép mã mời"
+            aria-label="Sao chép mã mời"
+          >
+            <Copy size={16} aria-hidden="true" />
+          </button>
         </div>
+
+        <div className="duo-reading-panel__header-actions">
+          <button
+            type="button"
+            className="duo-reading-panel__icon-button"
+            onClick={handleRefresh}
+            disabled={loading}
+            title="Làm mới phòng"
+            aria-label="Làm mới phòng"
+          >
+            <RefreshCw size={18} aria-hidden="true" />
+          </button>
+
+          <button
+            type="button"
+            className="duo-reading-panel__icon-button duo-reading-panel__icon-button--danger"
+            title="Rời phòng"
+            aria-label="Rời phòng"
+            onClick={handleLeaveRoom}
+          >
+            <SquareArrowRightExit size={18} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+
+      <div className="duo-reading-panel__status-note">
+        {getStatusMessage(duoSession)}
+      </div>
+
+      {pollStalled && (
+        <div
+          role="alert"
+          className="duo-reading-panel__stall-alert"
+        >
+          Quá lâu chưa có kết quả. Thử bấm làm mới, hoặc rời phòng rồi tạo lại.
+        </div>
+      )}
 
         <div className="duo-reading-panel__section">
           <div className="duo-reading-panel__field-label">
@@ -716,8 +821,9 @@ export default function DuoReadingPanel() {
                       className="duo-reading-panel__preview-remove"
                       onClick={clearSelectedImage}
                       title="Xóa ảnh đã chọn"
+                      aria-label="Xóa ảnh đã chọn"
                     >
-                      <X size={14} />
+                      <X size={14} aria-hidden="true" />
                     </button>
                   </div>
                 )}
@@ -752,74 +858,21 @@ export default function DuoReadingPanel() {
               Trải bài chung sẽ được tạo tự động sau khi cả hai lá bài được tải lên.
             </div>
           )}
-      </div>
-
-      <aside className="duo-reading-panel__sidebar">
-        {duoSession?.status === "completed" &&
-        duoSession?.reading ? (
-          <div className="duo-reading-panel__result">
-            <div className="duo-reading-panel__result-header">
-              <div className="duo-reading-panel__field-label duo-reading-panel__field-label--tight">
-                Kết quả Trải Bài Đôi
-              </div>
-
-              <div className="duo-reading-panel__result-actions">
-                <button
-                  type="button"
-                  className="duo-reading-panel__icon-button"
-                  title="Đọc kết quả"
-                  onClick={() =>
-                    setReplaySignal(
-                      (prev) => prev + 1
-                    )
-                  }
-                >
-                  <Volume2 size={18} />
-                </button>
-
-                <button
-                  type="button"
-                  className="duo-reading-panel__icon-button"
-                  title="Sao chép kết quả"
-                  onClick={handleCopyReadingResult}
-                >
-                  {copiedResult ? (
-                    <Check size={18} />
-                  ) : (
-                    <Copy size={18} />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div className="duo-reading-panel__result-text">
-              <SpeechPlaybackMessage
-                text={duoReadingText}
-                autoPlay
-                speechKey={duoSpeechKey}
-                replaySignal={replaySignal}
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="duo-reading-panel__sidebar-placeholder">
-            Kết quả Trải Bài Đôi sẽ hiện ở đây sau khi cả hai người tải lá bài lên xong.
-          </div>
-        )}
-      </aside>
-    </div>
+    </>
   );
 
   return (
-    <div className="duo-reading-panel-shell">
+    <div
+      className={`duo-reading-panel-shell ${
+        dockResultRight
+          ? "duo-reading-panel-shell--docked-result"
+          : ""
+      }`}
+    >
       <div
         className={`duo-reading-panel ${
           view === "landing"
             ? "duo-reading-panel--landing"
-            : ""
-        } ${
-          view === "room"
-            ? "duo-reading-panel--room"
             : ""
         }`}
       >
@@ -835,6 +888,20 @@ export default function DuoReadingPanel() {
           )}
         </div>
       </div>
+
+      {/* Màn hẹp/vừa (≤1100px): render INLINE trong shell để kết quả xếp dọc
+          ngay dưới phòng (shell chuyển flex-direction:column ở media query). */}
+      {showFloatingResultSidebar &&
+        stackResultBelow &&
+        renderResultSidebar()}
+
+      {/* Màn rộng: Portal ra <body> để THOÁT ancestor có transform (wrapper duo
+          dùng translate(-50%,-50%) tạo containing block khiến position:fixed bị
+          neo theo wrapper thay vì viewport). Đồng thời shell dời phòng sang trái
+          (--docked-result) để panel nổi mép phải không đè lên nội dung phòng. */}
+      {showFloatingResultSidebar &&
+        dockResultRight &&
+        createPortal(renderResultSidebar(), document.body)}
 
       {showDuoGeneratingOverlay && (
         <MysticLoader label="Đang tạo trải bài đôi" />

@@ -44,7 +44,7 @@ export default function ContactPanel({
           right: 0,
 
           width: "35%",
-          minWidth: "520px",
+          minWidth: "min(520px, 100vw)",
 
           height: "100vh",
 
@@ -77,6 +77,33 @@ export default function ContactPanel({
           overflowX: "hidden",
         }}
       >
+        {/* Nút đóng: trước đây panel full màn che hết backdrop → không có chỗ bấm
+            để thoát (bị kẹt). position:fixed neo trong panel (panel có transform). */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Đóng"
+          style={{
+            position: "fixed",
+            top: "calc(12px + env(safe-area-inset-top, 0px))",
+            right: "12px",
+            width: "44px",
+            height: "44px",
+            borderRadius: "50%",
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(20,12,36,0.65)",
+            color: "#fff",
+            fontSize: "20px",
+            lineHeight: 1,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            zIndex: 5,
+          }}
+        >
+          ✕
+        </button>
 
         {/* TITLE */}
         <div

@@ -1,0 +1,35 @@
+/* Tấm phủ chuyển cảnh — phủ TOÀN màn, trên mọi thứ (kể cả nav z-99).
+   pointer-events:none để không nuốt thao tác; nó chỉ sống ~0.6s mỗi lần. */
+.cosmic-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(168, 85, 247, 0.5), transparent 62%),
+    linear-gradient(to bottom, rgba(5, 5, 16, 0.97), rgba(9, 1, 20, 0.99));
+}
+
+.cosmic-veil__glow {
+  width: 240px;
+  height: 240px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    rgba(236, 72, 153, 0.42),
+    rgba(168, 85, 247, 0.26) 45%,
+    transparent 70%
+  );
+  filter: blur(10px);
+  will-change: transform, opacity;
+}
+
+.cosmic-veil__rune {
+  position: absolute;
+  font-size: 2.4rem;
+  color: #fdf4ff;
+  text-shadow: 0 0 24px rgba(216, 180, 254, 0.9);
+  will-change: transform, opacity;
+}
