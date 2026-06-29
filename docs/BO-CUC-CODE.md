@@ -1,6 +1,6 @@
 # Bố cục mã nguồn CATAROT
 
-Đây là bản đồ code để đọc nhanh: thư mục nào làm gì, file nào lo việc gì, và một request đọc bài đi qua những đâu. Dùng khi cần review hoặc chấm code mà không muốn lội từ đầu.
+Đây là bản đồ code để đọc nhanh: thư mục nào làm gì, file nào lo việc gì, và một request đọc bài đi qua những bước nào. Dùng khi cần review hoặc chấm code mà không muốn lội từ đầu.
 
 ## Tổng quan repo (monorepo)
 
@@ -14,7 +14,7 @@ llm-tarot-reader/
   docker-compose.yml   # Chạy full-stack bằng một lệnh
 ```
 
-Backend chia làm ba tầng. `main.py` lo phần HTTP và định tuyến, gọi xuống `advanced` và `pipeline` xử lý nghiệp vụ, dưới cùng là `db` lo dữ liệu.
+Backend chia làm ba tầng. `main.py` lo phần HTTP và định tuyến. Nó gọi xuống `advanced` và `pipeline` để xử lý nghiệp vụ, còn `db` ở dưới cùng lo dữ liệu.
 
 ---
 
@@ -69,7 +69,7 @@ Backend chia làm ba tầng. `main.py` lo phần HTTP và định tuyến, gọi
 | `affirmations.py` | Câu khẳng định tất định (hash SHA-1, không tốn LLM). |
 | `dream_journal.py` | Nhật ký giấc mơ: trích biểu tượng, ánh xạ lá bài, diễn giải tổng hợp cộng liên hệ phiên đọc và câu hỏi phản tư. |
 | `conversation.py` | Hội thoại tiếp nối (giữ 8 lượt gần nhất, tóm tắt lượt cũ). |
-| `community_room.py` | Phòng cộng đồng: đăng ẩn danh, vote, kiểm duyệt (chống N cộng 1, chống đua vote). |
+| `community_room.py` | Phòng cộng đồng: đăng ẩn danh, vote, kiểm duyệt (tránh truy vấn N cộng 1, chống đua vote). |
 | `community_automod.py` | Bot kiểm duyệt hai lớp (luật cộng Gemini), chống prompt injection, nghi ngờ thì escalate. |
 | `duo_reading.py` | Đọc bài đôi realtime (WebSocket cộng invite code). |
 | `time_capsule.py` | Viên nang thời gian (niêm phong dự đoán, mở khi tới hạn). |

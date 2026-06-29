@@ -26,7 +26,7 @@ Khi làm phần này, nhóm đặt ra mấy mục tiêu:
 - Trên máy tính có vài hiệu ứng đi theo con trỏ chuột; lên điện thoại không còn con trỏ nên phải thay bằng hiệu ứng hợp với cảm ứng.
 - Đóng gói được thành app Android để cài như một ứng dụng bình thường, nhưng vẫn giữ chi phí ở mức tối thiểu cho một đồ án sinh viên.
 
-Một quy tắc được giữ xuyên suốt: mọi thay đổi cho điện thoại đều khoanh vùng riêng (theo cờ `isMobile` hoặc `@media`), không làm xê dịch giao diện máy tính vốn đã chạy ổn.
+Nhóm giữ một nguyên tắc đơn giản: mọi thay đổi cho điện thoại đều khoanh vùng riêng (theo cờ `isMobile` hoặc `@media`), để giao diện máy tính vốn đã chạy ổn không bị ảnh hưởng.
 
 ---
 
@@ -44,7 +44,7 @@ Nhóm chọn hướng TWA. CATAROT vốn đã là một website hoàn chỉnh, k
 
 ![Sơ đồ luồng build: mã nguồn frontend qua Vite, deploy Cloudflare, hiển thị trên web và bọc thành app TWA](images/12-mobile-twa-build.png)
 
-Nói gọn lại: cập nhật giao diện trên điện thoại thực chất là triển khai lại bản web.
+Tóm lại, cập nhật giao diện trên điện thoại chỉ là triển khai lại bản web.
 
 ---
 
@@ -93,7 +93,7 @@ Hai phác thảo dưới đây minh họa bố cục Trang Chủ và một "phò
 Trên máy tính có một số hiệu ứng dựa vào con trỏ chuột, chẳng hạn vệt sáng đi theo con trỏ hay lá bài nhô lên khi rê chuột. Những thứ này vô nghĩa trên màn cảm ứng vì không có con trỏ, lại còn tốn tài nguyên, nên bản điện thoại thay bằng:
 
 - Nền cực quang động: vài vầng sáng tím và hồng trôi chậm phía sau nội dung, tạo cảm giác sống động mà không cần con trỏ.
-- Hiệu ứng chuyển cảnh khi đổi giữa các mục: một lớp phủ quét qua che đúng lúc nội dung được thay, nhờ vậy người dùng không thấy cảnh nhảy đột ngột.
+- Hiệu ứng chuyển cảnh khi đổi giữa các mục: một lớp phủ quét qua che đúng lúc nội dung được thay, nên người dùng không thấy cảnh nhảy đột ngột.
 - Rung nhẹ khi chọn lá, xác nhận rút bài hay mở menu (dùng `navigator.vibrate`; máy không hỗ trợ thì bỏ qua).
 - Linh vật mèo: chạm vào là rút nhanh một lá ngẫu nhiên. Mèo chỉ xuất hiện ở màn chính và tự ẩn khi mở màn đọc bài để khỏi che ô nhập.
 - Thẻ bài hiện ra lần lượt khi vào trang, gợi cảm giác đang bày bộ bài.
@@ -110,7 +110,7 @@ Toàn bộ hiệu ứng chỉ dùng các thuộc tính nhẹ (transform và opac
 
 - Nếu người dùng bật "Giảm chuyển động" trong hệ điều hành, hook `useReducedMotion` sẽ nhận biết và tắt bớt hiệu ứng nền lẫn chuyển cảnh.
 - Hook `useInView` (dựa trên `IntersectionObserver`) chỉ chạy hiệu ứng khi phần tử lọt vào khung nhìn, tránh chạy thừa.
-- Các hoạt ảnh đều ưu tiên `transform` và `opacity` thay vì những thuộc tính làm dồn lại bố cục, nhờ vậy khung hình ổn định hơn và đỡ tốn pin.
+- Các hoạt ảnh đều ưu tiên `transform` và `opacity` thay vì những thuộc tính làm dồn lại bố cục, nên khung hình ổn định hơn và đỡ tốn pin.
 - Các màn được kiểm tra để không bị tràn ngang, không xuất hiện thanh cuộn ngang ngoài ý muốn.
 
 ---

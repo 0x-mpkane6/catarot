@@ -36,7 +36,7 @@ Phần sinh luận giải dựa vào LLM bên ngoài, mà các dịch vụ này 
 
 ## 4. Luồng một lượt đọc bài
 
-Sơ đồ dưới đây theo chân một lượt đọc bài từ lúc người dùng gửi câu hỏi cho tới khi nhận lại kết quả. Sau khi qua rate limit và bước kiểm tra dữ liệu bằng Pydantic, backend lấy `user_id` từ JWT chứ không tin phần thân request, rồi gọi pipeline xử lý đa phương thức và LLM. Có một điểm đáng chú ý: bước lưu kết quả vào cơ sở dữ liệu nuốt lỗi mềm. Nếu ghi thất bại, người dùng vẫn nhận được luận giải, chỉ là lượt đọc đó không được lưu lại.
+Sơ đồ dưới đây theo chân một lượt đọc bài từ lúc người dùng gửi câu hỏi cho tới khi nhận lại kết quả. Sau khi qua rate limit và bước kiểm tra dữ liệu bằng Pydantic, backend lấy `user_id` từ JWT chứ không tin phần thân request, rồi gọi pipeline xử lý đa phương thức và LLM. Bước lưu kết quả vào cơ sở dữ liệu được làm theo kiểu nuốt lỗi mềm: nếu ghi hỏng thì người dùng vẫn nhận được luận giải, chỉ là lượt đọc đó không lưu lại.
 
 ![Sơ đồ tuần tự một lượt đọc bài giữa người dùng, frontend, backend, pipeline, LLM và database](images/04-luong-doc-bai.png)
 
@@ -76,7 +76,7 @@ Toàn bộ lược đồ có 24 bảng. Để dễ hình dung, nên nhóm chúng
 
 ## 8. Đọc bài đôi: máy trạng thái
 
-Một phiên đọc bài đôi đi qua vài trạng thái rõ ràng. Chủ phòng tạo phòng và giữ slot A, hệ thống chờ người thứ hai vào slot B, rồi chờ cả hai rút đủ lá. Khi đã đủ hai lá, phiên chuyển sang gọi LLM, và lệnh gọi này được đặt ngoài transaction để cuộc gọi mạng kéo dài không giữ khóa cơ sở dữ liệu. Nếu sinh luận giải lỗi thì vẫn có fallback tất định, nhờ vậy phiên không kẹt giữa chừng.
+Một phiên đọc bài đôi đi qua vài trạng thái rõ ràng. Chủ phòng tạo phòng và giữ slot A, hệ thống chờ người thứ hai vào slot B, rồi chờ cả hai rút đủ lá. Khi đã đủ hai lá, phiên chuyển sang gọi LLM, và lệnh gọi này được đặt ngoài transaction để cuộc gọi mạng kéo dài không giữ khóa cơ sở dữ liệu. Nếu sinh luận giải lỗi thì vẫn có fallback tất định nên phiên không kẹt giữa chừng.
 
 ![Máy trạng thái của phiên đọc bài đôi: waiting_partner, waiting_cards, generating, completed, failed](images/08-duo-state.png)
 
