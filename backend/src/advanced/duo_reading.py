@@ -351,12 +351,15 @@ def generate_duo_reading_for_session(duo_session_id: int) -> dict[str, Any] | No
         # Bản thua → đọc lại bản đã tồn tại và UPDATE, thay vì để IntegrityError → HTTP 500.
         with session_scope() as session:
             duo = session.scalar(select(DuoSession).where(DuoSession.id == duo_session_id))
-            if duo is not None:
-                duo.status = "completed"
-                duo.updated_at = datetime.now(timezone.utc)
             existing_reading = session.scalar(
                 select(DuoReading).where(DuoReading.duo_session_id == duo_session_id)
             )
+            if duo is not None:
+                # CHỈ chốt "completed" khi đã có DuoReading thật. Nếu chưa có (đua hiếm: INSERT
+                # phía kia rollback) thì giữ "generating" để lần poll/retry sau sinh lại — tránh
+                # kẹt phiên ở "completed" mà KHÔNG có reading nào.
+                duo.status = "completed" if existing_reading is not None else "generating"
+                duo.updated_at = datetime.now(timezone.utc)
             if existing_reading is not None:
                 existing_reading.generated_text = narrative
                 existing_reading.llm_model = llm_model

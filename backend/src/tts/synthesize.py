@@ -113,6 +113,28 @@ def _waveform_to_wav_bytes(waveform: np.ndarray, sample_rate: int) -> bytes:
     return buffer.getvalue()
 
 
+def _run_sync(coro):
+    """Chạy một coroutine đến khi xong, an toàn cả khi thread hiện tại đã có event loop.
+
+    Endpoint TTS thường chạy trong threadpool (không có loop) → tự tạo loop mới. Nhưng nếu
+    được gọi từ thread đã có loop đang chạy (vd test/async context), asyncio.run sẽ ném lỗi;
+    khi đó chạy ở một thread riêng với loop riêng để không đụng loop đang chạy.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
+    # Thread này đã có event loop đang chạy → chạy ở thread riêng với loop riêng.
+    import concurrent.futures
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(lambda: asyncio.run(coro)).result()
+
+
 async def _edge_synthesize(text: str, voice: str) -> bytes:
     """Gọi edge-tts, gom các chunk audio MP3 thành bytes."""
     import edge_tts  # type: ignore
@@ -152,11 +174,11 @@ def synthesize_vietnamese(text: str | None) -> tuple[bytes | None, int, list[str
 
     try:
         spoken = _strip_markdown(cleaned) or cleaned
-        # edge-tts là async; endpoint chạy trong threadpool nên asyncio.run an toàn (không có
-        # event loop sẵn trong thread đó).
+        # edge-tts là async; chạy đồng bộ qua _run_sync để an toàn cả khi thread đã có event
+        # loop đang chạy (không chỉ threadpool không-loop).
         # Bọc timeout: edge-tts goi dich vu mang ngoai; neu treo, asyncio.TimeoutError se duoc
         # khoi except ben duoi bat -> tra None + canh bao mem (khong giu thread vo han).
-        audio_bytes = asyncio.run(
+        audio_bytes = _run_sync(
             asyncio.wait_for(_edge_synthesize(spoken, _voice()), timeout=_tts_timeout())
         )
         if not audio_bytes:

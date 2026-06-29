@@ -7,6 +7,7 @@ index/thư viện → trả snippet placeholder thay vì báo lỗi.
 """
 from __future__ import annotations
 
+import os
 import pickle
 
 
@@ -15,6 +16,20 @@ from src.utils.config import resolve_path
 from src.utils.logging import get_logger
 
 LOGGER = get_logger(__name__)
+
+# Ngưỡng điểm tối thiểu để giữ một snippet. Index là IndexFlatIP + vector chuẩn hoá L2 nên điểm
+# CHÍNH LÀ cosine similarity (càng LỚN càng giống). Mặc định 0.1: đủ thấp để embedder demo
+# (bag-of-words, cosine thực tế ~0.12 cho lá đúng) không bị loại oan, vẫn cắt được nhiễu rõ rệt.
+# Production (sentence-transformer cho cosine cao hơn) có thể nâng qua env RAG_MIN_SCORE (vd 0.2).
+_DEFAULT_RAG_MIN_SCORE = 0.1
+
+
+def _min_score() -> float:
+    """Đọc ngưỡng điểm tối thiểu từ env RAG_MIN_SCORE; lỗi/định dạng sai → về mặc định."""
+    try:
+        return float(os.getenv("RAG_MIN_SCORE", str(_DEFAULT_RAG_MIN_SCORE)))
+    except (TypeError, ValueError):
+        return _DEFAULT_RAG_MIN_SCORE
 
 try:
     import faiss  # type: ignore
@@ -138,6 +153,12 @@ class RagRetriever:
             query = f"{query} orientation={orientation}"
 
         raw_rows = self._search(query, top_n=max(desired_k * 5, 10))
+
+        # Cắt nhiễu trước khi lọc theo lá/chiều: bỏ snippet có cosine similarity dưới ngưỡng.
+        # Nếu sau lọc còn thiếu, các lớp dự phòng phía dưới (cùng lá khác chiều, placeholder)
+        # vẫn bù đủ số snippet tối thiểu nên hành vi "luôn đủ desired_k" được giữ nguyên.
+        min_score = _min_score()
+        raw_rows = [row for row in raw_rows if float(row.get("score", 0.0)) >= min_score]
 
         filtered = []
         for row in raw_rows:

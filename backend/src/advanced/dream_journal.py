@@ -29,6 +29,17 @@ _MAJOR_ARCANA: tuple[str, ...] = (
 )
 _ARCANA_BY_LOWER: dict[str, str] = {name.lower(): name for name in _MAJOR_ARCANA}
 
+# Dùng MỘT ReadingGenerator dùng chung cho cả module (đọc prompt + env chỉ một lần), thay vì
+# tạo mới mỗi lần map biểu tượng — đồng nhất với _get_followup_generator ở conversation.py.
+_DREAM_GENERATOR: ReadingGenerator | None = None
+
+
+def _get_dream_generator() -> ReadingGenerator:
+    global _DREAM_GENERATOR
+    if _DREAM_GENERATOR is None:
+        _DREAM_GENERATOR = ReadingGenerator()
+    return _DREAM_GENERATOR
+
 
 def _symbol_map() -> dict[str, list[str]]:
     path = resolve_path("./configs/dream_symbol_map.json")
@@ -54,29 +65,6 @@ def _fallback_meaning(symbol: str, cards: list[str]) -> str:
     if cards:
         return f"Biểu tượng “{symbol}” trong giấc mơ gợi liên hệ tới {', '.join(cards)}."
     return f"Biểu tượng “{symbol}” mang sắc thái cần chiêm nghiệm thêm."
-
-
-def _llm_complete(reader: ReadingGenerator, system_prompt: str, user_prompt: str) -> str:
-    """Gọi LLM theo cùng thứ tự ưu tiên của hệ thống: Gemini → OpenAI → Groq → Ollama."""
-    attempts = []
-    if reader.gemini_api_key:
-        attempts.append(lambda: reader._generate_gemini(system_prompt, user_prompt))
-    if reader.api_key:
-        attempts.append(lambda: reader._generate_openai(system_prompt, user_prompt))
-    if reader.groq_api_key:
-        attempts.append(lambda: reader._generate_groq(system_prompt, user_prompt))
-    if reader.ollama_enabled:
-        attempts.append(lambda: reader._generate_ollama(system_prompt, user_prompt))
-
-    for call in attempts:
-        try:
-            content = call()
-        except Exception as exc:  # noqa: BLE001 - mỗi tier có thể lỗi, thử tier kế tiếp
-            LOGGER.warning("dream LLM tier failed: %s", exc)
-            continue
-        if content and content.strip():
-            return content
-    return ""
 
 
 _DREAM_SYSTEM_PROMPT = (
@@ -127,8 +115,15 @@ def _parse_symbol_rows(content: str) -> list[dict[str, object]]:
 def _llm_map_symbols(text: str) -> list[dict[str, object]]:
     if not text.strip():
         return []
-    reader = ReadingGenerator()
-    content = _llm_complete(reader, _DREAM_SYSTEM_PROMPT, f"GIẤC MƠ:\n{text}")
+    # Tái dùng ĐÚNG chuỗi fallback chuẩn (Gemini xoay nhiều key → OpenAI → Groq → Ollama →
+    # fallback). Trước đây tự gọi lẻ nên BỎ SÓT Groq và chỉ dùng 1 key Gemini. fallback_text=""
+    # để khi không model nào chạy được, _parse_symbol_rows trả [] → rơi về nhánh rule-based.
+    reader = _get_dream_generator()
+    content, _model, _warnings = reader.generate_custom(
+        system_prompt=_DREAM_SYSTEM_PROMPT,
+        user_prompt=f"GIẤC MƠ:\n{text}",
+        fallback_text="",
+    )
     return _parse_symbol_rows(content)
 
 

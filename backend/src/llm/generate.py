@@ -879,7 +879,15 @@ class ReadingGenerator:
         summary: str,
         recent_messages: list[dict[str, Any]],
         user_message: str,
-    ) -> tuple[str, list[str]]:
+    ) -> tuple[str, str | None, list[str]]:
+        """Sinh câu trả lời tiếp nối qua chuỗi fallback (Gemini → OpenAI → Groq → Ollama → dự phòng).
+
+        Trả về tuple ``(text, model_name, warnings)`` — đồng nhất với generate_custom(). Tên model
+        được chốt vào BIẾN CỤC BỘ ngay tại nhánh trả về (đồng thời gán self.last_used_model để
+        tương thích ngược). Caller PHẢI dùng ``model_name`` trả về, KHÔNG đọc lại
+        self.last_used_model sau khi hàm return — reader là singleton dùng chung nên request khác
+        có thể ghi đè thuộc tính giữa lúc hàm trả về và lúc caller đọc, làm lưu sai tên model.
+        """
         self.last_used_model = None
         extra_warnings: list[str] = []
 
@@ -911,9 +919,11 @@ class ReadingGenerator:
             and not self.ollama_enabled
         ):
             extra_warnings.append("Chưa cấu hình mô hình ngôn ngữ (LLM); dùng câu trả lời tiếp nối dự phòng tự động.")
-            self.last_used_model = "deterministic-fallback"
+            model = "deterministic-fallback"
+            self.last_used_model = model
             return (
                 self._generate_followup_fallback(session_context=session_context, user_message=user_message),
+                model,
                 extra_warnings,
             )
 
@@ -922,8 +932,9 @@ class ReadingGenerator:
             try:
                 answer = self._generate_gemini_messages(messages, api_key=_key)
                 if answer.strip():
-                    self.last_used_model = f"gemini:{self.gemini_model}"
-                    return answer.strip(), extra_warnings
+                    model = f"gemini:{self.gemini_model}"
+                    self.last_used_model = model
+                    return answer.strip(), model, extra_warnings
                 extra_warnings.append("Gemini trả về nội dung tiếp nối rỗng; thử backend kế tiếp.")
                 break  # rỗng (không phải hết quota) → sang tier khác, khỏi thử key kế
             except Exception as exc:
@@ -947,8 +958,9 @@ class ReadingGenerator:
             try:
                 answer = self._generate_openai_messages(messages)
                 if answer.strip():
-                    self.last_used_model = f"openai:{self.model}"
-                    return answer.strip(), extra_warnings
+                    model = f"openai:{self.model}"
+                    self.last_used_model = model
+                    return answer.strip(), model, extra_warnings
             except Exception as exc:
                 LOGGER.warning("OpenAI follow-up generation failed: %s", exc)
                 extra_warnings.append("OpenAI lỗi; thử backend kế tiếp.")
@@ -958,8 +970,9 @@ class ReadingGenerator:
             try:
                 answer = self._generate_groq_messages(messages)
                 if answer.strip():
-                    self.last_used_model = f"groq:{self.groq_model}"
-                    return answer.strip(), extra_warnings
+                    model = f"groq:{self.groq_model}"
+                    self.last_used_model = model
+                    return answer.strip(), model, extra_warnings
             except Exception as exc:
                 LOGGER.warning("Groq follow-up generation failed: %s", exc)
                 extra_warnings.append("Groq (tiếp nối) lỗi; thử backend kế tiếp.")
@@ -969,15 +982,18 @@ class ReadingGenerator:
             try:
                 answer = self._generate_ollama_messages(messages)
                 if answer.strip():
-                    self.last_used_model = f"ollama:{self.ollama_model}"
-                    return answer.strip(), extra_warnings
+                    model = f"ollama:{self.ollama_model}"
+                    self.last_used_model = model
+                    return answer.strip(), model, extra_warnings
                 extra_warnings.append("Ollama trả về nội dung tiếp nối rỗng; dùng dự phòng.")
             except Exception as exc:
                 LOGGER.warning("Ollama follow-up generation failed: %s", exc)
                 extra_warnings.append("Không kết nối được Ollama; chuyển sang câu trả lời tiếp nối dự phòng tự động.")
 
-        self.last_used_model = "deterministic-fallback"
+        model = "deterministic-fallback"
+        self.last_used_model = model
         return (
             self._generate_followup_fallback(session_context=session_context, user_message=user_message),
+            model,
             extra_warnings,
         )

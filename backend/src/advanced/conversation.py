@@ -140,16 +140,6 @@ def get_conversation_turns(session_id: int, limit: int = 20) -> list[dict[str, A
     ]
 
 
-def _next_turn_index(session_id: int) -> int:
-    with session_scope() as session:
-        max_turn = session.scalar(
-            select(func.max(ConversationTurn.turn_index)).where(ConversationTurn.session_id == session_id)
-        )
-    if max_turn is None:
-        return 0
-    return int(max_turn) + 1
-
-
 def add_followup_turn(
     *,
     session_id: int,
@@ -167,8 +157,6 @@ def add_followup_turn(
     if reading_context is None:
         raise ValueError("reading session not found")
 
-    next_idx = _next_turn_index(session_id)
-
     # Đọc lịch sử ĐÃ lưu (chưa gồm lượt hỏi mới này).
     with session_scope() as session:
         existing_rows = session.scalars(
@@ -177,19 +165,19 @@ def add_followup_turn(
             .order_by(ConversationTurn.turn_index.asc())
         ).all()
 
-    # Lượt hỏi của user được dựng trong bộ nhớ và đưa vào context window NHƯNG CHƯA commit,
-    # để nếu LLM ném lỗi bất ngờ thì DB không bị bỏ lại user-turn mồ côi (không có câu trả lời).
+    # Lượt hỏi của user được dựng TẠM trong bộ nhớ chỉ để đưa vào context window (CHƯA commit,
+    # nên KHÔNG cần turn_index — build_context_window chỉ đọc role/content). Nếu LLM ném lỗi bất
+    # ngờ thì DB không bị bỏ lại user-turn mồ côi (không có câu trả lời).
     pending_user_turn = ConversationTurn(
         session_id=session_id,
         role="user",
         content=clean_message,
-        turn_index=next_idx,
     )
     context_window = build_context_window(
         [*existing_rows, pending_user_turn], max_recent=MAX_RECENT_TURNS
     )
     reader = _get_followup_generator()
-    assistant_answer, warnings = reader.generate_followup(
+    assistant_answer, llm_model, warnings = reader.generate_followup(
         session_context={
             "question": reading_context.question,
             "transcript": reading_context.transcript,
@@ -201,26 +189,39 @@ def add_followup_turn(
         recent_messages=context_window["recent_messages"],
         user_message=clean_message,
     )
-    # Chốt tên model NGAY sau lời gọi (reader là singleton dùng chung — đọc trễ có thể
-    # lấy nhầm giá trị do request khác ghi đè).
-    llm_model = reader.last_used_model
 
-    assistant_idx = next_idx + 1
-    assistant_turn = ConversationTurn(
-        session_id=session_id,
-        role="assistant",
-        content=assistant_answer,
-        turn_index=assistant_idx,
-    )
-    # Chỉ khi LLM đã sinh xong mới ghi cả user-turn + assistant-turn trong CÙNG 1 transaction.
-    with session_scope() as session:
-        session.add_all([pending_user_turn, assistant_turn])
+    # Ghi user-turn + assistant-turn trong CÙNG transaction; tính turn_index NGAY trong
+    # transaction + thử lại khi đụng UNIQUE(session_id, turn_index) để 2 follow-up song song
+    # không mất lượt (LLM đã chạy xong → chỉ thử lại bước ghi DB, KHÔNG gọi lại model).
+    assistant_idx = 0
+    for attempt in range(3):
         try:
-            session.flush()
+            with session_scope() as session:
+                current_max = session.scalar(
+                    select(func.max(ConversationTurn.turn_index)).where(
+                        ConversationTurn.session_id == session_id
+                    )
+                )
+                base_idx = 0 if current_max is None else int(current_max) + 1
+                user_turn = ConversationTurn(
+                    session_id=session_id, role="user", content=clean_message, turn_index=base_idx
+                )
+                assistant_turn = ConversationTurn(
+                    session_id=session_id,
+                    role="assistant",
+                    content=assistant_answer,
+                    turn_index=base_idx + 1,
+                )
+                session.add_all([user_turn, assistant_turn])
+                session.flush()
+            assistant_idx = base_idx + 1
+            break
         except IntegrityError as exc:
-            # Đua 2 follow-up cùng session → trùng turn_index. Trả lỗi sạch để client thử lại,
-            # thay vì ghi lẫn lộn thứ tự hội thoại (UNIQUE(session_id, turn_index) chặn ở DB).
-            raise ValueError("conversation turn conflict, please retry") from exc
+            # Đua 2 follow-up cùng session → trùng turn_index. Thử lại tính lại index từ max
+            # mới; sau 3 lần vẫn đụng thì trả lỗi sạch để client thử lại.
+            if attempt == 2:
+                raise ValueError("conversation turn conflict, please retry") from exc
+            continue
 
     return {
         "session_id": session_id,

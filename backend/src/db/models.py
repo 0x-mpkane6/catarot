@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -232,6 +232,8 @@ class RatingReminder(Base):
             "status IN ('pending', 'sent', 'failed', 'rated', 'skipped')",
             name="ck_rating_reminders_status",
         ),
+        # Scheduler quét nhắc-đánh-giá theo (status, remind_at) → index ghép tránh full scan.
+        Index("ix_rating_reminders_status_remind_at", "status", "remind_at"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -424,6 +426,8 @@ class CommunityPost(Base):
             "status IN ('pending', 'approved', 'rejected')",
             name="ck_community_posts_status",
         ),
+        # Feed cộng đồng lọc theo status (vd 'approved') liên tục → index để tránh full scan.
+        Index("ix_community_posts_status", "status"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -650,6 +654,8 @@ class TimeCapsule(Base):
             "accuracy_score IS NULL OR (accuracy_score >= 1 AND accuracy_score <= 5)",
             name="ck_time_capsules_accuracy_score",
         ),
+        # Scheduler quét hộp thời gian theo status (sealed → revealed) → index để tránh full scan.
+        Index("ix_time_capsules_status", "status"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -727,6 +733,8 @@ class Notification(Base):
             "status IN ('pending', 'sent', 'failed', 'skipped', 'read')",
             name="ck_notifications_status",
         ),
+        # Scheduler quét thông báo chờ gửi theo (status, scheduled_for) → index ghép tránh full scan.
+        Index("ix_notifications_status_scheduled_for", "status", "scheduled_for"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

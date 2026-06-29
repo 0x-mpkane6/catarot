@@ -145,11 +145,49 @@ def _apply_unique_constraints() -> None:
             )
 
 
+def _apply_indexes() -> None:
+    """Thêm các index còn thiếu trên DB ĐÃ TỒN TẠI (mọi dialect).
+
+    Bảng được tạo TRƯỚC khi index được thêm vào model thì create_all() KHÔNG ALTER để bổ
+    sung index → trên prod cũ các cột scheduler/feed query thường xuyên (status, remind_at,
+    scheduled_for) thiếu index, gây full scan. Idempotent nhờ "CREATE INDEX IF NOT EXISTS"
+    (Postgres lẫn SQLite đều hỗ trợ). Bọc try/except từng cái + LOGGER.warning khi lỗi để
+    KHÔNG chặn startup. Tên bảng/cột/index đều là hằng cố định trong code → an toàn.
+    """
+    engine = get_engine()
+    targets = [
+        ("community_posts", "ix_community_posts_status", "status"),
+        ("rating_reminders", "ix_rating_reminders_status_remind_at", "status, remind_at"),
+        ("notifications", "ix_notifications_status_scheduled_for", "status, scheduled_for"),
+        ("time_capsules", "ix_time_capsules_status", "status"),
+    ]
+    existing_tables = set(inspect(engine).get_table_names())
+
+    for table_name, index_name, columns in targets:
+        if table_name not in existing_tables:
+            continue
+        try:
+            with engine.begin() as conn:
+                conn.exec_driver_sql(
+                    f"CREATE INDEX IF NOT EXISTS {index_name} "
+                    f"ON {table_name} ({columns})"
+                )
+            LOGGER.info("Applied index: %s on %s", index_name, table_name)
+        except Exception as exc:  # pragma: no cover - phòng thủ, không chặn startup
+            LOGGER.warning(
+                "Không thêm được index %s trên %s: %s",
+                index_name,
+                table_name,
+                exc,
+            )
+
+
 def initialize_database(seed_reference_data: bool = True) -> None:
     _recreate_daily_deep_readings_if_stale()
     Base.metadata.create_all(bind=get_engine())
     _apply_lightweight_migrations()
     _apply_unique_constraints()
+    _apply_indexes()
 
     if not seed_reference_data:
         return

@@ -161,31 +161,40 @@ def add_interpretation(*, user_id: int, post_id: int, content: str) -> dict:
 
 
 def vote_interpretation(*, user_id: int, interpretation_id: int) -> dict:
-    with session_scope() as session:
-        interpretation = session.scalar(
-            select(CommunityInterpretation).where(CommunityInterpretation.id == interpretation_id)
-        )
-        if interpretation is None:
-            raise ValueError("interpretation not found")
-        existing = session.scalar(
-            select(CommunityVote).where(
-                CommunityVote.interpretation_id == interpretation_id,
-                CommunityVote.user_id == user_id,
+    # Bước 1: thử INSERT phiếu vote trong một session_scope RIÊNG. Bắt IntegrityError NGOÀI
+    # session_scope (theo mẫu duo_reading) thay vì rollback thủ công bên trong — rollback giữa
+    # session_scope sẽ expire mọi object bất ngờ và dễ gây lỗi khó lần. Đua/đúp cùng user đã
+    # vote trước → coi như đã vote (idempotent), không trả HTTP 500.
+    created = False
+    try:
+        with session_scope() as session:
+            interpretation = session.scalar(
+                select(CommunityInterpretation).where(
+                    CommunityInterpretation.id == interpretation_id
+                )
             )
-        )
-        created = False
-        if existing is None:
-            session.add(CommunityVote(interpretation_id=interpretation_id, user_id=user_id))
-            try:
+            if interpretation is None:
+                raise ValueError("interpretation not found")
+            existing = session.scalar(
+                select(CommunityVote).where(
+                    CommunityVote.interpretation_id == interpretation_id,
+                    CommunityVote.user_id == user_id,
+                )
+            )
+            if existing is None:
+                session.add(
+                    CommunityVote(interpretation_id=interpretation_id, user_id=user_id)
+                )
                 session.flush()  # ép INSERT bay ngay để bắt vi phạm unique constraint tại chỗ
                 created = True
-            except IntegrityError:
-                # Race: request song song cùng user đã vote trước → coi như đã vote (idempotent),
-                # tránh trả HTTP 500. rollback để phiên dùng lại được cho truy vấn đếm bên dưới.
-                session.rollback()
+    except IntegrityError:
+        # Race: request song song cùng user vừa vote trước → phiếu này trùng unique
+        # constraint. Coi như đã vote (idempotent); đếm lại ở bước 2 trong session mới.
+        created = False
 
-        # Đếm lại số vote THỰC TẾ từ bảng thay vì tin counter — tránh lệch đếm khi có race,
-        # đồng thời tự chữa nếu counter từng bị lệch trước đó.
+    # Bước 2: trong một session MỚI, đếm lại số vote THỰC TẾ từ bảng thay vì tin counter —
+    # tránh lệch đếm khi có race, đồng thời tự chữa nếu counter từng bị lệch trước đó.
+    with session_scope() as session:
         real_count = (
             session.scalar(
                 select(func.count())
@@ -195,7 +204,9 @@ def vote_interpretation(*, user_id: int, interpretation_id: int) -> dict:
             or 0
         )
         interpretation = session.scalar(
-            select(CommunityInterpretation).where(CommunityInterpretation.id == interpretation_id)
+            select(CommunityInterpretation).where(
+                CommunityInterpretation.id == interpretation_id
+            )
         )
         if interpretation is not None:
             interpretation.vote_count = int(real_count)

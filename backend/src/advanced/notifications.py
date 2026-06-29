@@ -292,7 +292,11 @@ def process_daily_card_notifications(max_users: int = 500) -> dict[str, int]:
                 continue
 
             day_start_local = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
-            # Mốc đầu ngày địa phương quy về UTC-naive để so với created_at (SQLite lưu naive UTC).
+            # Mốc đầu ngày địa phương quy về UTC rồi ép naive để so sánh nhất quán với
+            # created_at. Cả hai vế đều là UTC: now_utc dùng datetime.now(timezone.utc),
+            # còn mốc này đổi sang UTC trước khi bỏ tzinfo nên KHÔNG lệch giờ ở UTC+7.
+            # Phải ép naive vì cột created_at được lưu naive-UTC (đồng nhất với cách so
+            # sánh ở analytics._naive_utc); trộn aware vào đây sẽ sai trên SQLite.
             day_start_utc_naive = day_start_local.astimezone(timezone.utc).replace(tzinfo=None)
 
             with session_scope() as session:

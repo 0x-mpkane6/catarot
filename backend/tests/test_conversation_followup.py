@@ -70,7 +70,9 @@ class _OkGenerator:
     last_used_model = "stub-model"
 
     def generate_followup(self, **_kwargs):
-        return "Câu trả lời tiếp theo.", []
+        # Hợp đồng mới: trả (text, model_name, warnings) — caller dùng model_name trả về
+        # thay vì đọc self.last_used_model (singleton dùng chung, tránh đọc nhầm của request khác).
+        return "Câu trả lời tiếp theo.", "stub-model", []
 
 
 def test_followup_does_not_persist_user_turn_when_llm_raises(monkeypatch, tmp_path):

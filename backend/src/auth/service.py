@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 
-from src.auth.security import create_access_token, hash_password, verify_password
+from src.auth.security import _is_production, create_access_token, hash_password, verify_password
 from src.db.models import User
 from src.db.session import session_scope
 from src.utils.validators import is_valid_email, normalize_email
@@ -57,6 +57,18 @@ def _normalize_username(value: str | None) -> str | None:
     return cleaned or None
 
 
+def _validate_avatar_url(value: str | None) -> str | None:
+    """Chỉ chấp nhận avatar_url scheme http/https; chặn 'javascript:'/'data:' (XSS khi render)."""
+    cleaned = (value or "").strip()
+    if not cleaned:
+        return None
+    from urllib.parse import urlparse
+
+    if urlparse(cleaned).scheme.lower() not in {"http", "https"}:
+        raise ValueError("avatar_url phải là đường dẫn http/https hợp lệ")
+    return cleaned
+
+
 def register_user(
     *,
     email: str,
@@ -66,7 +78,8 @@ def register_user(
     display_name: str | None = None,
 ) -> AuthUser:
     clean_email = normalize_email(email)
-    clean_password = (password or "").strip()
+    # KHÔNG strip() mật khẩu: '  abc  ' và 'abc' phải là hai mật khẩu khác nhau (giữ entropy).
+    clean_password = password or ""
     clean_username = _normalize_username(username)
     if not is_valid_email(clean_email):
         raise ValueError("invalid email")
@@ -101,6 +114,11 @@ def register_user(
             session.flush()
         except IntegrityError as exc:
             # Đua đăng ký cùng email/username → trả lỗi nghiệp vụ (400) thay vì HTTP 500.
+            # Phân biệt nguyên nhân qua NỘI DUNG lỗi (không mở query mới trong transaction
+            # đang hỏng — tránh "database is locked" trên SQLite). Mặc định coi như trùng email.
+            detail = str(getattr(exc, "orig", exc)).lower()
+            if clean_username and "username" in detail and "email" not in detail:
+                raise ValueError("username already exists") from exc
             raise ValueError("email already exists") from exc
         return _to_auth_user(user)
 
@@ -117,7 +135,8 @@ def authenticate_user_by_identifier(
 ) -> tuple[AuthUser, str]:
     """Cho phép đăng nhập bằng username HOẶC email + password."""
     raw = (identifier or "").strip()
-    clean_password = (password or "").strip()
+    # KHÔNG strip() mật khẩu khi xác thực — phải khớp đúng chuỗi lúc đăng ký/đặt lại.
+    clean_password = password or ""
     if not raw:
         raise ValueError("missing username/email")
 
@@ -241,15 +260,32 @@ def _send_reset_email(*, to_email: str, token: str, expires_at: datetime) -> Non
         LOGGER.warning("Gửi email đặt lại mật khẩu thất bại: %s", str(exc))
 
 
-def request_password_reset(*, email: str) -> tuple[bool, str | None, datetime | None]:
-    """Sinh reset token cho email. Trả (found, token_if_dev, expires_at).
+def send_reset_email(*, to_email: str, token: str, expires_at: datetime) -> None:
+    """Wrapper công khai để endpoint lên lịch gửi email đặt lại MK ở BackgroundTask (best-effort)."""
+    _send_reset_email(to_email=to_email, token=token, expires_at=expires_at)
 
-    `token_if_dev` chỉ trả về khi EXPOSE_RESET_TOKEN_IN_RESPONSE=true để dev test.
-    Production gửi qua email.
+
+@dataclass
+class PasswordResetRequest:
+    found: bool
+    dev_token: str | None
+    expires_at: datetime | None
+    # (to_email, token, expires) để endpoint gửi email ở NỀN; None khi không tìm thấy user.
+    pending_email: tuple[str, str, datetime] | None
+
+
+def request_password_reset(*, email: str) -> PasswordResetRequest:
+    """Sinh reset token cho email. KHÔNG gửi email đồng bộ trong hàm này.
+
+    Lý do tách gửi email: gửi email (mạng, tới ~15s) chỉ xảy ra khi email TỒN TẠI →
+    tạo chênh lệch thời gian phản hồi giúp dò xem email có tồn tại không (enumeration).
+    Endpoint lên lịch gửi qua BackgroundTask nên thời gian phản hồi gần như nhau ở cả hai
+    trường hợp. `dev_token` chỉ khác None khi EXPOSE_RESET_TOKEN_IN_RESPONSE=true VÀ KHÔNG
+    phải production.
     """
     clean_email = normalize_email(email)
     if not is_valid_email(clean_email):
-        return False, None, None
+        return PasswordResetRequest(found=False, dev_token=None, expires_at=None, pending_email=None)
 
     token = secrets.token_urlsafe(32)
     expires = datetime.now(timezone.utc) + timedelta(minutes=_RESET_TOKEN_TTL_MIN)
@@ -259,12 +295,9 @@ def request_password_reset(*, email: str) -> tuple[bool, str | None, datetime | 
             select(User).where(func.lower(User.email) == clean_email)
         )
         if user is None:
-            return False, None, None
+            return PasswordResetRequest(found=False, dev_token=None, expires_at=None, pending_email=None)
         user.reset_token = token
         user.reset_token_expires_at = expires
-
-    # Gửi email chứa link đặt lại (best-effort; degrade an toàn nếu chưa cấu hình SMTP).
-    _send_reset_email(to_email=clean_email, token=token, expires_at=expires)
 
     expose = os.getenv("EXPOSE_RESET_TOKEN_IN_RESPONSE", "false").strip().lower() in {
         "1",
@@ -272,11 +305,24 @@ def request_password_reset(*, email: str) -> tuple[bool, str | None, datetime | 
         "yes",
         "on",
     }
-    return True, (token if expose else None), expires
+    if expose and _is_production():
+        # Chặn rò token qua response trên production (chiếm tài khoản không cần email).
+        LOGGER.warning(
+            "EXPOSE_RESET_TOKEN_IN_RESPONSE đang bật ở PRODUCTION — bỏ qua để không lộ token."
+        )
+        expose = False
+
+    return PasswordResetRequest(
+        found=True,
+        dev_token=(token if expose else None),
+        expires_at=expires,
+        pending_email=(clean_email, token, expires),
+    )
 
 
 def reset_password_with_token(*, token: str, new_password: str) -> None:
-    clean_password = (new_password or "").strip()
+    # KHÔNG strip() mật khẩu mới: giữ nguyên ký tự người dùng chọn (gồm khoảng trắng đầu/cuối).
+    clean_password = new_password or ""
     if len(clean_password) < 6:
         raise ValueError("password must be at least 6 characters")
 
@@ -393,7 +439,7 @@ def update_user_profile(*, user_id: int, payload: ProfileUpdatePayload) -> AuthU
         if payload.display_name is not None:
             user.display_name = payload.display_name.strip() or None
         if payload.avatar_url is not None:
-            user.avatar_url = payload.avatar_url.strip() or None
+            user.avatar_url = _validate_avatar_url(payload.avatar_url)
         if payload.bio is not None:
             user.bio = payload.bio.strip() or None
         if payload.username is not None:

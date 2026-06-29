@@ -100,6 +100,7 @@ from src.auth.service import (
     authenticate_with_google,
     register_user,
     request_password_reset,
+    send_reset_email,
     reset_password_with_token,
     update_user_profile,
 )
@@ -414,7 +415,6 @@ def root():
 def health_check():
     """Operator-friendly health probe with version + db connectivity."""
     db_ok = True
-    db_error: str | None = None
     try:
         from sqlalchemy import text
         from src.db.session import get_engine
@@ -423,7 +423,9 @@ def health_check():
             conn.execute(text("SELECT 1"))
     except Exception as exc:  # pragma: no cover - defensive
         db_ok = False
-        db_error = str(exc)[:200]
+        # KHÔNG trả chi tiết lỗi ra response: chuỗi lỗi SQLAlchemy/psycopg2 thường chứa
+        # connection string (user/mật khẩu/host/port) của DATABASE_URL. Chỉ log phía server.
+        LOGGER.error("DB health check failed: %s", exc)
 
     # Cờ chẩn đoán: index nhận diện lá bài đã có trên đĩa chưa (kiểm tra file rẻ, KHÔNG nạp model).
     vision_index_ok = False
@@ -440,7 +442,6 @@ def health_check():
         "status": "ok" if db_ok else "degraded",
         "version": APP_VERSION,
         "db": "ok" if db_ok else "error",
-        "db_error": db_error,
         "vision_index": vision_index_ok,
         "timezone": os.getenv("APP_TIMEZONE", "Asia/Ho_Chi_Minh"),
         "now": datetime.now().isoformat(),
@@ -509,7 +510,9 @@ async def auth_me(current_user: CurrentUser = Depends(get_current_user)):
 
 
 @app.post("/api/auth/forgot-password")
-async def auth_forgot_password(req: ForgotPasswordRequest, request: Request):
+async def auth_forgot_password(
+    req: ForgotPasswordRequest, request: Request, background_tasks: BackgroundTasks
+):
     enforce_rate_limit(
         request=request,
         scope="auth_forgot_password",
@@ -517,24 +520,29 @@ async def auth_forgot_password(req: ForgotPasswordRequest, request: Request):
         window_seconds=60,
     )
     try:
-        # run_in_threadpool: request_password_reset ghi DB + gửi email (I/O đồng bộ tới ~15s).
-        # Endpoint là async nên PHẢI đẩy khỏi event loop, tránh treo cả server 1-worker.
-        _found, dev_token, expires_at = await run_in_threadpool(
-            request_password_reset, email=req.email
-        )
+        # run_in_threadpool: request_password_reset ghi DB (I/O đồng bộ). Endpoint là async
+        # nên PHẢI đẩy khỏi event loop, tránh treo cả server 1-worker.
+        result = await run_in_threadpool(request_password_reset, email=req.email)
     except Exception as exc:  # pragma: no cover - defensive
-        # Kèm loại lỗi để giám sát phân biệt DB-down với lỗi gửi email (HTTP vẫn 200 chống dò email).
+        # Kèm loại lỗi để giám sát phân biệt DB-down (HTTP vẫn 200 chống dò email).
         LOGGER.warning("forgot-password failed [%s]: %s", type(exc).__name__, exc)
-        dev_token = None
-        expires_at = None
+        result = None
+
+    # Gửi email ở NỀN (sau khi đã trả response) để thời gian phản hồi KHÔNG phụ thuộc email
+    # có tồn tại hay không → chống dò email (enumeration) qua đo thời gian.
+    if result is not None and result.pending_email is not None:
+        to_email, token, expires = result.pending_email
+        background_tasks.add_task(
+            send_reset_email, to_email=to_email, token=token, expires_at=expires
+        )
 
     # Response giống nhau dù email tồn tại hay không để chống enumeration.
     response: dict = {
         "message": "Nếu email tồn tại, hệ thống đã gửi hướng dẫn đặt lại mật khẩu.",
     }
-    if dev_token:
-        response["dev_only_token"] = dev_token
-        response["expires_at"] = expires_at.isoformat() if expires_at else None
+    if result is not None and result.dev_token:
+        response["dev_only_token"] = result.dev_token
+        response["expires_at"] = result.expires_at.isoformat() if result.expires_at else None
     return response
 
 
