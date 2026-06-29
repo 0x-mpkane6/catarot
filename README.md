@@ -11,6 +11,10 @@
                                                   
 ```
 
+> 📌 **Thông tin nộp bài:** Link triển khai, bảng phân công công việc và các tài nguyên liên quan được tổng hợp tại [SUBMISSION.md](docs/SUBMISSION.md).
+
+---
+
 # 🔮 CATAROT - Nền tảng xem Tarot trực tuyến bằng AI
 
 **CATAROT** là ứng dụng web xem Tarot trực tuyến, kết hợp AI để hỗ trợ người dùng đặt câu hỏi, rút bài, lưu lại trải nghiệm cá nhân và tương tác với cộng đồng.
@@ -61,7 +65,7 @@ Các phần kỹ thuật, kiến trúc hệ thống và báo cáo đồ án đư
 * [Bố cục mã nguồn](./docs/BO-CUC-CODE.md)
 * [Sơ đồ kiến trúc](./docs/SO-DO-KIEN-TRUC.md)
 
-## 🚀 Chạy nhanh với Docker
+## 🚀 Chạy với Docker
 
 > Cần tạo file `backend/.env` trước khi chạy. Có thể tham khảo từ `.env.example` nếu có.
 
@@ -81,16 +85,14 @@ docker compose up --build backend
 ```
 
 ## 🌐 Demo
-Trang web được deploy tại: [**catarot.me**](https://catarot.me)
+CATAROT được triển khai tại: [**catarot.me**](https://catarot.me)
+
+## 📱 CATAROT dành cho Android
+Truy cập phiên bản Android của CATAROT tại: [catarot.apk](catarot.apk) 
 
 ---
 
-## 💌 Lời kết
-Nhóm em xin gửi lời cảm ơn chân thành đến **ThS. Trần Tuấn Dũng** - người đã trực tiếp hướng dẫn nhóm trong suốt quá trình xây dựng website. Những góp ý và định hướng của thầy đã giúp nhóm có thêm nhiều góc nhìn mới trong việc thiết kế, hoàn thiện sản phẩm và hiểu rõ hơn cách một hệ thống web được xây dựng trong thực tế.
-
-Thông qua đồ án **CATAROT**, nhóm em đã có cơ hội vận dụng các kiến thức đã học để xây dựng một hệ thống web hoàn chỉnh, từ thiết kế giao diện, xây dựng backend, tổ chức cơ sở dữ liệu, xử lý luồng người dùng đến triển khai ứng dụng. Bên cạnh đó, đồ án cũng giúp nhóm em hiểu rõ hơn cách tích hợp AI vào một sản phẩm web thực tế, cũng như cách các thành phần frontend, backend, database và dịch vụ triển khai phối hợp với nhau trong một hệ thống.
-
-Mặc dù **CATAROT** đã được nhóm cố gắng xây dựng và hoàn thiện các chức năng chính theo mục tiêu ban đầu, dự án vẫn còn một số hạn chế nhất định về độ ổn định, hiệu năng và trải nghiệm người dùng. Do được phát triển trong phạm vi đồ án, hệ thống vẫn cần thêm thời gian để kiểm thử, tối ưu và hoàn thiện hơn. Trong tương lai, nhóm em mong muốn tiếp tục cải tiến sản phẩm, bổ sung các chức năng cần thiết và nâng cao chất lượng hệ thống để CATAROT có thể vận hành ổn định, thân thiện và hữu ích hơn trong thực tế.
-
 > **Chúng em đã biết làm web và hiểu hệ thống web hoạt động như thế nào.**
+
+
 
