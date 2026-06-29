@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 import useIsMobile from "../../hooks/useIsMobile";
+import { tapHaptic, successHaptic } from "../../lib/haptics";
 import tarotBack from "../../assets/images/homepage/tarot-back-des-2.png";
 
 const TOTAL_CARDS = 36;
@@ -40,6 +41,8 @@ export default function TarotSpreadGrid({
   const handleSelectCard = (card) => {
 
     if (disabled) return;
+
+    tapHaptic(); // rung nhẹ khi chạm chọn/bỏ lá (no-op trên máy không hỗ trợ)
 
     setSelectedCardIds((current) => {
 
@@ -105,6 +108,7 @@ export default function TarotSpreadGrid({
       return;
     }
 
+    successHaptic(); // nhịp "hoàn tất" khi xác nhận đủ lá
     onConfirm?.(selectedCards);
   };
 

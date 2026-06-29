@@ -1,0 +1,88 @@
+/* Nền vũ trụ landing (desktop) — nằm sau hero (hero z-index:2). */
+.landing-cosmos {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.landing-cosmos__nebula,
+.landing-cosmos__stars {
+  position: absolute;
+  inset: -8%;
+  will-change: transform;
+}
+
+.landing-cosmos__blob {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(60px);
+  opacity: 0.45;
+  will-change: transform;
+}
+
+.landing-cosmos__blob--violet {
+  width: 46vw;
+  height: 46vw;
+  top: -6vh;
+  left: -6vw;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.55), transparent 70%);
+  animation: cosmos-drift-a 30s ease-in-out infinite;
+}
+
+.landing-cosmos__blob--magenta {
+  width: 40vw;
+  height: 40vw;
+  top: 20vh;
+  right: -8vw;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.4), transparent 70%);
+  animation: cosmos-drift-b 36s ease-in-out infinite;
+}
+
+.landing-cosmos__blob--cyan {
+  width: 36vw;
+  height: 36vw;
+  bottom: -10vh;
+  left: 18vw;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.28), transparent 70%);
+  animation: cosmos-drift-c 42s ease-in-out infinite;
+}
+
+.landing-cosmos__star {
+  position: absolute;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 0 6px rgba(216, 180, 254, 0.7);
+  opacity: 0.5;
+  animation-name: cosmos-twinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes cosmos-twinkle {
+  0%, 100% { opacity: 0.18; transform: scale(0.85); }
+  50% { opacity: 0.95; transform: scale(1.15); }
+}
+
+@keyframes cosmos-drift-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(8vw, 6vh, 0) scale(1.12); }
+}
+
+@keyframes cosmos-drift-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
+  50% { transform: translate3d(-7vw, -4vh, 0) scale(0.92); }
+}
+
+@keyframes cosmos-drift-c {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(5vw, -7vh, 0) scale(1.18); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-cosmos__blob,
+  .landing-cosmos__star {
+    animation: none;
+  }
+}

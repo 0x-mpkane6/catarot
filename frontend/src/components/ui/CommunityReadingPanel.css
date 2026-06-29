@@ -416,37 +416,63 @@
 @media (max-width: 980px) {
   .community-panel {
     grid-template-columns: 1fr;
+    /* Hàng 1 = thanh tab (auto), hàng 2 = nội dung (1fr) chiếm hết phần còn lại. */
+    grid-template-rows: auto 1fr;
     width: min(1140px, calc(100vw - 32px));
     height: calc(100dvh - 80px);
     max-height: calc(100dvh - 80px);
   }
 
+  /* Sidebar dọc (brand + tab cao + ghi chú) ăn ~300px đẩy ô nhập xuống dưới fold.
+     Mobile: thu thành THANH TAB NGANG gọn ở trên → nội dung + ô nhập nổi lên đầu. */
   .community-panel__sidebar {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
     border-right: none;
     border-bottom: 1px solid rgba(168, 85, 247, 0.12);
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .community-panel__brand,
+  .community-panel__sidebar-note,
+  .community-panel__tab-hint {
+    display: none;
   }
 
   .community-panel__tab-list {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .community-panel__tab {
+    flex: 1 0 auto;
+    width: auto;
+    padding: 10px 16px;
+    white-space: nowrap;
+    text-align: center;
   }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 767.98px) {
   .community-panel {
     width: 100%;
-    height: 100dvh;
-    max-height: 100dvh;
-    border-radius: 0;
+    /* GỠ max-width cũ (calc(100vw-80px), sinh ra cho wrapper desktop căn giữa) — trên
+       điện thoại nó ghim panel còn ~295px, lệch trái, hở bên phải. Wrapper mobile đã
+       chừa lề 10px nên panel cần lấp đầy. */
+    max-width: 100%;
+    /* Trừ padding wrapper (80px trên + 24px dưới) để panel vừa khít màn, cuộn nội bộ. */
+    height: calc(100dvh - 104px);
+    max-height: calc(100dvh - 104px);
+    border-radius: 18px;
   }
 
-  .community-panel__content,
-  .community-panel__sidebar {
-    padding: 18px;
-  }
-
-  .community-panel__tab-list {
-    grid-template-columns: 1fr;
+  .community-panel__content {
+    padding: 14px 16px;
   }
 
   .community-card__header,

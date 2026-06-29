@@ -20,6 +20,7 @@ import guidelineContent from "../../assets/text/guideline.md?raw";
 import MagicCat from "./MagicCat";
 import MarkdownOverlay from "./MarkdownOverlay";
 import { useAppSettings } from "../../context/AppSettingsContext";
+import { tapHaptic } from "../../lib/haptics";
 
 import "./MascotHelper.css";
 
@@ -49,7 +50,7 @@ const drawRandomCard = (
 
 const MENU_CLOSE_DURATION_MS = 220;
 
-export default function MascotHelper() {
+export default function MascotHelper({ mobile = false }) {
   const { settings, updateSettings, t } = useAppSettings();
   const helperRef = useRef(null);
   const deck = useMemo(
@@ -120,6 +121,8 @@ export default function MascotHelper() {
   }, [menuMounted]);
 
   const openDrawOverlay = () => {
+    tapHaptic(); // rung nhẹ khi rút (no-op trên máy không hỗ trợ)
+
     const card =
       drawRandomCard(deck);
 
@@ -303,8 +306,11 @@ export default function MascotHelper() {
           </div>
         )}
 
+        {/* Mobile: chạm mèo = rút ngay 1 lá ngẫu nhiên (menu xoè vòng + cài đặt
+            đã có trong menu ☰ nên bỏ, tránh tràn màn hẹp). Desktop: mở menu xoè. */}
         <MagicCat
-          onClick={toggleMenu}
+          onClick={mobile ? openDrawOverlay : toggleMenu}
+          showBubble={!mobile}
         />
       </div>
 

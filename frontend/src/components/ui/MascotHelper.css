@@ -5,10 +5,15 @@
   z-index: 26;
 }
 
-/* Mobile: ẩn mascot để khỏi che ô chat + nút gửi. */
+/* Mobile: KHÔNG ẩn nữa. Mèo nhỏ lại + nép góc dưới-trái; chạm để rút 1 lá ngẫu
+   nhiên (menu xoè vòng bỏ trên mobile — cài đặt/hướng dẫn đã có trong menu ☰).
+   HomePage chỉ render mascot khi đang ở màn gallery (ẩn khi mở reading/overlay)
+   nên KHÔNG bao giờ che ô nhập chat ghim đáy. */
 @media (max-width: 767.98px) {
   .mascot-helper {
-    display: none !important;
+    --mascot-size: 84px;
+    --mascot-left: 14px;
+    --mascot-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   }
 }
 

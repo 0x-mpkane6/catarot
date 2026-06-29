@@ -41,6 +41,38 @@ body,
   overflow-x: hidden;
   overflow-y: auto;
   transform: none;
+  /* Tạo stacking context riêng để nền cực quang (z-index:-1) luôn nằm TRÊN nền
+     gradient của viewport nhưng DƯỚI nội dung — không che thẻ bài, không lọt
+     ra sau nền trang. */
+  isolation: isolate;
+}
+
+/* Lời chào đầu trang (mobile) */
+.home-mobile-greeting {
+  /* Chừa chỗ cho thanh nav cố định + safe-area (TWA edge-to-edge). */
+  padding: calc(92px + env(safe-area-inset-top, 0px)) 18px 2px;
+}
+
+.home-mobile-greeting__hello {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: rgba(233, 213, 255, 0.7);
+}
+
+.home-mobile-greeting__hello span {
+  color: #fdf4ff;
+  font-weight: 800;
+}
+
+.home-mobile-greeting__tagline {
+  margin: 4px 0 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: #fdf4ff;
+  text-shadow: 0 0 22px rgba(168, 85, 247, 0.35);
+  font-family: "Playfair Display", Georgia, serif;
 }
 
 @media (max-width: 767.98px) {

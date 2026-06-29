@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import BackGroundMusic from "./components/common/BackGroundMusic";
 import SplashCursor from "./components/common/SplashCursor";
 import RouteTransition from "./components/transition/RouteTransition";
+import CosmicVeil from "./components/transition/CosmicVeil";
 import MysticLoader from "./components/ui/MysticLoader";
 import { useAppSettings } from "./context/AppSettingsContext";
 
@@ -42,6 +43,9 @@ function App() {
   return (
     <>
       <BackGroundMusic />
+
+      {/* Host hiệu ứng chuyển cảnh trong trang — tự kích hoạt CHỈ trên mobile. */}
+      <CosmicVeil />
 
       {settings.cursorEffectsEnabled && (
         <SplashCursor

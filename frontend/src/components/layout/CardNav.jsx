@@ -9,6 +9,7 @@ import {
 import { gsap } from "gsap";
 import { GoArrowUpRight } from "react-icons/go";
 
+import { tapHaptic } from "../../lib/haptics";
 import "./CardNav.css";
 
 const CardNav = ({
@@ -243,6 +244,8 @@ const CardNav = ({
     if (!tl) return;
 
     if (!isExpanded) {
+
+      tapHaptic(); // rung nhẹ khi mở menu (no-op trên máy không hỗ trợ)
 
       setIsHamburgerOpen(true);
       setIsExpanded(true);

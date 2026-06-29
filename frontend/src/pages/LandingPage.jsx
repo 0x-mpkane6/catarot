@@ -8,11 +8,15 @@ import { useNavigate } from "react-router-dom";
 import whatIsTarotContent from "../assets/text/what_is_tarot.md?raw";
 import catarotContent from "../assets/text/catarot.md?raw";
 import { useAppSettings } from "../context/AppSettingsContext";
+import useIsMobile from "../hooks/useIsMobile";
+import LandingCosmos from "../components/common/LandingCosmos";
+import "./LandingPage.css";
 
 export default function LandingPage() {
 
   const navigate = useNavigate();
   const { t } = useAppSettings();
+  const isMobile = useIsMobile();
   const [showContact, setShowContact] =
     useState(false);
   const [activeMarkdownDoc, setActiveMarkdownDoc] =
@@ -98,22 +102,27 @@ export default function LandingPage() {
         alignItems: "center",
       }}
     >
-      {/* STARS */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
+      {/* Nền: desktop = vũ trụ sống động (nebula + tinh tú parallax theo chuột);
+          mobile = lưới sao tĩnh nhẹ (giữ nguyên như cũ). */}
+      {isMobile ? (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
 
-          backgroundImage:
-            "radial-gradient(rgba(255,255,255,0.8) 1px, transparent 1px)",
+            backgroundImage:
+              "radial-gradient(rgba(255,255,255,0.8) 1px, transparent 1px)",
 
-          backgroundSize: "50px 50px",
+            backgroundSize: "50px 50px",
 
-          opacity: 0.08,
+            opacity: 0.08,
 
-          pointerEvents: "none",
-        }}
-      />
+            pointerEvents: "none",
+          }}
+        />
+      ) : (
+        <LandingCosmos />
+      )}
 
       {/* NAVBAR */}
       <CardNav
@@ -173,17 +182,22 @@ export default function LandingPage() {
           text="CATAROT"
           tag="div"
           duration={1600}
+          // Desktop: chữ mạ ánh kim (class landing-wordmark). Mobile: giữ nguyên trắng + glow.
+          className={isMobile ? "" : "landing-wordmark"}
           style={{
             // Sàn nhỏ hơn để tiêu đề co vừa màn hình điện thoại (trước 5.8rem ~93px
             // quá to → "CATAROT" tràn ngang, bị cắt hai bên).
             fontSize: "clamp(2.6rem, 12vw, 9.4rem)",
             maxWidth: "100%",
-            color: "#f8f4ff",
             letterSpacing: "0.08em",
-            textShadow:
-              "0 0 24px rgba(192,132,252,0.16), 0 0 60px rgba(217,70,239,0.14)",
-            filter:
-              "drop-shadow(0 0 28px rgba(168,85,247,0.18))",
+            ...(isMobile
+              ? {
+                  color: "#f8f4ff",
+                  textShadow:
+                    "0 0 24px rgba(192,132,252,0.16), 0 0 60px rgba(217,70,239,0.14)",
+                  filter: "drop-shadow(0 0 28px rgba(168,85,247,0.18))",
+                }
+              : null),
           }}
         />
 
@@ -212,6 +226,42 @@ export default function LandingPage() {
             kịp gọi tên.
           </div>
         </div>
+
+        {/* CTA hero — chỉ mobile (desktop giữ nguyên, vào bằng nút "Đăng ký" trên nav). */}
+        {isMobile && (
+          <button
+            type="button"
+            onClick={() => navigate("/login")}
+            className="landing-hero-cta"
+            style={{
+              marginTop: "14px",
+              padding: "15px 34px",
+              borderRadius: "999px",
+              border: "1px solid rgba(255,255,255,0.16)",
+              background:
+                "linear-gradient(135deg, rgba(168,85,247,0.96), rgba(236,72,153,0.94))",
+              color: "#fff",
+              fontSize: "1.08rem",
+              fontWeight: 700,
+              letterSpacing: "0.02em",
+              cursor: "pointer",
+              boxShadow: "0 0 34px rgba(168,85,247,0.42)",
+            }}
+          >
+            ✦ Khám phá ngay
+          </button>
+        )}
+
+        {/* CTA hero desktop — điểm nhấn chính (trước desktop chỉ có nút nhỏ trên nav). */}
+        {!isMobile && (
+          <button
+            type="button"
+            onClick={() => navigate("/login")}
+            className="landing-hero-cta-desktop"
+          >
+            ✦ Bước vào cánh cổng
+          </button>
+        )}
       </div>
     </div>
   );

@@ -187,18 +187,24 @@ export default function SpeechPlaybackMessage({
       setIsSynthesizing(true);
       setIsPlaying(true);
 
-      // Tổng hợp 1 đoạn → Audio (null nếu bị huỷ giữa chừng).
+      // Tổng hợp 1 đoạn → { audio, spokenLen } (null nếu bị huỷ giữa chừng).
+      // spokenLen = số ký tự ĐOẠN THỰC SỰ được đọc: nếu backend cắt bớt (spokenEnd) thì
+      // dùng spokenEnd (giới hạn trong độ dài đoạn), ngược lại = toàn bộ độ dài đoạn.
       const synthChunk = async (chunkText) => {
-        const { audioBlob, warnings } = await synthesizeSpeech(chunkText);
+        const { audioBlob, spokenEnd, warnings } = await synthesizeSpeech(chunkText);
         if (isCancelled) return null;
         if (warnings && warnings.length > 0) setWarningNote(warnings.join(" • "));
         const url = URL.createObjectURL(audioBlob);
         chunkUrlsRef.current.push(url);
-        return new Audio(url);
+        const spokenLen =
+          spokenEnd != null ? Math.min(spokenEnd, chunkText.length) : chunkText.length;
+        return { audio: new Audio(url), spokenLen };
       };
 
       // Phát 1 đoạn + tô sáng theo vị trí ký tự TOÀN CỤC; resolve khi đoạn kết thúc.
-      const playChunk = (audio, chunk) =>
+      // spokenLen = số ký tự THỰC SỰ được audio đoạn này đọc (có thể < chunk.len khi backend
+      // cắt bớt) → highlight bám đúng phần audio thực đọc và chạm tới cuối phần đó.
+      const playChunk = (audio, chunk, spokenLen) =>
         new Promise((resolve, reject) => {
           let karaokeStarted = false;
           let watchdog = null;
@@ -252,7 +258,8 @@ export default function SpeechPlaybackMessage({
               if (!wordsCollectedRef.current) collectWords(); // thu thập 1 lần
             }
             const p = Math.min(1, audio.currentTime / dur);
-            const globalFrac = Math.min(1, (chunk.start + chunk.len * p) / totalChars);
+            const effectiveLen = spokenLen != null ? spokenLen : chunk.len;
+            const globalFrac = Math.min(1, (chunk.start + effectiveLen * p) / totalChars);
             highlightTo(Math.round(totalWordsRef.current * globalFrac));
             rafRef.current = requestAnimationFrame(tick);
           };
@@ -276,9 +283,9 @@ export default function SpeechPlaybackMessage({
         // 1 đoạn "đi trước": prefetch đoạn kế trong lúc đoạn hiện tại đang phát.
         let nextAudioPromise = synthChunk(chunks[0].text);
         for (let idx = 0; idx < chunks.length; idx += 1) {
-          const audio = await nextAudioPromise;
+          const result = await nextAudioPromise;
           if (isCancelled) return;
-          if (!audio) throw new Error("Không tạo được giọng đọc.");
+          if (!result) throw new Error("Không tạo được giọng đọc.");
 
           nextAudioPromise =
             idx + 1 < chunks.length ? synthChunk(chunks[idx + 1].text) : Promise.resolve(null);
@@ -286,7 +293,7 @@ export default function SpeechPlaybackMessage({
           // lỗi thật sẽ nổi lại khi `await nextAudioPromise` ở vòng sau.
           nextAudioPromise.catch(() => {});
 
-          await playChunk(audio, chunks[idx]);
+          await playChunk(result.audio, chunks[idx], result.spokenLen);
           if (isCancelled) return;
         }
         stopPlayback(); // đọc xong hết → bỏ mờ + giải phóng mọi blob ngay (không đợi lần dừng sau)

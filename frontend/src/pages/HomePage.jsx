@@ -1,5 +1,6 @@
 import CardNav from "../components/layout/CardNav";
 import { playScene } from "../components/transition/sceneTransition";
+import MobileAuroraBackground from "../components/common/MobileAuroraBackground";
 import UserProfile from "../components/ui/UserProfile";
 import ReadingHistory from "../components/ui/ReadingHistory";
 import ReflectionHistory from "../components/ui/ReflectionHistory";
@@ -350,24 +351,26 @@ export default function HomePage() {
     };
   }, [anyScreenOpen, closeTopScreen]);
 
-  const buildAssistantMessage = (
-    content,
-    shouldUseSpeech = false
-  ) => ({
-    role: "assistant",
-    content,
-    speechPlaybackEnabled: Boolean(
-      shouldUseSpeech &&
-      settings.speechPlaybackEnabled
-    ),
-    speechKey:
-      shouldUseSpeech &&
-      settings.speechPlaybackEnabled
-        ? `${Date.now()}-${Math.random()
-            .toString(36)
-            .slice(2)}`
-        : "",
-  });
+  // useCallback theo settings.speechPlaybackEnabled: để các effect dùng hàm này (vd tải bài
+  // hằng ngày) chạy lại khi bật/tắt TTS trong Cài đặt → có hiệu lực ngay, không cần reload.
+  const buildAssistantMessage = useCallback(
+    (content, shouldUseSpeech = false) => ({
+      role: "assistant",
+      content,
+      speechPlaybackEnabled: Boolean(
+        shouldUseSpeech &&
+        settings.speechPlaybackEnabled
+      ),
+      speechKey:
+        shouldUseSpeech &&
+        settings.speechPlaybackEnabled
+          ? `${Date.now()}-${Math.random()
+              .toString(36)
+              .slice(2)}`
+          : "",
+    }),
+    [settings.speechPlaybackEnabled]
+  );
 
   const requiredCards =
     selectedCard?.mode === "daily" ? 1 : 3;
@@ -508,6 +511,7 @@ export default function HomePage() {
           setShowSpreadGrid(false);
           setPendingInput(null);
         } catch (error) {
+          if (isCancelled) return;
           console.error(
             "Failed to load today's daily reading",
             error
@@ -515,7 +519,10 @@ export default function HomePage() {
           setHasTodayDailyReading(false);
           setDailyInfoNote("");
         } finally {
-          setIsBackendLoading(false);
+          // Chỉ tắt loading nếu effect chưa bị huỷ → tránh setState sau unmount/đổi mode.
+          if (!isCancelled) {
+            setIsBackendLoading(false);
+          }
         }
       };
 
@@ -524,7 +531,7 @@ export default function HomePage() {
     return () => {
       isCancelled = true;
     };
-  }, [selectedCard?.mode, userProfile]);
+  }, [selectedCard?.mode, userProfile, buildAssistantMessage]);
 
   // Khoá cuộn nền khi mở overlay rút bài: chống iOS cuộn xuyên nền (scroll bleed-through)
   // làm trang phía dưới bị lệch khi đóng overlay. touchAction='none' mới chặn rubber-band iOS.
@@ -1057,11 +1064,11 @@ const handleChatSubmitDraft =
       setCurrentSession(session);
       setMessages([]);
       setRevealedCards([]);
-      openReadingSession(
-        session.title
-      );
       setShowResult(true);
       setShowDeepReadingPanel(false);
+      // KHÔNG gọi openReadingSession ở đây với title tạm: loader (isBackendLoading) đã hiện
+      // phản hồi chờ. Chỉ mở phiên MỘT lần sau khi có sessionDetail đầy đủ (tránh 2 batch
+      // render + setState sau unmount nếu rời trang giữa lúc await).
 
       const [
         sessionDetail,
@@ -1201,6 +1208,9 @@ const handleChatSubmitDraft =
       }}
     >
 
+      {/* Nền cực quang sống động — chỉ mobile, nằm sau nội dung (z-index -1). */}
+      {isMobile && <MobileAuroraBackground />}
+
       {/* NAVBAR */}
       <CardNav
         logo=""
@@ -1260,7 +1270,12 @@ const handleChatSubmitDraft =
         }
       />
 
-      <MascotHelper />
+      {/* Mascot mèo: desktop luôn hiện. Mobile CHỈ hiện ở màn gallery (ẩn khi đã
+          chọn lá/mở overlay) để KHÔNG che ô nhập chat ghim đáy — chạm mèo để rút
+          nhanh 1 lá ngẫu nhiên. */}
+      {(!isMobile || (!selectedCard && !anyOverlayOpen)) && (
+        <MascotHelper mobile={isMobile} />
+      )}
 
       <ContactPanel
         isOpen={showContact}
@@ -1306,8 +1321,26 @@ const handleChatSubmitDraft =
 
         pointerEvents:
           hideGallery ? "none" : "auto",
+
+        // Mobile: khi mở phòng/trải bài, gallery ẩn bằng opacity nhưng VẪN chiếm
+        // ~980px trong dòng chảy tĩnh → đẩy panel (duo/community/visions) xuống dưới
+        // fold, phải cuộn mới tới ô nhập. Gỡ hẳn khỏi flow (CosmicVeil che lúc đổi
+        // nên không thấy giật). Desktop giữ fade (panel desktop position:absolute).
+        ...(isMobile && hideGallery ? { display: "none" } : null),
       }}
     >
+      {/* Lời chào + định hướng — chỉ mobile (desktop có mascot dẫn dắt riêng). */}
+      {isMobile && (
+        <div className="home-mobile-greeting">
+          <p className="home-mobile-greeting__hello">
+            Chào, <span>{username}</span>
+          </p>
+          <p className="home-mobile-greeting__tagline">
+            Hôm nay những lá bài muốn thì thầm điều gì với bạn?
+          </p>
+        </div>
+      )}
+
       <TarotGallery
         onCardClick={handleCardClick}
       />
@@ -1382,9 +1415,12 @@ const handleChatSubmitDraft =
   
 
    {(showChatUI ||
-      selectedCard?.mode === "duo" ||
+      // Mobile: KHÔNG hiện ảnh+tên lá phía trên panel phòng (duo/community/visions) —
+      // nó chiếm ~270px đẩy panel xuống dưới fold. Panel đã có tiêu đề riêng. Desktop
+      // vẫn hiện (định vị absolute ở góc, không chiếm dòng chảy).
+      (!isMobile && (selectedCard?.mode === "duo" ||
       selectedCard?.mode === "community" ||
-      selectedCard?.mode === "visions") && selectedCard && (
+      selectedCard?.mode === "visions"))) && selectedCard && (
       <div
         style={{
           position: "absolute",

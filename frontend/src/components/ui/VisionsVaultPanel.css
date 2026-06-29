@@ -490,36 +490,62 @@
 @media (max-width: 980px) {
   .visions-panel {
     grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
     width: min(1140px, calc(100vw - 32px));
     height: calc(100dvh - 80px);
     max-height: calc(100dvh - 80px);
   }
 
+  /* Mobile: sidebar dọc → thanh tab NGANG gọn (cuộn ngang nếu thiếu chỗ) để nội
+     dung + ô nhập (giấc mơ / niêm phong) nổi lên đầu, không phải kéo xuống. */
   .visions-panel__sidebar {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
     border-right: none;
     border-bottom: 1px solid rgba(168, 85, 247, 0.12);
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .visions-panel__brand,
+  .visions-panel__sidebar-note,
+  .visions-panel__tab-hint {
+    display: none;
   }
 
   .visions-panel__tab-list {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .visions-panel__tab {
+    flex: 1 0 auto;
+    width: auto;
+    padding: 10px 16px;
+    white-space: nowrap;
+    text-align: center;
   }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 767.98px) {
   .visions-panel {
     width: 100%;
-    height: 100dvh;
-    max-height: 100dvh;
-    border-radius: 0;
+    /* GỠ max-width cũ (calc(100vw-80px)) khiến panel lệch trái, hở phải trên điện
+       thoại — wrapper mobile đã chừa lề nên panel lấp đầy. */
+    max-width: 100%;
+    height: calc(100dvh - 104px);
+    max-height: calc(100dvh - 104px);
+    border-radius: 18px;
   }
 
-  .visions-panel__content,
-  .visions-panel__sidebar {
-    padding: 18px;
+  .visions-panel__content {
+    padding: 14px 16px;
   }
 
-  .visions-panel__tab-list,
   .visions-card__grid {
     grid-template-columns: 1fr;
   }

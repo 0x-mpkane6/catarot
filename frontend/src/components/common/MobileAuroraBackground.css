@@ -1,0 +1,71 @@
+/* Nền cực quang cho mobile — nằm SAU nội dung (z-index -1), không chặn chạm.
+   z-index âm: vẽ trên nền gradient của .home-viewport nhưng dưới mọi nội dung
+   trong dòng chảy (thẻ bài, nav…) nên không che gì. */
+.mobile-aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.mobile-aurora__blob {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(52px);
+  opacity: 0.5;
+  will-change: transform, opacity;
+}
+
+.mobile-aurora__blob--violet {
+  width: 72vw;
+  height: 72vw;
+  top: -12vh;
+  left: -22vw;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.55), transparent 70%);
+  animation: aurora-drift-a 28s ease-in-out infinite;
+}
+
+.mobile-aurora__blob--magenta {
+  width: 64vw;
+  height: 64vw;
+  top: 32vh;
+  right: -26vw;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.42), transparent 70%);
+  animation: aurora-drift-b 34s ease-in-out infinite;
+}
+
+.mobile-aurora__blob--indigo {
+  width: 60vw;
+  height: 60vw;
+  bottom: -16vh;
+  left: 8vw;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.40), transparent 70%);
+  animation: aurora-drift-c 40s ease-in-out infinite;
+}
+
+@keyframes aurora-drift-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(12vw, 8vh, 0) scale(1.15); }
+}
+
+@keyframes aurora-drift-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
+  50% { transform: translate3d(-10vw, -6vh, 0) scale(0.9); }
+}
+
+@keyframes aurora-drift-c {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(6vw, -10vh, 0) scale(1.2); }
+}
+
+/* Giảm chuyển động: đứng yên (cả qua class .is-static lẫn media query). */
+.mobile-aurora.is-static .mobile-aurora__blob {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-aurora__blob {
+    animation: none;
+  }
+}

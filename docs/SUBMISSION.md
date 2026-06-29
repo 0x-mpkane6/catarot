@@ -25,3 +25,4 @@
 
 - [Demo full tính năng CATAROT](https://drive.google.com/drive/u/0/folders/1YfePSekVmbdltbwSN_VNRa2EUy1_lVk8)
 - [Phỏng vấn khảo sát người dùng](https://www.tiktok.com/@phuc.kane/video/7647152828934343956?is_from_webapp=1&sender_device=pc&web_id=7544383194390578696)
+- Gói cài đặt Android (APK): [`mobile/catarot.apk`](../mobile/catarot.apk) — chi tiết bản mobile xem [`docs/BAO-CAO-MOBILE.md`](BAO-CAO-MOBILE.md)

@@ -638,12 +638,13 @@
   .duo-reading-panel {
     width: 94vw;
     padding: 16px;
-    /* Mobile: bỏ trần chiều cao + để nội dung chảy tĩnh, dùng cuộn trang. */
-    max-height: none;
+    /* Mobile: vừa khít màn (trừ padding wrapper 80/24) + cuộn NỘI BỘ. Trước bỏ trần
+       (max-height:none) + cuộn trang → ô nhập/khối thao tác bị đẩy xuống dưới fold. */
+    max-height: calc(100dvh - 116px);
   }
 
   .duo-reading-panel__content {
-    overflow-y: visible;
+    overflow-y: auto;
   }
 
   .duo-reading-panel--landing {

@@ -46,6 +46,7 @@ export default function ChatBox({
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const streamRef = useRef(null);
   const textareaRef = useRef(null);
 
   const supportsMedia = mode !== "daily";
@@ -100,6 +101,10 @@ export default function ChatBox({
       ) {
         mediaRecorderRef.current.stop();
       }
+      // Unmount đột ngột → onstop có thể không chạy → tắt thẳng track mic để hết sáng đèn.
+      streamRef.current
+        ?.getTracks()
+        .forEach((track) => track.stop());
     };
   }, []);
 
@@ -144,6 +149,8 @@ export default function ChatBox({
         await navigator.mediaDevices.getUserMedia({
           audio: true,
         });
+
+      streamRef.current = stream;
 
       const recorder =
         new MediaRecorder(stream);
