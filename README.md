@@ -64,6 +64,7 @@ Các phần kỹ thuật, kiến trúc hệ thống và báo cáo đồ án đư
 * [Báo cáo đồ án](./docs/BAO-CAO-DO-AN.md)
 * [Bố cục mã nguồn](./docs/BO-CUC-CODE.md)
 * [Sơ đồ kiến trúc](./docs/SO-DO-KIEN-TRUC.md)
+* [Báo cáo triển khai trên mobile](./docs/BAO-CAO-MOBILE.md)
 
 ## 🚀 Chạy với Docker
 

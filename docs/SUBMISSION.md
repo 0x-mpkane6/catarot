@@ -37,7 +37,7 @@ Các tính năng được nhóm demo:
 - **DEMO 06:** Trải bài đôi
 - **DEMO 07:** Các tính năng phụ
 
-*Video demo được thực hiện vào ngày 26/06/2026, trình bày các tính năng mới nhất của hệ thống CATAROT tại thời điểm nộp bài.*
+*Video demo được thực hiện vào ngày 26/06/2026, trình bày các tính năng chính của hệ thống sau khi đã hoàn thiện.*
 
 ---
 
@@ -53,7 +53,7 @@ Nhóm đã phát triển phiên bản **CATAROT** dành cho Android dưới dạ
 
 > Truy cập tại [catarot.apk](https://drive.google.com/file/d/1dT-3KA1HU891th71RXKiOeCdhEgM0wuv/view?usp=drive_link)
 
-*Các chức năng chính của hệ thống vẫn được giữ đầy đủ như phiên bản web, được cập nhật theo phiên bản mới nhất ngày 26/06/2026.*
+*Các chức năng chính của hệ thống vẫn được giữ đầy đủ như phiên bản web, được cập nhật theo phiên bản mới nhất ngày 29/06/2026.*
 
 ---
 
