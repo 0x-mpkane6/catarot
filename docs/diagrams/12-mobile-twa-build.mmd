@@ -1,7 +1,0 @@
-flowchart LR
-    Dev["Mã nguồn frontend<br/>(React + Vite)"] -->|"npm run build"| Dist["dist/ (SPA tĩnh)"]
-    Dist -->|"wrangler deploy"| CF["Cloudflare Workers<br/>https://catarot.me"]
-    CF -->|"hiển thị trực tiếp"| Web["Trình duyệt (desktop và mobile)"]
-    CF -->|"TWA bọc URL"| APK["App Android<br/>(Chrome engine)"]
-    Bubble["Bubblewrap (PWA sang TWA)"] -.->|"đóng gói 1 lần"| APK
-    APK -.->|"mỗi lần mở nạp lại"| CF

@@ -1,6 +1,0 @@
-flowchart TB
-    V["Khung nhìn (viewport)"] --> Q{"Rộng dưới 768px ?"}
-    Q -->|"Có - điện thoại"| M["isMobile = true<br/>+ @media (max-width: 767.98px)"]
-    Q -->|"Không - desktop"| D["isMobile = false<br/>(giữ nguyên đường đi mã desktop)"]
-    M --> M1["Bố cục mobile:<br/>lưới 2 cột, ô nhập ghim đáy,<br/>tab ngang, hiệu ứng cảm ứng"]
-    D --> D1["Bố cục desktop:<br/>zoom-to-fit, quạt bài,<br/>hiệu ứng theo con trỏ"]
