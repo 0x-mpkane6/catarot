@@ -71,5 +71,5 @@ Thông qua đồ án **CATAROT**, nhóm em đã có cơ hội vận dụng các 
 
 Mặc dù **CATAROT** đã được nhóm cố gắng xây dựng và hoàn thiện các chức năng chính theo mục tiêu ban đầu, dự án vẫn còn một số hạn chế nhất định về độ ổn định, hiệu năng và trải nghiệm người dùng. Do được phát triển trong phạm vi đồ án, hệ thống vẫn cần thêm thời gian để kiểm thử, tối ưu và hoàn thiện hơn. Trong tương lai, nhóm em mong muốn tiếp tục cải tiến sản phẩm, bổ sung các chức năng cần thiết và nâng cao chất lượng hệ thống để CATAROT có thể vận hành ổn định, thân thiện và hữu ích hơn trong thực tế.
 
-> **Chúng em đã biết làm web và hiểu hệ thống web hoạt động như thế nào.**
+> *Chúng em đã biết làm web và hiểu hệ thống web hoạt động như thế nào.*
 
