@@ -10,9 +10,6 @@
                                                    ███    ███                         
                                                   
 ```
-
-> **Thông tin nộp bài:** Link triển khai, bảng phân công công việc và các tài nguyên liên quan được tổng hợp tại [SUBMISSION.md](docs/SUBMISSION.md).
-
 ---
 
 # CATAROT - Nền tảng xem Tarot trực tuyến bằng AI
